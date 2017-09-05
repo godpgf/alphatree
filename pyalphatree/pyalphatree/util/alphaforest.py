@@ -143,8 +143,10 @@ class AlphaForest(object):
         rightId = self.children_cache[1] if child_num > 1 else None
         if leftId is not None:
             node.children.append(self._load_alphatree_node(alphatree_id, leftId))
+            node.children[-1].parent = node
         if rightId is not None:
             node.children.append(self._load_alphatree_node(alphatree_id, rightId))
+            node.children[-1].parent = node
         return node
 
 
