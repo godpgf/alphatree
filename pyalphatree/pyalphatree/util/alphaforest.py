@@ -9,8 +9,10 @@ import math
 
 class AlphaForest(object):
 
-    def __init__(self, max_history_size = 251, max_stoct_size = 3600, max_sample_size = 120, max_watch_size = 5, max_cache_size = 4, max_alpha_tree_size = 1024, max_node_size = 36, max_subtree_num = 8, max_achievement_size = 4096, sample_beta_size = 20):
-        alphatree.initializeAlphaforest(max_history_size, max_stoct_size, max_sample_size, max_watch_size, max_cache_size, max_alpha_tree_size, max_node_size + max_subtree_num + 1, max_subtree_num, max_achievement_size, sample_beta_size)
+    #子公式中的节点打平加上公式中的节点数量不能超过max_node_size
+    def __init__(self, max_history_size = 251, max_stoct_size = 3600, max_sample_size = 120, max_watch_size = 5, max_cache_size = 4, max_alpha_tree_size = 1024, max_node_size = 64, max_subtree_num = 16, max_achievement_size = 4096, sample_beta_size = 20):
+        self.max_node_size = max_node_size
+        alphatree.initializeAlphaforest(max_history_size, max_stoct_size, max_sample_size, max_watch_size, max_cache_size, max_alpha_tree_size, max_node_size, max_subtree_num, max_achievement_size, sample_beta_size)
         alphatree.initializeAlphaexaminer()
         self.encode_cache = (c_char * 512)()
         self.code_cache = (c_char * (max_stoct_size * 64))()

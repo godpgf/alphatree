@@ -9,6 +9,14 @@ class AlphaNode(object):
         self.parent = None
         self.children = []
 
+    #自己是第几个孩子
+    def pre_child_index(self):
+        if self.parent:
+            for i,c in enumerate(self.parent.children):
+                if c == self:
+                    return i
+        return -1
+
 class AlphaTree(object):
     def __init__(self, root):
         self.root = root
@@ -54,6 +62,7 @@ class AlphaTree(object):
     def _pre_process(self, node):
         if node.name == 'rank_scale':
             node.name = 'rank'
+            node.children[0].children[0].parent = node
             node.children[0] = node.children[0].children[0]
         for child in node.children:
             self._pre_process(child)
