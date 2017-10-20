@@ -10,7 +10,8 @@ libAlphatree: libalphatree_api.o
 	g++ -std=c++11 -shared -o $(LIB_DIR)libalphatree_api.so $(OBJECTS)
 
 %.o: %.cpp
-	g++ -std=c++11 -O3 -Wall -c $< -o $@
+    #g++ -std=c++11 -O3 -Wall -c $< -o $@
+	g++ -std=c++11 -O3 -Wall -c -g -rdynamic $< -o $@
 
 clean:	clean_lib
 	mkdir -p $(LIB_DIR)

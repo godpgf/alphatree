@@ -141,7 +141,7 @@ public:
         int curIndex = 0;
         int len = strlen(str);
         //判断符号
-        if(str[curIndex] != '+' && str[curIndex] != '-' && (str[curIndex] < '0' || str[curIndex] > '9')){
+        if(str[curIndex] != '+' && str[curIndex] != '-' && str[curIndex] != 'c' && (str[curIndex] < '0' || str[curIndex] > '9')){
             return false;
         }
         if(str[curIndex] < '0' || str[curIndex] > '9')
@@ -152,7 +152,6 @@ public:
             if (str[curIndex] < '0' || str[curIndex] > '9'){
                 return false;
             }
-
             ++curIndex;
         }
         if(str[startIndex] == '0' && curIndex - startIndex > 1 && str[startIndex+1] != '.'){

@@ -2,10 +2,14 @@
 # author=godpgf
 from ctypes import *
 
+#todo delete later
+
 class AlphaNode(object):
-    def __init__(self, name, coff=''):
+    def __init__(self, name, coff = '', avg = 0, std = 0):
         self.name = name
         self.coff = coff
+        self.avg = avg
+        self.std = std
         self.parent = None
         self.children = []
 
@@ -17,8 +21,17 @@ class AlphaNode(object):
                     return i
         return -1
 
+    def add_child(self, child):
+        self.children.append(child)
+        child.parent = self
+
+
 class AlphaTree(object):
     def __init__(self, root):
+        # if root.name == 'none':
+        #     root = root.children[0]
+        #     root.parent = None
+        root.parent = None
         self.root = root
         #处理一下
         self._pre_process(self.root)

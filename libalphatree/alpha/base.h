@@ -13,6 +13,8 @@
 #include <map>
 using namespace std;
 
+#define CHECK(isSuccess, err) if(!(isSuccess)) throw err
+
 struct ptrCmp
 {
     bool operator()( const char * s1, const char * s2 ) const
@@ -41,17 +43,16 @@ inline void _add(float* dst, float src, size_t size){
     for(int i = 0; i < size; i++) dst[i] += src;
 }
 
-inline void _mul(float* dst, const float* src, size_t size){
+inline void _mulNoZero(float *dst, const float *src, size_t size){
     for(int i = 0; i < size; i++){
-        if(src[i] == 0.0f || (src[i] > 0.0f && src[i] < 0.0001)){
-            dst[i] *= 0.0001;
-        } else if(src[i] < 0.0f && src[i] > -0.0001){
-            dst[i] *= -0.0001;
-        }
-        else{
+        if(abs(src[i]) > 0.0001f)
             dst[i] *= src[i];
-        }
+    }
+}
 
+inline void _mul(float *dst, const float *src, size_t size){
+    for(int i = 0; i < size; i++){
+        dst[i] *= src[i];
     }
 }
 
@@ -77,14 +78,9 @@ inline void _reduce(float* dst, float src, size_t size){
     for(int i = 0; i < size; i++) dst[i] -= src;
 }
 
-inline void _div(float* dst, const float* src, size_t size){
+inline void _divNoZero(float *dst, const float *src, size_t size){
     for(int i = 0; i < size; i++){
-        if(src[i] == 0.0f || (src[i] > 0.0f && src[i] < 0.0001)){
-            dst[i] /= 0.0001;
-        } else if(src[i] < 0.0f && src[i] > -0.0001){
-            dst[i] /= -0.0001;
-        }
-        else{
+        if(abs(src[i]) > 0.0001f){
             dst[i] /= src[i];
         }
     }
@@ -148,12 +144,10 @@ inline void _abs(float *dst, const float *src, size_t size){
         dst[i] = src[i] > 0 ? src[i] : -src[i];
 }
 
-inline void _log(float *dst, const float *src, size_t size, float logmin, float logmax){
+inline void _log(float *dst, const float *src, size_t size,  float logmax){
     for(int i = 0; i < size; i++){
-        if(src[i] == 0.0f || (src[i] > 0 && src[i] < 0.0001))
+        if(src[i] < 0.0001)
             dst[i] = logmax;
-        else if(src[i] < 0.0f && src[i] > -0.0001f)
-            dst[i] = logmin;
         else
             dst[i] = logf(src[i]);
     }
@@ -223,10 +217,18 @@ void quickSort(const float* src, float* index, int left, int right){
     if(left >= right)
         return;
     int key = (int)index[left];
+
+    if(isnan(src[key])){
+        quickSort(src, index, left + 1, right);
+        cout<<"err nan "<<key<<endl;
+        throw "eee";
+        return;
+    }
+
     int low = left;
     int high = right;
     while (low < high){
-        while (low < high && src[(int)index[high]] > src[key]){
+        while (low < high && (isnan(src[(int)index[high]]) || src[(int)index[high]] > src[key])){
             --high;
         }
         if(low < high)
@@ -234,7 +236,7 @@ void quickSort(const float* src, float* index, int left, int right){
         else
             break;
 
-        while (low < high && src[(int)index[low]] <= src[key]){
+        while (low < high && (isnan(src[(int)index[low]]) || src[(int)index[low]] <= src[key])){
             ++low;
         }
         if(low < high)
@@ -247,17 +249,32 @@ void quickSort(const float* src, float* index, int left, int right){
 }
 
 void _ranksort(float *index, const float *src, size_t size){
-    for(int i = 0; i < size; i++){
+    for(int i = 0; i < size; ++i){
         index[i] = i;
     }
     quickSort(src, index, 0, size-1);
+    for(int i = 0; i < size; ++i){
+        if(isnan(src[(int)index[i]]))
+            index[i] = -index[i]-1;
+    }
 }
 
 void _rankscale(float *dst,const float *index, size_t size){
+    int elementSize = 0;
+    for(int i = 0; i < size; ++i)
+        if(!isnan(index[i]))
+            ++elementSize;
+    int curSortId = 0;
     for(int i = 0; i < size; i++){
-        int elementId = ((int)index[i]);
-        //因为是从小到大排序,而rank是从大到小的,所以在这里转一下
-        dst[elementId] = (float)(size - i - 1) / (float)(size-1);
+        if(index[i] >= 0){
+            int elementId = ((int)index[i]);
+            //因为是从小到大排序,而rank是从大到小的,所以在这里转一下
+            dst[elementId] = (float)(elementSize - curSortId - 1) / (float)(elementSize-1);
+            ++curSortId;
+        }else{
+            int elementId = ((int)(-index[i] - 1));
+            dst[elementId] = 0;
+        }
     }
 }
 
@@ -292,12 +309,14 @@ void _tsRank(float *dst,const float *curData, const float *beforeData, size_t si
 inline void _scale(float *dst, const float *src, size_t size){
     float sum = 0;
     for(int i = 0; i < size; i++)
-        sum += src[i] >= 0 ? src[i] : -src[i];
+        if(!isnan(src[i]))
+            sum += src[i] >= 0 ? src[i] : -src[i];
     if(sum < 0.0001)
         memset(dst,0,sizeof(float) * size);
     else
         for(int i = 0; i < size; i++)
-            dst[i] = src[i] / sum;
+            if(!isnan(src[i]))
+                dst[i] = src[i] / sum;
 }
 
 //返回range范围内的最小值的id

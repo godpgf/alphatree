@@ -13,9 +13,8 @@
 enum class CoffUnit{
     COFF_NONE = 0,
     COFF_DAY = 1,
-    COFF_FUTURE_DAY = 2,
-    COFF_CONST = 3,
-    COFF_INDCLASS = 4,
+    COFF_CONST = 2,
+    COFF_INDCLASS = 3,
 };
 
 //计算的天数范围
@@ -24,7 +23,6 @@ enum class DateRange{
     BEFORE_DAY = 1,
     CUR_AND_BEFORE_DAY = 2,
     ALL_DAY = 3,
-    FUTURE_DAY = 4,
 };
 
 class IAlphaElement{
@@ -33,11 +31,13 @@ class IAlphaElement{
         //返回孩子数量
         virtual int getChildNum(){ return 0;}
         //传入左右孩子的参数,系数,输出内存块   得到运算结果
-        virtual const float* cast(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, bool* pflag, float* pout) = 0;
+        virtual const float* cast(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout) = 0;
         //得到系数类型
         virtual CoffUnit getCoffUnit() { return CoffUnit::COFF_NONE;}
         //得到计算天数
         virtual DateRange getDateRange(){ return DateRange::CUR_DAY; }
+        //是否将缺失数据补0去计算
+        virtual bool isCalculateLossDataAsZero(){ return true;}
 };
 
 //原子alpha
@@ -45,18 +45,19 @@ class AlphaAtom: public IAlphaElement{
     public:
         AlphaAtom(
                 const char* name,
-                const float* (*opt) (const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, bool* pflag, float* pout),
+                const float* (*opt) (const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout),
                 int childNum = 0,
                 CoffUnit coffUnit = CoffUnit::COFF_NONE,
-                DateRange dateRange = DateRange::CUR_DAY
-        ):name_(name), opt_(opt), childNum_(childNum), coffUnit_(coffUnit), dateRange_(dateRange){
+                DateRange dateRange = DateRange::CUR_DAY,
+                bool isCalLossDataAsZero = true
+        ):name_(name), opt_(opt), childNum_(childNum), coffUnit_(coffUnit), dateRange_(dateRange), isCalLossDataAsZero_(isCalLossDataAsZero){
         }
 
         virtual const char* getName(){ return name_;}
 
         virtual int getChildNum(){ return childNum_;}
 
-        virtual const float* cast(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, bool* pflag, float* pout){
+        virtual const float* cast(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
             return opt_(pleft, pright, coff, historySize, stockSize, pflag, pout);
         }
 
@@ -64,18 +65,22 @@ class AlphaAtom: public IAlphaElement{
 
         virtual DateRange getDateRange(){ return dateRange_; }
 
+        virtual bool isCalculateLossDataAsZero(){ return isCalLossDataAsZero_;}
+
         static AlphaAtom alphaAtomList[];
 
     private:
 
         const char*name_;
 
-        const float* (*opt_) (const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, bool* pflag, float* pout);
+        const float* (*opt_) (const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout);
         int childNum_;
         //参数单位
         CoffUnit coffUnit_;
         //计算天数
         DateRange dateRange_;
+        //是否将缺失数据补0去计算
+        bool isCalLossDataAsZero_;
 };
 
 AlphaAtom AlphaAtom::alphaAtomList[] = {
@@ -91,14 +96,14 @@ AlphaAtom AlphaAtom::alphaAtomList[] = {
 
         //AlphaAtom("rank", ranking, 1),
         AlphaAtom("rank_scale", rankScale, 1),
-        AlphaAtom("rank_sort", rankSort, 1),
+        AlphaAtom("rank_sort", rankSort, 1, CoffUnit::COFF_NONE, DateRange::CUR_DAY, false),
 
         AlphaAtom("ts_rank", tsRank, 1, CoffUnit::COFF_DAY, DateRange::ALL_DAY),
         AlphaAtom("delay", delay, 1, CoffUnit::COFF_DAY, DateRange::BEFORE_DAY),
-        AlphaAtom("future", future, 1, CoffUnit::COFF_FUTURE_DAY, DateRange::FUTURE_DAY),
+        //AlphaAtom("future", future, 1, CoffUnit::COFF_FUTURE_DAY, DateRange::FUTURE_DAY),
         AlphaAtom("delta", delta, 1, CoffUnit::COFF_DAY, DateRange::CUR_AND_BEFORE_DAY),
         AlphaAtom("correlation", correlation, 2, CoffUnit::COFF_DAY, DateRange::ALL_DAY),
-        AlphaAtom("scale", scale, 1),
+        AlphaAtom("scale", scale, 1, CoffUnit::COFF_NONE, DateRange::CUR_DAY, false),
         AlphaAtom("decay_linear", decayLinear, 1, CoffUnit::COFF_DAY, DateRange::ALL_DAY),
         AlphaAtom("ts_min", tsMin, 1, CoffUnit::COFF_DAY, DateRange::ALL_DAY),
         AlphaAtom("ts_max", tsMax, 1, CoffUnit::COFF_DAY, DateRange::ALL_DAY),
@@ -151,7 +156,7 @@ class AlphaPar:public IAlphaElement{
 
         virtual const char* getName(){ return name_;}
 
-        virtual const float* cast(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, bool* pflag, float* pout){
+        virtual const float* cast(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
             return pleft;
         }
 
@@ -168,9 +173,7 @@ AlphaPar AlphaPar::alphaParList[] = {
         AlphaPar("close"),
         AlphaPar("volume"),
         AlphaPar("vwap"),
-        AlphaPar("returns"),
-        AlphaPar("alpha"),
-        AlphaPar("beta")
+        AlphaPar("returns")
 };
 
 #endif //ALPHATREE_ALPHATREE_H

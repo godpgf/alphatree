@@ -1,0 +1,51 @@
+//
+// Created by yanyu on 2017/10/3.
+//
+
+#ifndef ALPHATREE_ALPHAFILTER_H
+#define ALPHATREE_ALPHAFILTER_H
+
+#include "alphaforest.h"
+#include "filter/alphawork.h"
+#include "filter/collectwork.h"
+#include "filter/vgwork.h"
+#include "filter/flagwork.h"
+
+class AlphaFilter{
+    public:
+        static void initialize(AlphaForest* alphaForest);
+
+        static void release();
+
+        static AlphaFilter* getAlphafilter();
+
+    protected:
+        AlphaFilter(AlphaForest* alphaForest):alphaForest_(alphaForest){
+            //在这里设计过滤策略
+
+            const size_t shortFutureNum = 5;
+            //短期突然出现的策略
+            size_t dayBefore = 0;
+            size_t sampleSize = 4 * shortFutureNum;
+            AlphatreeWork* curShortAlphatreeWork = new AlphatreeWork(alphaForest, dayBefore, shortFutureNum, sampleSize);
+            //分组
+            int groupNum = 0;
+            for(int i = 16; i <= 128; i *= 2){
+                ValueGroupWork* shortValueGroupWork = new ValueGroupWork(alphaForest, dayBefore, 1, 5, i, sampleSize,
+                                                                         groupNum);
+                curShortAlphatreeWork->addSubWork(shortValueGroupWork);
+                groupNum += shortValueGroupWork->getGroupNum();
+            }
+            //验证
+            FlagWork* curShortFlagWork = new FlagWork(alphaForest, 1.5f, 64, groupNum, 0);
+            //再用过去的20天做测试
+            dayBefore = sampleSize;
+            AlphatreeWork* beforeShortAlphatreeWork = new AlphatreeWork(alphaForest, dayBefore, shortFutureNum, sampleSize);
+            FlagWork* beforeShortFlagWork = new FlagWork(alphaForest, 1.25f, )
+        }
+
+        AlphaForest* alphaForest_;
+        AlphaWork* workRoot_;
+};
+
+#endif //ALPHATREE_ALPHAFILTER_H

@@ -26,6 +26,7 @@ class Cache{
             std::unique_lock<std::mutex> lock{mutex_};
             //如果某个缓存被用完,需要等待别人归还后再去使用,如果条件不满足,会mutex_.unlock()然后等待
             //当别人notify_one时会再去检查条件,并mutex_.lock()
+            //cout<<curFreeCacheMemoryId_<<"/"<<maxCacheSize_<<endl;
             cv_.wait(lock, [this]{ return curFreeCacheMemoryId_ < maxCacheSize_;});
             return freeCacheMemoryIds_[curFreeCacheMemoryId_++];
         }

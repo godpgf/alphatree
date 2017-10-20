@@ -12,4 +12,3 @@ try:
 except OSError,e:
     lib_path = curr_path + "/../../../lib/"
     alphatree = ctypes.cdll.LoadLibrary(lib_path + "libalphatree_api.so")
-alphatree.evalAlphaTree.restype=c_float

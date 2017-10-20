@@ -3,6 +3,7 @@
 #include "libalphatree/alpha/alpha.h"
 #include "libalphatree/alpha/base.h"
 #include "libalphatree/base/threadpool.h"
+#include "libalphatree/base/darray.h"
 #include "libalphatree/alpha/normal.h"
 #include <thread>
 
@@ -83,9 +84,32 @@ int countdown (int from, int to) {
     return from - to;
 }
 
-int main() {
+class A{
+public:
+    A(){cout<<"a"<<endl;}
+};
 
-    cout<<"test thread ------------------"<<endl;
+class B{
+    A aa[20];
+};
+
+int main() {
+    B* bb = new B();
+    cout<<"test darray--------------\n";
+    DArray<int, 1024> a;
+    a[3] = 28;
+    cout<<(a[3])<<endl;
+    a[1000000009] = 54;
+    cout<<a[1000000009]<<endl;
+
+    cout<<"test hashname\n";
+    HashName<> hashName;
+    int jid = hashName.toId("jjdds");
+    cout<<jid<<endl;
+    cout<<hashName.toName(jid)<<endl;
+    cout<<hashName.toId("jjdds")<<endl;
+
+    cout<<"start test thread ------------------"<<endl;
     std::thread* th;
     std::future<int> ff[10];
     {
@@ -119,25 +143,35 @@ int main() {
     CExample c(4);
     CExample d = std::move(c);
 
+    cout<<"test ThreadPool"<<endl;
     ThreadPool threadPool(2);
     ThreadPoolTest* tt = new ThreadPoolTest();
     {
         auto t1 = threadPool.enqueue([tt]{ return tt->consumer();});
         auto t2 = threadPool.enqueue([tt]{ return tt->producer();});
         cout<<"!!!----"<<endl;
-        cout<<t1.get()<<" "<<t2.get()<<" "<<t1.get()<<endl;
+        cout<<t1.get()<<" "<<t2.get()<<endl;
         cout<<"!!!-----------"<<endl;
     }
 
 
 
-
-    AlphaForest::initialize(251, 2048, 10, 5, 4, 20, 40, 10, 4096, 20);
+    cout<<"test af!"<<endl;
+    AlphaForest::initialize(4);
     char str[1024];
     char outstr[1024];
 
-    int id = AlphaForest::getAlphaforest()->useAlphaTree("(indneutralize((correlation(delta(close, 1), delta(delay(close, 1), 1), 250) * (delta(close, 1) / close)), IndClass.market) / sum(((delta(close, 1) / delay(close, 1)) ^ 2), 250))");
-    cout<<AlphaForest::getAlphaforest()->encodeAlphaTree(id, str)<<endl;
+    cout<<"test cache !"<<endl;
+    for(int i = 0; i < 100; ++i){
+        int id = AlphaForest::getAlphaforest()->useCache();
+        cout<<id<<endl;
+    }
+
+
+
+    int id = AlphaForest::getAlphaforest()->useAlphaTree();
+    AlphaForest::getAlphaforest()->decode(id, "alpha", "(indneutralize((correlation(delta(close, 1), delta(delay(close, 1), 1), 250) * (delta(close, 1) / close)), IndClass.market) / sum(((delta(close, 1) / delay(close, 1)) ^ 2), 250))");
+    cout<<AlphaForest::getAlphaforest()->encodeAlphaTree(id, "alpha",outstr)<<endl;
     int ids[] = {id};
     int substr = AlphaForest::getAlphaforest()->summarySubAlphaTree(ids,1,2,outstr);
     char* p = outstr;
