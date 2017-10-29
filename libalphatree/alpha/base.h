@@ -35,6 +35,16 @@ inline void _sign(float *dst, const float *src, size_t size){
     for(int i = 0; i < size; i++) dst[i] = _sign(src[i]);
 }
 
+inline void _signAnd(float* dst, const float* l, const float* r, size_t size){
+    for(int i = 0; i < size; ++i)
+        dst[i] = ((l[i] > 0 && r[i] > 0) ? 1 : 0);
+}
+
+inline void _signOr(float* dst, const float* l, const float* r, size_t size){
+    for(int i = 0; i < size; ++i)
+        dst[i] = ((l[i] > 0 || r[i] > 0) ? 1 : 0);
+}
+
 inline void _add(float* dst, const float* src, size_t size){
     for(int i = 0; i < size; i++) dst[i] += src[i];
 }
@@ -186,28 +196,40 @@ inline void _lessCond(float *dst, const float *a, const float b, size_t size){
     }
 }
 
+inline void _moreCond(float *dst, float a, const float *b, size_t size){
+    for(int i = 0; i < size; i++) {
+        dst[i] = (a > b[i]) ? 1 : 0;
+    }
+}
+
+inline void _moreCond(float *dst, const float *a, const float b, size_t size){
+    for(int i = 0; i < size; i++) {
+        dst[i] = (a[i] > b) ? 1 : 0;
+    }
+}
+
 inline void _elseCond(float *dst, const float *a, const float *b, size_t size){
     for(int i = 0; i < size; i++) {
-        dst[i] = (a[i] > 0) ? a[i] : b[i];
+        dst[i] = isnan(a[i]) ? b[i] : a[i];
     }
 }
 
 inline void _elseCond(float *dst, const float *a, const float b, size_t size){
     for(int i = 0; i < size; i++) {
-        dst[i] = (a[i] > 0) ? a[i] : b;
+        dst[i] = isnan(a[i]) ? b : a[i];
     }
 }
 
 
 inline void _ifCond(float *dst, const float *a, const float *b, size_t size){
     for(int i = 0; i < size; i++) {
-        dst[i] = (a[i] > 0) ? b[i] : 0;
+        dst[i] = (a[i] > 0) ? b[i] : NAN;
     }
 }
 
 inline void _ifCond(float *dst, const float *a, float b, size_t size){
     for(int i = 0; i < size; i++) {
-        dst[i] = (a[i] > 0) ? b : 0;
+        dst[i] = (a[i] > 0) ? b : NAN;
     }
 }
 

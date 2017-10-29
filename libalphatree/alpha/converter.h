@@ -15,8 +15,12 @@ public:
         optMap['-'] = "reduce";
         optMap['*'] = "mul";
         optMap['/'] = "div";
+        optMap['&'] = "and";
+        optMap['|'] = "or";
+        optMap['~'] = "cross";
         optMap['^'] = "signed_power";
         optMap['<'] = "less";
+        optMap['>'] = "more";
         optMap['?'] = "if";
         optMap[':'] = "else(";
 
@@ -24,8 +28,12 @@ public:
         invOptMap["reduce"] = '-';
         invOptMap["mul"] = '*';
         invOptMap["div"] = '/';
+        invOptMap["and"] = '&';
+        invOptMap["or"] = '|';
+        invOptMap["cross"] = '~';
         invOptMap["signed_power"] = '^';
         invOptMap["less"] = '<';
+        invOptMap["more"] = '>';
         invOptMap["if"] = '?';
         invOptMap["else"] = ':';
     }
@@ -129,8 +137,12 @@ public:
                 strcmp(str, "reduce") == 0 ||
                 strcmp(str, "mul") == 0 ||
                 strcmp(str, "div") == 0 ||
+                strcmp(str, "and") == 0 ||
+                strcmp(str, "or") == 0 ||
+                strcmp(str, "cross") == 0 ||
                 strcmp(str, "signed_power") == 0 ||
                 strcmp(str, "less") == 0 ||
+                strcmp(str, "more") == 0 ||
                 strcmp(str, "if") == 0 ||
                 strcmp(str,"else") == 0)
             return true;
@@ -206,7 +218,7 @@ protected:
                 --depth;
             --r;
             //深度等于0时才可以结束
-            if(r <= l)
+            if(r < l)
                 throw "deth must equal 0!";
             if(depth == 0)
                 break;

@@ -43,16 +43,23 @@ extern "C"
         AlphaForest::getAlphaforest()->releaseCache(cacheId);
     }
 
-    int encodeAlphatree(int alphatreeId, char* rootName, char *out){
+    int encodeAlphatree(int alphatreeId, const char* rootName, char *out){
         const char* res = AlphaForest::getAlphaforest()->encodeAlphaTree(alphatreeId, rootName, out);
         return strlen(res);
     }
 
-    void decodeAlphatree(int alphaTreeId, char* rootName, const char *line, bool isLocal){
+    void decodeAlphatree(int alphaTreeId, const char* rootName, const char *line, bool isLocal){
         AlphaForest::getAlphaforest()->decode(alphaTreeId, rootName, line, isLocal);
     }
 
-    //int getNodeDes(int alphaTreeId, int nodeId, char* name, char* coff, int* childList);
+    int encodeProcess(int alphatreeId, const char* processName, char* out){
+        const char* res = AlphaForest::getAlphaforest()->encodeProcess(alphatreeId, processName, out);
+        return strlen(res);
+    }
+
+    void decodeProcess(int alphaTreeId, const char* processName, const char* line){
+        AlphaForest::getAlphaforest()->decodeProcess(alphaTreeId, processName, line);
+    }
 
     void addStock(const char* code, const char* market, const char* industry, const char* concept,
                   const float* open, const float* high, const float* low, const float* close, const float* volume, const float* vwap, const float* returns,
@@ -73,6 +80,10 @@ extern "C"
         return AlphaForest::getAlphaforest()->getCodes(dayBefore, historyNum, sampleNum, codes);
     }
 
+    int getAllCodes(char* codes){
+        return AlphaForest::getAlphaforest()->getCodes(codes);
+    }
+
     int getMaxHistoryDays(int alphaTreeId){ return AlphaForest::getAlphaforest()->getMaxHistoryDays(alphaTreeId);}
 
     void flagAlpha(int alphaTreeId, int cacheId, int dayBefore, int sampleSize, const char* codes, int stockSize, bool* sampleFlag = nullptr, bool isCalAllNode = false){
@@ -81,6 +92,10 @@ extern "C"
 
     void calAlpha(int alphaTreeId, int cacheId){
         AlphaForest::getAlphaforest()->calAlpha(alphaTreeId, cacheId);
+    }
+
+    void processAlpha(int alphaTreeId, int cacheId){
+        AlphaForest::getAlphaforest()->processAlpha(alphaTreeId, cacheId);
     }
 
     int getRootAlpha(int alphaTreeId, const char* rootName, int cacheId, float* alpha){
@@ -99,13 +114,15 @@ extern "C"
         return dataSize;
     }
 
+    int getProcess(int alphaTreeId, const char* processName, int cacheId, char* result){
+        const char* res = AlphaForest::getAlphaforest()->getProcess(alphaTreeId, processName, cacheId);
+        strcpy(result, res);
+        return strlen(result);
+    }
 
     //总结子公式
     int summarySubAlphaTree(const int* alphatreeIds, int len, int minDepth, char* subAlphatreeStr){
         return AlphaForest::getAlphaforest()->summarySubAlphaTree(alphatreeIds, len, minDepth, subAlphatreeStr);
     }
 
-    int getAlphatreeDes(int alphaTreeId, char* jsonOut){
-        return AlphaForest::getAlphaforest()->getAlphatreeDes(alphaTreeId, jsonOut);
-    }
 }

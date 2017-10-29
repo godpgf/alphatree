@@ -9,6 +9,7 @@
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
+#include <float.h>
 #include "base.h"
 //测试
 #include <iostream>
@@ -93,7 +94,7 @@ const float* meanRise(const float* pleft, const float* pright, float coff, size_
         if(pflag[i] == CacheFlag::NEED_CAL && i >= d){
             memcpy(pout + i * stockSize, pleft + i * stockSize, stockSize * sizeof(float));
             _reduce(pout + i * stockSize, pleft + (i - d) * stockSize, stockSize);
-            _div(pout + i * stockSize, coff, stockSize);
+            _div(pout + i * stockSize, roundf(coff), stockSize);
         } else {
             memset(pout + i * stockSize, 0, stockSize * sizeof(float));
         }
@@ -220,6 +221,28 @@ const float* divTo(const float* pleft, const float* pright, float coff, size_t h
         if(pflag[i] == CacheFlag::NEED_CAL) {
             memcpy(pout + i * stockSize, pleft + i * stockSize, stockSize * sizeof(float));
             _div(pout + i * stockSize, coff, stockSize);
+        } else {
+            memset(pout + i * stockSize, 0, stockSize * sizeof(float));
+        }
+    }
+    return pout;
+}
+
+const float* signAnd(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
+    for(int i = 0; i < historySize; i++) {
+        if(pflag[i] == CacheFlag::NEED_CAL) {
+            _signAnd((pout + i * stockSize), (pleft + i * stockSize), (pright + i * stockSize), stockSize);
+        } else {
+            memset(pout + i * stockSize, 0, stockSize * sizeof(float));
+        }
+    }
+    return pout;
+}
+
+const float* signOr(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
+    for(int i = 0; i < historySize; i++) {
+        if(pflag[i] == CacheFlag::NEED_CAL) {
+            _signOr((pout + i * stockSize), (pleft + i * stockSize), (pright + i * stockSize), stockSize);
         } else {
             memset(pout + i * stockSize, 0, stockSize * sizeof(float));
         }
@@ -580,6 +603,10 @@ const float* lessCond(const float* pleft, const float* pright, float coff, size_
     return pout;
 }
 
+const float* moreCond(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
+    return lessCond(pright, pleft, coff, historySize, stockSize, pflag,pout);
+}
+
 const float* lessCondFrom(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
     for(int i = 0; i < historySize; i++){
         if(pflag[i] == CacheFlag::NEED_CAL) {
@@ -595,6 +622,28 @@ const float* lessCondTo(const float* pleft, const float* pright, float coff, siz
     for(int i = 0; i < historySize; i++){
         if(pflag[i] == CacheFlag::NEED_CAL) {
             _lessCond(pout + i * stockSize, pleft + i * stockSize, coff, stockSize);
+        } else {
+            memset(pout + i * stockSize, 0, stockSize * sizeof(float));
+        }
+    }
+    return pout;
+}
+
+const float* moreCondFrom(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
+    for(int i = 0; i < historySize; i++){
+        if(pflag[i] == CacheFlag::NEED_CAL) {
+            _moreCond(pout + i * stockSize, coff, pleft + i * stockSize, stockSize);
+        } else {
+            memset(pout + i * stockSize, 0, stockSize * sizeof(float));
+        }
+    }
+    return pout;
+}
+
+const float* moreCondTo(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
+    for(int i = 0; i < historySize; i++){
+        if(pflag[i] == CacheFlag::NEED_CAL) {
+            _moreCond(pout + i * stockSize, pleft + i * stockSize, coff, stockSize);
         } else {
             memset(pout + i * stockSize, 0, stockSize * sizeof(float));
         }
@@ -662,4 +711,63 @@ const float* indneutralize(const float* pleft, const float* pright, float coff, 
     return pout;
 }
 
+const float* kd(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout) {
+    int curIndex = 0;
+    for(int i = 0; i < historySize; i++) {
+        if(pflag[i] == CacheFlag::NEED_CAL && i > 0) {
+            for(int j = 0; j < stockSize; ++j){
+                curIndex = i * stockSize + j;
+                pout[curIndex] = pout[curIndex - stockSize] * (2.f / 3.f) + pleft[curIndex] * (1.f / 3.f);
+            }
+        } else {
+            memset(pout + i * stockSize, 0, stockSize * sizeof(float));
+        }
+    }
+    return pout;
+}
+
+const float* cross(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout) {
+    int curIndex = 0;
+    for(int i = 0; i < historySize; i++) {
+        if(pflag[i] == CacheFlag::NEED_CAL && i > 0) {
+            for(int j = 0; j < stockSize; ++j){
+                curIndex = i * stockSize + j;
+                pout[curIndex] = (pleft[curIndex - stockSize] < pright[curIndex - stockSize] && pleft[curIndex] > pright[curIndex]) ? 1 : 0;
+            }
+        } else {
+            memset(pout + i * stockSize, 0, stockSize * sizeof(float));
+        }
+    }
+    return pout;
+}
+
+const float* crossFrom(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout) {
+    int curIndex = 0;
+    for(int i = 0; i < historySize; i++) {
+        if(pflag[i] == CacheFlag::NEED_CAL && i > 0) {
+            for(int j = 0; j < stockSize; ++j){
+                curIndex = i * stockSize + j;
+                pout[curIndex] = (coff < pleft[curIndex - stockSize] && coff > pleft[curIndex]) ? 1 : 0;
+            }
+        } else {
+            memset(pout + i * stockSize, 0, stockSize * sizeof(float));
+        }
+    }
+    return pout;
+}
+
+const float* crossTo(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout) {
+    int curIndex = 0;
+    for(int i = 0; i < historySize; i++) {
+        if(pflag[i] == CacheFlag::NEED_CAL && i > 0) {
+            for(int j = 0; j < stockSize; ++j){
+                curIndex = i * stockSize + j;
+                pout[curIndex] = (pleft[curIndex - stockSize] < coff && pleft[curIndex] > coff) ? 1 : 0;
+            }
+        } else {
+            memset(pout + i * stockSize, 0, stockSize * sizeof(float));
+        }
+    }
+    return pout;
+}
 #endif //ALPHATREE_ALPHA_H

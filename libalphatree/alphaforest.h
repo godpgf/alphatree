@@ -50,6 +50,10 @@ class AlphaForest{
             getAlphaTree(treeId)->decode(name, line, alphaElementMap_, isLocal);
         }
 
+        void decodeProcess(int treeId, const char* name, const char* line){
+            getAlphaTree(treeId)->decodeProcess(name, line, alphaProcessMap_, alphaElementMap_);
+        }
+
         //归还一个alphatree
         void releaseAlphaTree(int id){
             getAlphaTree(id)->clean();
@@ -68,9 +72,15 @@ class AlphaForest{
             return getAlphaTree(id)->encode(rootName, pout);
         }
 
+        const char* encodeProcess(int id, const char* processName, char* pout){
+            return getAlphaTree(id)->encodeProcess(processName, pout);
+        }
+
         size_t getCodes(size_t dayBefore, size_t historyNum, size_t sampleNum, char* codes){
             return alphaDataBase_.getCodes(dayBefore,historyNum,sampleNum,codes);
         }
+
+        size_t getCodes(char* codes){ return alphaDataBase_.getCodes(codes);}
 
         int useCache(){
             return alphaCache_->useCacheMemory();
@@ -92,9 +102,18 @@ class AlphaForest{
             getAlphaTree(alphaTreeId)->calAlpha(&alphaDataBase_, alphaCache_->getCacheMemory(cacheId), &threadPool_);
         }
 
+        const void processAlpha(int alphaTreeId, int cacheId){
+            getAlphaTree(alphaTreeId)->processAlpha(&alphaDataBase_, alphaCache_->getCacheMemory(cacheId), &threadPool_);
+        }
+
         const float* getAlpha(int alphaTreeId, const char* rootName, int cacheId){
             auto curCache = alphaCache_->getCacheMemory(cacheId);
             return getAlphaTree(alphaTreeId)->getAlpha(rootName, curCache);
+        }
+
+        const char* getProcess(int alphaTree, const char* processName, int cacheId){
+            auto curCache = alphaCache_->getCacheMemory(cacheId);
+            return getAlphaTree(alphaTree)->getProcess(processName, curCache);
         }
 
         const float* getAlpha(int alphaTreeId, int nodeId, int cacheId){
@@ -109,9 +128,9 @@ class AlphaForest{
 
         int summarySubAlphaTree(const int* alphatreeIds, int len, int minDepth, char* subAlphatreeStr){
             set<const char*, ptrCmp> substrSet;
-            char subAlphaTreeStrList[MAX_SUB_ALPHATREE_STR_NUM * MAX_ALPHATREE_STR_LEN];
+            char subAlphaTreeStrList[MAX_SUB_ALPHATREE_STR_NUM * MAX_NODE_STR_LEN];
             int curSubAlphaTreeIndex = 0;
-            char cmpLine[MAX_ALPHATREE_STR_LEN];
+            char cmpLine[MAX_NODE_STR_LEN];
             int allNum = 0;
             for(int i = 0; i < len; ++i){
                 for(int j = 0; j < getAlphaTree(alphatreeIds[i])->getSubtreeSize(); ++j){
@@ -156,9 +175,6 @@ class AlphaForest{
             return allNum;
         }
 
-        int getAlphatreeDes(int alphaTreeId, char* jsonOut){
-            return getAlphaTree(alphaTreeId)->getDes(jsonOut);
-        }
     protected:
         AlphaForest(int cacheSize):threadPool_(cacheSize) {
             initAlphaElement();
@@ -200,6 +216,11 @@ class AlphaForest{
             for(int i = 0; i < alphaParNum; i++){
                 alphaElementMap_[AlphaPar::alphaParList[i].getName()] = &AlphaPar::alphaParList[i];
             }
+
+            int alphaProcessNum = sizeof(AlphaProcess::alphaProcessList) / sizeof(AlphaProcess);
+            for(int i = 0; i < alphaProcessNum; ++i){
+                alphaProcessMap_[AlphaProcess::alphaProcessList[i].getName()] = &AlphaProcess::alphaProcessList[i];
+            }
         }
         AlphaTree* getAlphaTree(int id){
             return &alphaTreeCache_->getCacheMemory(id);
@@ -215,6 +236,7 @@ class AlphaForest{
 
         AlphaDataBase alphaDataBase_;
         HashMap<IAlphaElement*> alphaElementMap_;
+        HashMap<IAlphaProcess*> alphaProcessMap_;
 
         static AlphaForest* alphaForest_;
 };

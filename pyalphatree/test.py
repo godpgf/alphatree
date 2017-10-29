@@ -6,6 +6,8 @@ from pyalphatree import AlphaForest, read_alpha_tree_list, read_alpha_tree_dict,
 import numpy as np
 import math
 import time
+import os
+import json
 
 
 def float_equal(a, b):
@@ -495,10 +497,55 @@ def test_alpha101(af):
     print "start test --------"
 
 
+def test_eraito_strategy(af, daybefore = 0, sample_size = 250):
+    print "test eratio-------------------------------------"
+    root = "../strategy"
+    paths = os.listdir(root)
+    for path in paths:
+        if os.path.isdir(root + "/" + path):
+            print path
+            files = os.listdir(root + "/" + path)
+            for file in files:  # 遍历文件夹
+                if not os.path.isdir(root + "/" + path + "/" + file) and file.endswith(".txt"):  # 判断是否是文件夹，不是文件夹才打开
+
+                    print path + "/" + file
+                    f = open(root + "/" + path + "/" + file);  # 打开文件
+                    iter_f = iter(f);  # 创建迭代器
+
+                    alphatree_id = af.create_alphatree()
+                    cache_id = af.use_cache()
+
+                    for line in iter_f:
+                        if line.startswith("#"):
+                            print line[1:-1]
+                            continue
+                        tmp = line.split('=')
+                        af.decode_alphatree(alphatree_id, tmp[0], tmp[1][:-1])
+
+                        #print af.encode_alphatree(alphatree_id, tmp[0])
+                    af.decode_process(alphatree_id, "res", "eratio(buy, sell, close, mean(tr, 14))")
+
+                    history_days = af.get_max_history_days(alphatree_id)
+                    codes = af.get_codes(daybefore, history_days, sample_size)
+                    af.flag_alpha(alphatree_id, cache_id, daybefore, sample_size, codes)
+                    af.cal_alpha(alphatree_id, cache_id)
+                    sell = np.array(af.get_root_alpha(alphatree_id, "sell", cache_id, sample_size))
+                    buy = np.array(af.get_root_alpha(alphatree_id, "buy", cache_id, sample_size))
+                    af.process_alpha(alphatree_id, cache_id)
+
+                    process_res = json.loads(af.get_process(alphatree_id, "res", cache_id))
+
+                    af.release_cache(cache_id)
+                    af.release_alphatree(alphatree_id)
+
+                    print process_res["eratio"]
+
+
 if __name__ == '__main__':
     af = AlphaForest()
     af.load_data(is_offline=True)
     dataProxy = LocalDataProxy("data", True)
 
-    test_base_calculate(af, dataProxy)
-    test_alpha101(af)
+    #test_base_calculate(af, dataProxy)
+    #test_alpha101(af)
+    test_eraito_strategy(af)

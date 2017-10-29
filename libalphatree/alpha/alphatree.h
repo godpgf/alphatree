@@ -7,18 +7,23 @@
 #include "basealphatree.h"
 #include "../base/threadpool.h"
 
+#define MAX_PROCESS_STR_LEN 4096 * 64
+
 class AlphaCache{
     public:
         AlphaCache(){
-            nodeCacheSize = NODE_SIZE;
+            nodeCacheSize = MAX_NODE_BLOCK;
+            processCacheSize = MAX_PROCESS_BLOCK;
             sampleCacheSize = SAMPLE_DAYS;
-            stockCacheSize = NODE_SIZE * GET_ELEMEMT_SIZE(HISTORY_DAYS, SAMPLE_DAYS) *
+            stockCacheSize = MAX_NODE_BLOCK * GET_ELEMEMT_SIZE(HISTORY_DAYS, SAMPLE_DAYS) *
                              STOCK_SIZE;
             nodeRes = new std::shared_future<float*>[nodeCacheSize];
+            processRes = new std::shared_future<const char*>[processCacheSize];
             sampleFlag = new bool[sampleCacheSize];
             result = new float[stockCacheSize];
+            process = new char[processCacheSize * MAX_PROCESS_STR_LEN];
             stockFlag = new CacheFlag[stockCacheSize];
-            dayCacheSize = NODE_SIZE * GET_ELEMEMT_SIZE(HISTORY_DAYS, SAMPLE_DAYS);
+            dayCacheSize = MAX_NODE_BLOCK * GET_ELEMEMT_SIZE(HISTORY_DAYS, SAMPLE_DAYS);
             dayFlag = new CacheFlag[dayCacheSize];
             nodeFlag = new bool[nodeCacheSize];
             codeCacheSize = STOCK_SIZE * CODE_LEN;
@@ -26,6 +31,7 @@ class AlphaCache{
         }
         ~AlphaCache(){
             delete []nodeRes;
+            delete []processRes;
             delete []sampleFlag;
             delete []result;
             delete []stockFlag;
@@ -34,7 +40,7 @@ class AlphaCache{
             delete []codes;
         }
 
-        void initialize(size_t nodeSize, size_t historyDays, size_t dayBefore, bool* sampleFlag, size_t sampleDays, const char *codes, size_t stockSize, bool isCalAllNode = false){
+        void initialize(size_t nodeSize, size_t processSize, size_t historyDays, size_t dayBefore, bool* sampleFlag, size_t sampleDays, const char *codes, size_t stockSize, bool isCalAllNode = false){
             this->dayBefore = dayBefore;
             this->sampleDays = sampleDays;
             this->stockSize = stockSize;
@@ -52,6 +58,14 @@ class AlphaCache{
                 nodeRes = new std::shared_future<float*>[nodeSize];
                 nodeFlag = new bool[nodeSize];
                 nodeCacheSize = nodeSize;
+            }
+
+            if(processSize > processCacheSize){
+                delete []processRes;
+                delete []process;
+                processRes = new std::shared_future<const char*>[processSize];
+                process = new char[processSize * MAX_PROCESS_STR_LEN];
+                processCacheSize = processSize;
             }
 
             size_t scs = nodeSize * GET_ELEMEMT_SIZE(historyDays, sampleDays) * stockSize;
@@ -96,10 +110,14 @@ class AlphaCache{
 
         //监控某个节点在多线程中的计算状态
         std::shared_future<float*>* nodeRes = {nullptr};
+        //监控某个后处理在多线程中的计算状态
+        std::shared_future<const char*>* processRes = {nullptr};
         //取样的天数中哪些部分是需要计算的
         bool* sampleFlag = {nullptr};
         //保存中间计算结果
         float* result = {nullptr};
+        //保存处理结果
+        char* process = {nullptr};
         //保存某只股票某日是否需要计算
         CacheFlag* stockFlag = {nullptr};
         //保存某日所有股票是否需要计算
@@ -111,6 +129,7 @@ class AlphaCache{
         //记录各个缓存当前大小,如果某个计算要求的大小超过了就需要重新分配内存
         size_t sampleCacheSize = {0};
         size_t nodeCacheSize = {0};
+        size_t processCacheSize = {0};
         size_t stockCacheSize = {0};
         size_t dayCacheSize = {0};
         size_t codeCacheSize = {0};
@@ -148,7 +167,7 @@ class AlphaTree : public BaseAlphaTree{
         //在主线程中标记需要计算的数据,sampleFlag表示在取样期内哪些数据需要计算,哪些不需要
         void flagAlpha(AlphaDataBase *alphaDataBase, size_t dayBefore, size_t sampleSize, const char *codes, size_t stockSize, AlphaCache* cache, bool* sampleFlag = nullptr, bool isCalAllNode = false){
             //如果缓存空间不够,就重新申请内存
-            cache->initialize(nodeList_.getSize(), getMaxHistoryDays(), dayBefore, sampleFlag, sampleSize, codes, stockSize, isCalAllNode);
+            cache->initialize(nodeList_.getSize(), processList_.getSize(), getMaxHistoryDays(), dayBefore, sampleFlag, sampleSize, codes, stockSize, isCalAllNode);
             int dateSize = GET_ELEMEMT_SIZE(getMaxHistoryDays(), sampleSize);
 
             if(sampleFlag == nullptr)
@@ -272,8 +291,33 @@ class AlphaTree : public BaseAlphaTree{
             return curResultCache;
         }
 
+        void processAlpha(AlphaDataBase *alphaDataBase, AlphaCache* cache, ThreadPool *threadPool){
+            for(int i = 0; i < processList_.getSize(); ++i){
+                int processId = i;
+                AlphaTree* alphaTree = this;
+                cache->processRes[i] = threadPool->enqueue([alphaTree, alphaDataBase, processId, cache]{
+                    return alphaTree->process(alphaDataBase, processId, cache);
+                }).share();
+            }
+        }
+
+        const char* process(AlphaDataBase *alphaDataBase, int processId, AlphaCache* cache){
+            for(int i = 0; i < processList_[processId].chilIndex.getSize(); ++i)
+                processList_[processId].childRes[i] = getAlpha(subtreeList_[processList_[processId].chilIndex[i]].rootId, cache);
+            return processList_[processId].getProcess()->process(alphaDataBase, processList_[processId].childRes, processList_[processId].coff, cache->sampleDays, cache->codes, cache->stockSize, cache->process + (processId * MAX_PROCESS_STR_LEN));
+        }
+
         const float* getAlpha(const char* rootName, AlphaCache* cache){
             return getAlpha(getSubtreeRootId(rootName), cache);
+        }
+
+        const char* getProcess(const char* processName, AlphaCache* cache){
+            for(int i = 0; i < processList_.getSize(); ++i){
+                if(strcmp(processList_[i].name, processName) == 0){
+                    return cache->processRes[i].get();
+                }
+            }
+            return nullptr;
         }
 
         //读取已经计算好的alpha
@@ -303,9 +347,7 @@ class AlphaTree : public BaseAlphaTree{
             if(nodeList_[nodeId].getChildNum() == 2)
                 rightDays = getMaxHistoryDays(nodeList_[nodeId].rightId);
             int maxDays = leftDays > rightDays ? leftDays : rightDays;
-            if(nodeList_[nodeId].getCoffUnit() == CoffUnit::COFF_DAY)
-                return roundf(nodeList_[nodeId].getCoff()) + maxDays;
-            return maxDays;
+            return nodeList_[nodeId].getNeedBeforeDays() + maxDays;
         }
 
 
@@ -341,7 +383,7 @@ class AlphaTree : public BaseAlphaTree{
             if(curFlag[dayIndex] == CacheFlag::NO_FLAG){
                 curFlag[dayIndex] = CacheFlag::NEED_CAL ;
                 if(nodeList_[nodeId].getChildNum() > 0){
-                    int dayNum = (int)roundf(nodeList_[nodeId].getCoff(coffList_));
+                    int dayNum = (int)roundf(nodeList_[nodeId].getNeedBeforeDays(coffList_));
                     switch(nodeList_[nodeId].getElement()->getDateRange()){
                         case DateRange::CUR_DAY:
                             flagAllChild(nodeId, dayIndex, dateSize, sampleSize, flagCache, isCalAllNode);
@@ -387,7 +429,7 @@ class AlphaTree : public BaseAlphaTree{
                     }
                 } else{
                     //先标记孩子
-                    int dayNum = (int)roundf(nodeList_[nodeId].getCoff(coffList_));
+                    int dayNum = (int)roundf(nodeList_[nodeId].getNeedBeforeDays(coffList_));
                     switch(nodeList_[nodeId].getElement()->getDateRange()){
                         case DateRange::CUR_DAY:
                             flagAllChild(nodeId, dayIndex, stockIndex, alphaDataBase, dayBefore, sampleSize, flagCache, curCode, stockSize, isCalAllNode);

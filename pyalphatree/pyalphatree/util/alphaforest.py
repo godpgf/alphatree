@@ -22,6 +22,7 @@ class AlphaForest(object):
         self.max_alpha_tree_str_len = 4096;
         self.sub_alphatree_str_cache = (c_char * (self.max_alpha_tree_str_len * 1024))()
         self.encode_cache = (c_char * self.max_alpha_tree_str_len)()
+        self.process_cache = (c_char * (4096 * 64))()
 
     def check_alpha_size(self, sample_size, stock_size):
         is_resize_alpha = False
@@ -63,6 +64,9 @@ class AlphaForest(object):
 
     def decode_alphatree(self, alphatree_id, root_name, line, is_local = False):
         alphatree.decodeAlphatree(alphatree_id, c_char_p(root_name), c_char_p(line), c_bool(is_local))
+
+    def decode_process(self, alphatree_id, root_name, line):
+        alphatree.decodeProcess(alphatree_id, c_char_p(root_name), c_char_p(line))
 
     def get_max_history_days(self, alphatree_id):
         return alphatree.getMaxHistoryDays(alphatree_id)
@@ -140,6 +144,14 @@ class AlphaForest(object):
         data_size = alphatree.getNodeAlpha(alphatree_id, node_id, cache_id, sample_size)
         stock_size = data_size / sample_size
         return self._read_alpha(sample_size, stock_size)
+
+    def process_alpha(self, alphatree_id, cache_id):
+        alphatree.processAlpha(alphatree_id, cache_id)
+
+    def get_process(self, alphatree_id, process_name, cache_id):
+        alphatree.getProcess(alphatree_id, c_char_p(process_name), cache_id, self.process_cache)
+        return self._read_str(self.process_cache)
+
 
     def summary_sub_alphatree(self, alphatree_list, min_depth = 3):
         self._write_alphatree_ids(alphatree_list)

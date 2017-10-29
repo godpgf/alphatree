@@ -32,6 +32,7 @@ enum class LeafDataType{
     VOLUME = 4,
     VWAP = 5,
     RETURNS = 6,
+    TR = 7,
 };
 
 LeafDataType str2LeafDataType(const char* str){
@@ -49,7 +50,9 @@ LeafDataType str2LeafDataType(const char* str){
         return LeafDataType::VWAP;
     } else if(strcmp(str,"returns") == 0){
         return LeafDataType::RETURNS;
-    } else {
+    } else if(strcmp(str,"tr") == 0){
+        return LeafDataType::TR;
+    }else {
         throw "IndClass Error!";
     }
 }
@@ -87,6 +90,8 @@ class Stock{
             copyData(this->volume, volume, size);
             copyData(this->vwap, vwap, size);
             copyData(this->returns, returns, size);
+            calTR();
+
             //calMAE_MFE(futureNum);
         }
 
@@ -204,6 +209,7 @@ class Stock{
 
             //calMAE_MFE(futureNum);
             delete []weight;
+            calTR();
         }
 
         ~Stock(){
@@ -215,6 +221,7 @@ class Stock{
             delete []vwap;
 
             delete []returns;
+            delete []tr;
 //            if(alpha)
 //                delete []alpha;
 //            if(beta)
@@ -248,6 +255,8 @@ class Stock{
                     return vwap;
                 case LeafDataType::RETURNS:
                     return returns;
+                case LeafDataType::TR:
+                    return tr;
             }
         }
 
@@ -296,6 +305,7 @@ class Stock{
         float* volume = {nullptr};
         float* vwap = {nullptr};
         float* returns = {nullptr};
+        float* tr = {nullptr};
         //float* alpha = {nullptr};
         //float* beta = {nullptr};
         //float* MAE = {nullptr};
@@ -305,6 +315,16 @@ class Stock{
         inline static void copyData(float*& dst, const float* src, int length){
             dst = new float[length];
             memcpy(dst, src, length * sizeof(float));
+        }
+
+        inline void calTR(){
+            tr = new float[size];
+            for(int i = 0; i < size; ++i){
+                tr[i] = high[i] - low[i];
+                if(i > 0){
+                    tr[i] = fmaxf(tr[i], fmaxf(high[i]-close[i-1],close[i-1] - low[i]));
+                }
+            }
         }
 
         //因为是短线,所以忽略无风险shouy
@@ -452,6 +472,15 @@ class AlphaDataBase{
             });
         }
 
+        size_t getCodes(char* codes){
+            char* curCodes = codes;
+            char** pCurCodes = &curCodes;
+            return getStocks_([pCurCodes](/*const char* code, */Stock* curStock, size_t stockNum){
+                strcpy((*pCurCodes), curStock->code);
+                (*pCurCodes) = (*pCurCodes) + strlen((*pCurCodes)) + 1;
+            });
+        }
+
         Stock* getStock(const char* curCodes){
             auto iter = stocks.find(curCodes);
             if(*iter == nullptr)
@@ -541,6 +570,19 @@ class AlphaDataBase{
                             ++stockNum;
                         }
                     }
+                }
+            }
+            return stockNum;
+        }
+
+        template<class F>
+        size_t getStocks_(F&& f){
+            int stockNum = 0;
+            for(int i = 0; i < stocks.getSize(); ++i){
+                Stock* curStock = stocks[i];
+                if(curStock->getMarket()){
+                    f(curStock, stockNum);
+                    ++stockNum;
                 }
             }
             return stockNum;
