@@ -5,8 +5,6 @@
 #ifndef ALPHATREE_CACHE_H
 #define ALPHATREE_CACHE_H
 
-#include <iostream>
-
 template <class T>
 class Cache{
 
@@ -45,7 +43,7 @@ class Cache{
         Cache(size_t maxCacheSize, int cacheBlockNum):maxCacheSize_(maxCacheSize), cacheBlockNum_(cacheBlockNum), curFreeCacheMemoryId_(0){
             cacheMemoryBuf_ = new char[sizeof(T) * maxCacheSize * cacheBlockNum];
             freeCacheMemoryIds_ = new int[maxCacheSize];
-            for(int i = 0; i < maxCacheSize; i++) {
+            for(size_t i = 0; i < maxCacheSize; ++i) {
                 freeCacheMemoryIds_[i] = i;
             }
         }
@@ -60,7 +58,7 @@ class Cache{
         size_t maxCacheSize_;
         int cacheBlockNum_;
         int*freeCacheMemoryIds_;
-        int curFreeCacheMemoryId_;
+        size_t curFreeCacheMemoryId_;
 
         //线程安全
         std::mutex mutex_;

@@ -48,7 +48,7 @@ class AlphaExaminer{
                 char* curOutCodes = outCodes;
                 const char* curCodes = codes;
                 res.stockNum = 0;
-                for(int i = 0; i < stockSize; ++i){
+                for(size_t i = 0; i < stockSize; ++i){
                     int offset = strlen(curCodes) + 1;
                     if(alphaRes[i] >= res.minAlpha && alphaRes[i] < res.maxAlpha){
                         strcpy(curOutCodes,curCodes);
@@ -82,7 +82,7 @@ class AlphaExaminer{
             int* sieveCount = (int*)(sieveSqrSum + maxSieveNum);
 
             std::shared_future<const float*> alphatreeRes = alphaForest_->calAlpha(alphatreeId, flagCache, cacheMemory, codes, futureNum, sampleSize,stockSize);
-            AlphaDataBase* alphaDatabase = alphaForest_->getAlphaDataBase();
+            AlphaDB* alphaDataBase = alphaForest_->getAlphaDataBase();
 
             return alphaForest_->getThreadPool()->enqueue([alphaDatabase, alphatreeRes, futureNum, sampleSize, stockSize, codes, minSieveNum, maxSieveNum, targetCache, sieveSum, sieveSqrSum, sieveCount, freeLogReturn, punishNum]{
                 const float* alphaCache = alphatreeRes.get();
@@ -105,7 +105,7 @@ class AlphaExaminer{
                         memset(sieveCount, 0, sieveNum * sizeof(int));
 
                         AlphaExaminer::sieve(alphaCache, targetCache, sampleSize, stockSize, sieveSum, sieveSqrSum, sieveCount, sieveNum, minAlpha, maxAlpha);
-                        for(int i = 0; i < sieveNum; ++i){
+                        for(auto i = 0; i < sieveNum; ++i){
                             if(sieveCount[i] <= punishNum)
                                 continue;
                             float avg = sieveSum[i]/sieveCount[i];
@@ -156,7 +156,7 @@ class AlphaExaminer{
             int* sieveCount = (int*)(sieveValue + maxSieveNum);
 
             std::shared_future<const float*> alphatreeRes = alphaForest_->calAlpha(alphatreeId, flagCache, cacheMemory, codes, futureNum, testDateSize+trainDateSize,stockSize);
-            AlphaDataBase* alphaDatabase = alphaForest_->getAlphaDataBase();
+            AlphaDB* alphaDataBase = alphaForest_->getAlphaDataBase();
             //开始取样数据并验证,注意如果发现测试数据小于0就不再测试,直接返回
             return alphaForest_->getThreadPool()->enqueue([alphaDatabase, alphatreeRes, futureNum, evalTime, trainDateSize, testDateSize, stockSize, codes, minSieveNum, maxSieveNum, targetCache, sieveValue, sieveCount, punishNum]{
                 //取样
@@ -173,7 +173,7 @@ class AlphaExaminer{
                 for(int eid = 0; eid < evalTime; ++eid){
                     //得到洗牌后的数据
                     shuffleIndex.clear();
-                    for(int i = 0; i < sampleSize; ++i)
+                    for(auto i = 0; i < sampleSize; ++i)
                         shuffleIndex.push_back(i);
                     unsigned seed = std::chrono::system_clock::now ().time_since_epoch ().count ();
                     std::shuffle (shuffleIndex.begin (), shuffleIndex.end (), std::default_random_engine (seed));
@@ -194,7 +194,7 @@ class AlphaExaminer{
                             memset(sieveCount, 0, sieveNum * sizeof(int));
 
                             AlphaExaminer::sieve(alphaCache, targetCache, 0, trainDateSize, stockSize, shuffleIndex, sieveValue, sieveCount, sieveNum, minAlpha, maxAlpha);
-                            for(int i = 0; i < sieveNum; ++i){
+                            for(auto i = 0; i < sieveNum; ++i){
                                 float score = (sieveValue[i]/(sieveCount[i] + punishNum));
                                 if(score > bestScore){
                                     bestScore = score;
@@ -238,7 +238,7 @@ class AlphaExaminer{
         }
 
         inline static void getMinAndMax(const float* src, int size, float& minValue, float& maxValue){
-            for(int i = 0; i < size; ++i){
+            for(size_t i = 0; i < size; ++i){
                 if(src[i] < minValue)
                     minValue = src[i];
                 if(src[i] > maxValue)
@@ -248,10 +248,10 @@ class AlphaExaminer{
 
         inline static void sieve(const float* alpha, const float* target, int sampleSize, int stockSize, float* sieveSum, float* sieveSqrSum,  int* sieveCount, int sieveNum, float minAlpha, float maxAlpha){
             float deltaAlpha = (maxAlpha - minAlpha) / sieveNum;
-            for(int i = 0; i < sampleSize; ++i){
+            for(auto i = 0; i < sampleSize; ++i){
                 const float* curAlpha = alpha + i * stockSize;
                 const float* curTarget = target + i * stockSize;
-                for(int j = 0; j < stockSize; ++j){
+                for(size_t j = 0; j < stockSize; ++j){
                     int sieveIndex = (int)((curAlpha[j] - minAlpha) / deltaAlpha);
                     if(sieveIndex < 0)
                         sieveIndex = 0;
@@ -267,10 +267,10 @@ class AlphaExaminer{
         /*
         inline static void sieve(const float* alpha, const float* target, int startSampleIndex, int sampleSize, int stockSize, std::vector<int>& shuffleIndex, float* sieveValue, int* sieveCount, int sieveNum, float minAlpha, float maxAlpha){
             float deltaAlpha = (maxAlpha - minAlpha) / sieveNum;
-            for(int i = 0; i < sampleSize; ++i){
+            for(auto i = 0; i < sampleSize; ++i){
             const float* curAlpha = alpha + shuffleIndex[startSampleIndex+i] * stockSize;
             const float* curTarget = target + shuffleIndex[startSampleIndex+i] * stockSize;
-            for(int j = 0; j < stockSize; ++j){
+            for(size_t j = 0; j < stockSize; ++j){
                     int sieveIndex = (int)((curAlpha[j] - minAlpha) / deltaAlpha);
                     if(sieveIndex < 0)
                         sieveIndex = 0;
@@ -286,10 +286,10 @@ class AlphaExaminer{
         inline static float sieveEval(const float* alpha, const float* target, int startSampleIndex, int sampleSize, int stockSize, std::vector<int>& shuffleIndex, float alphaStart, float alphaEnd, int punishNum){
             float scoreSum = 0;
             int scoreCount = 0;
-            for(int i = 0; i < sampleSize; ++i){
+            for(auto i = 0; i < sampleSize; ++i){
                 const float* curAlpha = alpha + shuffleIndex[startSampleIndex+i] * stockSize;
                 const float* curTarget = target + shuffleIndex[startSampleIndex+i] * stockSize;
-                for(int j = 0; j < stockSize; ++j){
+                for(size_t j = 0; j < stockSize; ++j){
                     if(curAlpha[j] >= alphaStart && curAlpha[j] < alphaEnd){
                         scoreSum += curTarget[j];
                         ++scoreCount;

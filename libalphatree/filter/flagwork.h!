@@ -5,7 +5,7 @@
 #ifndef ALPHATREE_FLAGWORK_H
 #define ALPHATREE_FLAGWORK_H
 
-#include "alphawork.h"
+#include "alphawork.h!"
 
 class FlagWork : public AlphaWork{
     public:
@@ -16,7 +16,7 @@ class FlagWork : public AlphaWork{
         virtual size_t work(int alphatreeId, int cacheMemoryId, int flagCacheId, int codesId, AlphaGroup* cacheGroup, int stockSize = 0){
             size_t willGroupNum = 0;
             AlphaGroup* curAlphaGroup = cacheGroup + groupOffset_;
-            for(int i = 0; i < groupNum_; ++i){
+            for(auto i = 0; i < groupNum_; ++i){
                 if(curAlphaGroup[i].flag){
                     if(curAlphaGroup[i].count < minCount_)
                     {

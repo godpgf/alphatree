@@ -6,7 +6,7 @@
 #define ALPHATREE_VALUEGROUPWORK_H
 
 #include <float.h>
-#include "alphawork.h"
+#include "alphawork.h!"
 
 class ValueGroupEvalWork: public AlphaWork{
     public:
@@ -26,7 +26,7 @@ class ValueGroupEvalWork: public AlphaWork{
             float deltaAlpha = (endAlpha - startAlpha) / (groupSize_ - 2);
 
             int gNum = getGroupNum();
-            for(int i = 0; i < gNum; ++i){
+            for(auto i = 0; i < gNum; ++i){
                 curAlphaGroup[i].MFE = 0;
                 curAlphaGroup[i].MAE = 0;
                 curAlphaGroup[i].marketMAE = 0;
@@ -35,7 +35,7 @@ class ValueGroupEvalWork: public AlphaWork{
             }
 
             char* curCodes = codeCache;
-            for(int i = 0; i <  stockSize; ++i){
+            for(auto i = 0; i <  stockSize; ++i){
                 Stock* stock = alphaForest_->getAlphaDataBase()->getStock(curCodes);
                 Stock* market = alphaForest_->getAlphaDataBase()->getStock(stock->getMarket());
                 for(int k = 0; k < sampleSize_; ++k){
@@ -91,12 +91,12 @@ class ValueGroupWork: public ValueGroupEvalWork{
             int gribSize = sampleSize_ * stockSize / groupSize_;
             float* minDataCache = targetCache;
             float* maxDataCache = targetCache + gribSize;
-            for(int i = 0; i < gribSize; ++i) {
+            for(auto i = 0; i < gribSize; ++i) {
                 minDataCache[i] = FLT_MAX;
                 maxDataCache[i] = -FLT_MAX;
             }
             int index;
-            for(int i = 0; i < sampleSize_ * stockSize; ++i){
+            for(auto i = 0; i < sampleSize_ * stockSize; ++i){
                 index = gribSize-1;
                 if (res[i] < minDataCache[index]){
                     while(index >= 1 && res[i] < minDataCache[index-1]){
@@ -120,7 +120,7 @@ class ValueGroupWork: public ValueGroupEvalWork{
             float deltaAlpha = (endAlpha - startAlpha) / (groupSize_ - 2);
 
             AlphaGroup* curAlphaGroup = cacheGroup + groupOffset_;
-            for(int i = 0; i < groupSize_; ++i){
+            for(auto i = 0; i < groupSize_; ++i){
                 for(int j = minFutureDays_; j <= maxFutureDays_; ++j){
                     int srcId = (j - minFutureDays_) * groupSize_ + i;
                     curAlphaGroup[srcId].flag = true;

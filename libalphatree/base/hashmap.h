@@ -43,7 +43,12 @@ class HashMap : protected HashName<HASH_TABLE_LENGTH, HASH_NAME_BLOCK_SIZE>{
                 strcpy(newName, name);
                 (*pHashNameNode)->id = HashName<HASH_TABLE_LENGTH, HASH_NAME_BLOCK_SIZE>::nameTable_.add(newName);
             }
-            return ((HashMapNode*)(*find(name)))->value;
+            return (*pHashNameNode)->value;
+            //return ((HashMapNode*)(*find(name)))->value;
+        }
+
+        const char* toName(int id){
+            return HashName<HASH_TABLE_LENGTH, HASH_NAME_BLOCK_SIZE>::toName(id);
         }
 
         void clear(){

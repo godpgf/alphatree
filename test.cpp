@@ -4,7 +4,7 @@
 #include "libalphatree/alpha/base.h"
 #include "libalphatree/base/threadpool.h"
 #include "libalphatree/base/darray.h"
-#include "libalphatree/alpha/normal.h"
+#include "libalphatree/base/normal.h"
 #include <thread>
 
 using namespace std;
@@ -162,7 +162,7 @@ int main() {
     char outstr[1024];
 
     cout<<"test cache !"<<endl;
-    for(int i = 0; i < 100; ++i){
+    for(auto i = 0; i < 100; ++i){
         int id = AlphaForest::getAlphaforest()->useCache();
         cout<<id<<endl;
     }
@@ -179,6 +179,8 @@ int main() {
         cout<<p<<endl;
         p += (strlen(p)+1);
     }
+
+    id = AlphaForest::getAlphaforest()->useFilterTree();
 
     return 0;
 }

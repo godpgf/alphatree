@@ -22,11 +22,18 @@ enum class CacheFlag{
     HAS_CAL = 2,
 };
 
+const float* valid(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout) {
+    for(size_t i = 0; i < historySize * stockSize; ++i){
+        pout[i] = pStockFlag[i] ? 1 : 0;
+    }
+    return pout;
+}
+
 //计算前几天的数据累加
-const float* sum(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout) {
+const float* sum(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout) {
     memcpy(pout, pleft, historySize * stockSize * sizeof(float));
-    int d = (int) roundf(coff);
-    for(int i = 1; i < historySize; i++){
+    size_t d = (size_t)roundf(coff);
+    for(size_t i = 1; i < historySize; ++i){
         _add((pout+i*stockSize),(pout + (i-1)*stockSize), stockSize);
         if(i > d){
             _reduce((pout+i*stockSize),(pleft + (i-1-d) * stockSize), stockSize);
@@ -36,10 +43,10 @@ const float* sum(const float* pleft, const float* pright, float coff, size_t his
 }
 
 //计算前几天数据的累积
-const float* product(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout) {
+const float* product(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout) {
     memcpy(pout, pleft, historySize * stockSize * sizeof(float));
-    int d = (int) roundf(coff);
-    for(int i = 1; i < historySize; i++){
+    size_t d = (size_t)roundf(coff);
+    for(size_t i = 1; i < historySize; ++i){
         _mulNoZero((pout + i * stockSize), (pout + (i - 1) * stockSize), stockSize);
         if(i > d){
             _divNoZero((pout + i * stockSize), (pleft + (i - 1 - d) * stockSize), stockSize);
@@ -49,10 +56,10 @@ const float* product(const float* pleft, const float* pright, float coff, size_t
 }
 
 
-const float* mean(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    sum(pleft, pright, coff, historySize, stockSize, pflag, pout);
+const float* mean(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    sum(pleft, pright, coff, historySize, stockSize, pflag, pStockFlag,pout);
 
-    for(int i = 0; i < historySize; ++i) {
+    for(size_t i = 0; i < historySize; ++i) {
         if(pflag[i] == CacheFlag::NEED_CAL){
             _div(pout + i * stockSize, roundf(coff) + 1, stockSize);
         } else {
@@ -63,8 +70,8 @@ const float* mean(const float* pleft, const float* pright, float coff, size_t hi
     return pout;
 }
 
-const float* lerp(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; i++) {
+const float* lerp(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i) {
         if(pflag[i] == CacheFlag::NEED_CAL) {
             _lerp(pout + i * stockSize, pleft + i * stockSize, pright + i * stockSize, coff, stockSize);
         } else {
@@ -74,9 +81,9 @@ const float* lerp(const float* pleft, const float* pright, float coff, size_t hi
     return pout;
 }
 
-const float* delta(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    int d = (int) roundf(coff);
-    for(int i = 0; i < historySize; i++) {
+const float* delta(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    size_t d = (size_t)roundf(coff);
+    for(size_t i = 0; i < historySize; ++i) {
         if(pflag[i] == CacheFlag::NEED_CAL && i >= d){
             memcpy(pout + i * stockSize, pleft + i * stockSize, stockSize * sizeof(float));
             _reduce(pout + i * stockSize, pleft + (i - d) * stockSize, stockSize);
@@ -87,10 +94,10 @@ const float* delta(const float* pleft, const float* pright, float coff, size_t h
     return pout;
 }
 
-const float* meanRise(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
+const float* meanRise(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
     coff = roundf(coff);
-    int d = (int) roundf(coff);
-    for(int i = 0; i < historySize; i++) {
+    size_t d = (size_t)roundf(coff);
+    for(size_t i = 0; i < historySize; ++i) {
         if(pflag[i] == CacheFlag::NEED_CAL && i >= d){
             memcpy(pout + i * stockSize, pleft + i * stockSize, stockSize * sizeof(float));
             _reduce(pout + i * stockSize, pleft + (i - d) * stockSize, stockSize);
@@ -102,9 +109,9 @@ const float* meanRise(const float* pleft, const float* pright, float coff, size_
     return pout;
 }
 
-const float* div(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
+const float* div(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
     //memcpy(pout, pleft, historySize * stockSize * sizeof(float));
-    for(int i = 0; i < historySize; i++) {
+    for(size_t i = 0; i < historySize; ++i) {
         if(pflag[i] == CacheFlag::NEED_CAL) {
             _div((pout + i * stockSize), (pleft + i * stockSize), (pright + i * stockSize), stockSize);
         } else {
@@ -114,13 +121,13 @@ const float* div(const float* pleft, const float* pright, float coff, size_t his
     return pout;
 }
 
-const float* meanRatio(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    mean(pleft, pright, coff, historySize, stockSize, pflag, pout);
-    return div(pleft, pout, coff, historySize, stockSize, pflag, pout);
+const float* meanRatio(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    mean(pleft, pright, coff, historySize, stockSize, pflag, pStockFlag,pout);
+    return div(pleft, pout, coff, historySize, stockSize, pflag, pStockFlag,pout);
 }
 
-const float* add(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; i++) {
+const float* add(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i) {
         if(pflag[i] == CacheFlag::NEED_CAL) {
             memcpy(pout + i * stockSize, pleft + i * stockSize, stockSize * sizeof(float));
             _add((pout + i * stockSize), (pright + i * stockSize), stockSize);
@@ -131,8 +138,8 @@ const float* add(const float* pleft, const float* pright, float coff, size_t his
     return pout;
 }
 
-const float* addFrom(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; i++) {
+const float* addFrom(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i) {
         if(pflag[i] == CacheFlag::NEED_CAL) {
             memcpy(pout + i * stockSize, pleft + i * stockSize, stockSize * sizeof(float));
             _add((pout + i * stockSize), coff, stockSize);
@@ -143,8 +150,8 @@ const float* addFrom(const float* pleft, const float* pright, float coff, size_t
     return pout;
 }
 
-const float* reduce(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; i++) {
+const float* reduce(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i) {
         if(pflag[i] == CacheFlag::NEED_CAL) {
             memcpy(pout + i * stockSize, pleft + i * stockSize, stockSize * sizeof(float));
             _reduce((pout + i * stockSize), (pright + i * stockSize), stockSize);
@@ -155,8 +162,8 @@ const float* reduce(const float* pleft, const float* pright, float coff, size_t 
     return pout;
 }
 
-const float* reduceFrom(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; i++) {
+const float* reduceFrom(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i) {
         if(pflag[i] == CacheFlag::NEED_CAL) {
             memcpy(pout + i * stockSize, pleft + i * stockSize, stockSize * sizeof(float));
             _reduce(coff, (pout + i * stockSize), stockSize);
@@ -167,8 +174,8 @@ const float* reduceFrom(const float* pleft, const float* pright, float coff, siz
     return pout;
 }
 
-const float* reduceTo(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; i++) {
+const float* reduceTo(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i) {
         if(pflag[i] == CacheFlag::NEED_CAL) {
             memcpy(pout + i * stockSize, pleft + i * stockSize, stockSize * sizeof(float));
             _reduce((pout + i * stockSize), coff, stockSize);
@@ -180,8 +187,8 @@ const float* reduceTo(const float* pleft, const float* pright, float coff, size_
     return pout;
 }
 
-const float* mul(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; i++) {
+const float* mul(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i) {
         if(pflag[i] == CacheFlag::NEED_CAL) {
             memcpy(pout + i * stockSize, pleft + i * stockSize, stockSize * sizeof(float));
             _mul((pout + i * stockSize), (pright + i * stockSize), stockSize);
@@ -192,8 +199,8 @@ const float* mul(const float* pleft, const float* pright, float coff, size_t his
     return pout;
 }
 
-const float* mulFrom(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; i++){
+const float* mulFrom(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL) {
             memcpy(pout + i * stockSize, pleft + i * stockSize, stockSize * sizeof(float));
             _mul((pout + i * stockSize), coff, stockSize);
@@ -204,8 +211,8 @@ const float* mulFrom(const float* pleft, const float* pright, float coff, size_t
     return pout;
 }
 
-const float* divFrom(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; ++i) {
+const float* divFrom(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i) {
         if(pflag[i] == CacheFlag::NEED_CAL) {
             memcpy(pout + i * stockSize, pleft + i * stockSize, stockSize * sizeof(float));
             _div(coff, pout + i * stockSize, stockSize);
@@ -216,8 +223,8 @@ const float* divFrom(const float* pleft, const float* pright, float coff, size_t
     return pout;
 }
 
-const float* divTo(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; ++i) {
+const float* divTo(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i) {
         if(pflag[i] == CacheFlag::NEED_CAL) {
             memcpy(pout + i * stockSize, pleft + i * stockSize, stockSize * sizeof(float));
             _div(pout + i * stockSize, coff, stockSize);
@@ -228,8 +235,8 @@ const float* divTo(const float* pleft, const float* pright, float coff, size_t h
     return pout;
 }
 
-const float* signAnd(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; i++) {
+const float* signAnd(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i) {
         if(pflag[i] == CacheFlag::NEED_CAL) {
             _signAnd((pout + i * stockSize), (pleft + i * stockSize), (pright + i * stockSize), stockSize);
         } else {
@@ -239,8 +246,8 @@ const float* signAnd(const float* pleft, const float* pright, float coff, size_t
     return pout;
 }
 
-const float* signOr(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; i++) {
+const float* signOr(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i) {
         if(pflag[i] == CacheFlag::NEED_CAL) {
             _signOr((pout + i * stockSize), (pleft + i * stockSize), (pright + i * stockSize), stockSize);
         } else {
@@ -250,8 +257,8 @@ const float* signOr(const float* pleft, const float* pright, float coff, size_t 
     return pout;
 }
 
-const float* mid(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; i++) {
+const float* mid(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i) {
         if(pflag[i] == CacheFlag::NEED_CAL) {
             memcpy(pout + i * stockSize, pleft + i * stockSize, stockSize * sizeof(float));
             _add((pout + i * stockSize), (pright + i * stockSize), stockSize);
@@ -264,17 +271,17 @@ const float* mid(const float* pleft, const float* pright, float coff, size_t his
 }
 
 //标准差相关------------------------------------------
-const float* calStddevData(const float* pleft,const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout, int dataType){
-    const float* pmean = (pright != nullptr ? pright : mean(pleft, pright, coff, historySize, stockSize, pflag, pout));
+const float* calStddevData(const float* pleft,const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout, int dataType){
+    const float* pmean = (pright != nullptr ? pright : mean(pleft, pright, coff, historySize, stockSize, pflag, pStockFlag, pout));
 
-    int d = (int)roundf(coff);
+    size_t d = (size_t)roundf(coff);
     //int blockSize = historySize * stockSize;
-    for(int i = 0; i < historySize; i++){
+    for(size_t i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL && i >= d){
-            for(int j = 0; j < stockSize; j++){
+            for(size_t j = 0; j < stockSize; ++j){
                 float sum = 0;
                 float meanValue = pmean[i * stockSize + j];
-                for(int k = 0; k <= d; k++){
+                for(size_t k = 0; k <= d; ++k){
                     float tmp = pleft[(i-k) * stockSize + j] - meanValue;
                     sum += tmp * tmp;
                 }
@@ -301,20 +308,22 @@ const float* calStddevData(const float* pleft,const float* pright, float coff, s
     }
     return pout;
 }
-const float* stddev(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    return calStddevData(pleft, pright, coff, historySize, stockSize, pflag, pout, 0);
+const float* stddev(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    return calStddevData(pleft, pright, coff, historySize, stockSize, pflag, pStockFlag, pout, 0);
 }
-const float* up(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    return calStddevData(pleft, pright, coff, historySize, stockSize, pflag, pout, 1);
+const float* up(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    return calStddevData(pleft, pright, coff, historySize, stockSize, pflag, pStockFlag, pout, 1);
 }
-const float* down(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    return calStddevData(pleft, pright, coff, historySize, stockSize, pflag, pout, 2);
+const float* down(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    return calStddevData(pleft, pright, coff, historySize, stockSize, pflag, pStockFlag, pout, 2);
 }
 //----------------------------------------------------------------------
-const float* rankSort(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; i++){
+const float* rankSort(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL){
-            _ranksort((pout + i * stockSize), (pleft + i * stockSize), stockSize);
+            float* curOut = pout + i * stockSize;
+            //flagNan(curOut, curStockFlag, stockSize);
+            _ranksort(curOut, (pleft + i * stockSize), (pStockFlag + i * stockSize), stockSize);
         } else {
             memset(pout + i * stockSize, 0, stockSize * sizeof(float));
         }
@@ -322,8 +331,8 @@ const float* rankSort(const float* pleft, const float* pright, float coff, size_
     return pout;
 }
 
-const float* rankScale(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; i++){
+const float* rankScale(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL){
             _rankscale((pout + i * stockSize), (pleft + i * stockSize), stockSize);
         } else {
@@ -334,15 +343,15 @@ const float* rankScale(const float* pleft, const float* pright, float coff, size
 }
 
 
-//const float* ranking(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-//    for(int i = 0; i < historySize; i++){
+//const float* ranking(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+//    for(size_t i = 0; i < historySize; ++i){
 //        _ranking((pout + i * stockSize), (pcache + i * stockSize), (pleft + i * stockSize), stockSize);
 //    }
 //    return pout;
 //}
 
-const float* powerMid(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout) {
-    for(int i = 0; i < historySize; i++){
+const float* powerMid(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout) {
+    for(size_t i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL){
             _powerMid(pout + i * stockSize, pleft + i * stockSize, pright + i * stockSize, stockSize);
         } else {
@@ -352,11 +361,11 @@ const float* powerMid(const float* pleft, const float* pright, float coff, size_
     return pout;
 }
 
-const float* tsRank(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout) {
+const float* tsRank(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout) {
     memset(pout, 0, sizeof(float)*historySize*stockSize);
-    int d = (int)roundf(coff);
-    for(int i = 1; i < d + 1; ++i){
-        for(int j = i; j <historySize; ++j){
+    size_t d = (size_t)roundf(coff);
+    for(size_t i = 1; i < d + 1; ++i){
+        for(size_t j = i; j <historySize; ++j){
             int curBlockIndex = j * stockSize;
             int beforeBlockIndex = (j-i) * stockSize;
             if(pflag[j] == CacheFlag::NEED_CAL){
@@ -365,14 +374,14 @@ const float* tsRank(const float* pleft, const float* pright, float coff, size_t 
         }
     }
     size_t size = historySize * stockSize;
-    for(int i = 0; i < size; i++)
+    for(size_t i = 0; i < size; ++i)
         pout[i] /= d;
     return pout;
 }
 
-const float* delay(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout) {
-    int d = (int)roundf(coff);
-    for(int i = 0; i < historySize; i++){
+const float* delay(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout) {
+    size_t d = (size_t)roundf(coff);
+    for(size_t i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL && i >= d){
             memcpy(pout + i * stockSize, pleft + (i - d) * stockSize, stockSize * sizeof(float));
         } else {
@@ -382,20 +391,21 @@ const float* delay(const float* pleft, const float* pright, float coff, size_t h
     return pout;
 }
 
-const float* correlation(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout) {
-    int d = (int)roundf(coff);
-    for(int i = 0; i < historySize; ++i){
+const float* correlation(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout) {
+    size_t d = (size_t)roundf(coff);
+    for(size_t i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL && i >= d){
             //计算第日股票前d天的相关系数
-            for(int j = 0; j < stockSize; ++j){
+            for(size_t j = 0; j < stockSize; ++j){
                 //计算当前股票的均值和方差
                 float meanLeft = 0;
                 float meanRight = 0;
                 float sumSqrLeft = 0;
                 float sumSqrRight = 0;
-                for(int k = 0; k <= d; ++k){
+                for(size_t k = 0; k <= d; ++k){
                     int curBlock = (i - k) * stockSize;
                     meanLeft += pleft[curBlock + j];
+
                     sumSqrLeft += pleft[curBlock + j] * pleft[curBlock + j];
                     meanRight += pright[curBlock + j];
                     sumSqrRight += pright[curBlock + j] * pright[curBlock + j];
@@ -403,8 +413,9 @@ const float* correlation(const float* pleft, const float* pright, float coff, si
                 meanLeft /= (d+1);
                 meanRight /= (d+1);
 
+
                 float cov = 0;
-                for(int k = 0; k <= d; ++k){
+                for(size_t k = 0; k <= d; ++k){
                     int curBlock = (i - k) * stockSize;
                     cov += (pleft[curBlock + j] - meanLeft) * (pright[curBlock + j] - meanRight);
                 }
@@ -423,23 +434,24 @@ const float* correlation(const float* pleft, const float* pright, float coff, si
     return pout;
 }
 
-const float* scale(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout) {
-    for(int i = 0; i < historySize; ++i)
+const float* scale(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout) {
+    for(size_t i = 0; i < historySize; ++i)
         if(pflag[i] == CacheFlag::NEED_CAL){
-            _scale(pout + i * stockSize, pleft + i * stockSize, stockSize);
+            memcpy(pout + i * stockSize, pleft + i * stockSize, stockSize * sizeof(float));
+            _scale(pout + i * stockSize, (pStockFlag + i * stockSize), stockSize);
         } else {
             memset(pout + i * stockSize, 0, stockSize * sizeof(float));
         }
     return pout;
 }
 
-const float* decayLinear(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout) {
+const float* decayLinear(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout) {
     memset(pout, 0, sizeof(float)*historySize*stockSize);
-    int d = (int) roundf(coff) + 1;
+    size_t d = (size_t)roundf(coff) + 1;
     float allWeight = (d + 1) * d * 0.5;
-    for(int i = d-1; i < historySize; i++){
+    for(size_t i = d-1; i < historySize; i++){
         if(pflag[i] == CacheFlag::NEED_CAL){
-            for(int j = 0; j < d; j++){
+            for(size_t j = 0; j < d; j++){
                 _addAndMul(pout + i * stockSize, pleft + (i - j) * stockSize, (d - j) / allWeight, stockSize);
             }
         }
@@ -447,12 +459,12 @@ const float* decayLinear(const float* pleft, const float* pright, float coff, si
     return pout;
 }
 
-const float* tsMin(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    int d = (int)roundf(coff);
+const float* tsMin(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    size_t d = (size_t)roundf(coff);
     _tsMinIndex(pout, pleft, historySize, stockSize, d);
-    for(int i = 0; i < historySize; i++){
+    for(size_t i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL){
-            for(int j = 0; j < stockSize; j++){
+            for(size_t j = 0; j < stockSize; ++j){
                 int minId = (int)pout[i * stockSize + j];
                 pout[i * stockSize + j] = pleft[minId * stockSize + j];
             }
@@ -462,12 +474,12 @@ const float* tsMin(const float* pleft, const float* pright, float coff, size_t h
     return pout;
 }
 
-const float* tsMax(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    int d = (int)roundf(coff);
+const float* tsMax(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    size_t d = (size_t)roundf(coff);
     _tsMaxIndex(pout, pleft, historySize, stockSize, d);
-    for(int i = 0; i < historySize; i++){
+    for(size_t i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL){
-            for(int j = 0; j < stockSize; j++){
+            for(size_t j = 0; j < stockSize; ++j){
                 int maxId = (int)pout[i * stockSize + j];
                 pout[i * stockSize + j] = pleft[maxId * stockSize + j];
             }
@@ -477,8 +489,8 @@ const float* tsMax(const float* pleft, const float* pright, float coff, size_t h
     return pout;
 }
 
-const float* min(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; i++) {
+const float* min(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i) {
         if(pflag[i] == CacheFlag::NEED_CAL) {
             _min(pout + i * stockSize, pleft + i * stockSize, pright + i * stockSize, stockSize);
         } else {
@@ -488,8 +500,8 @@ const float* min(const float* pleft, const float* pright, float coff, size_t his
     return pout;
 }
 
-const float* max(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; i++){
+const float* max(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL) {
             _max(pout + i * stockSize, pleft + i * stockSize, pright + i * stockSize, stockSize);
         } else {
@@ -499,32 +511,38 @@ const float* max(const float* pleft, const float* pright, float coff, size_t his
     return pout;
 }
 
-const float* tsArgMin(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    int d = (int)roundf(coff);
+const float* tsArgMin(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    size_t d = (size_t)roundf(coff);
     _tsMinIndex(pout, pleft, historySize, stockSize, d);
-    for(int i = 0; i < historySize; i++){
-        for(int j = 0; j < stockSize; j++){
+    for(size_t i = 0; i < historySize; ++i){
+        for(size_t j = 0; j < stockSize; ++j){
             int minId = (int)pout[i * stockSize + j];
-            pout[i * stockSize + j] = minId - (i - d);
+            if(minId + d >= i)
+                pout[i * stockSize + j] = minId + d - i;
+            else
+                pout[i * stockSize + j] = 0;
         }
     }
     return pout;
 }
 
-const float* tsArgMax(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    int d = (int)roundf(coff);
+const float* tsArgMax(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    size_t d = (size_t)roundf(coff);
     _tsMaxIndex(pout, pleft, historySize, stockSize, d);
-    for(int i = 0; i < historySize; i++){
-        for(int j = 0; j < stockSize; j++){
+    for(size_t i = 0; i < historySize; ++i){
+        for(size_t j = 0; j < stockSize; ++j){
             int maxId = (int)pout[i * stockSize + j];
-            pout[i * stockSize + j] = maxId - (i - d);
+            if(maxId + d >= i)
+                pout[i * stockSize + j] = maxId + d - i;
+            else
+                pout[i * stockSize + j] = 0;
         }
     }
     return pout;
 }
 
-const float* sign(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; i++) {
+const float* sign(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i) {
         if(pflag[i] == CacheFlag::NEED_CAL) {
             _sign((pout + i * stockSize), (pleft + i * stockSize), stockSize);
         } else {
@@ -534,8 +552,8 @@ const float* sign(const float* pleft, const float* pright, float coff, size_t hi
     return pout;
 }
 
-const float* abs(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; i++){
+const float* abs(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL) {
             _abs(pout + i * stockSize, pleft + i * stockSize, stockSize);
         } else {
@@ -546,10 +564,10 @@ const float* abs(const float* pleft, const float* pright, float coff, size_t his
     return pout;
 }
 
-const float* log(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
+const float* log(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
     float logmax = logf(0.0001);
 
-    for(int i = 0; i < historySize; i++){
+    for(size_t i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL) {
             _log(pout + i * stockSize, pleft + i * stockSize, stockSize, logmax);
         } else {
@@ -559,10 +577,11 @@ const float* log(const float* pleft, const float* pright, float coff, size_t his
     return pout;
 }
 
-const float* signedPower(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; i++){
+const float* signedPower(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL) {
             _pow(pout + i * stockSize, pleft + i * stockSize, pright + i * stockSize, stockSize);
+
         } else {
             memset(pout + i * stockSize, 0, stockSize * sizeof(float));
         }
@@ -570,8 +589,8 @@ const float* signedPower(const float* pleft, const float* pright, float coff, si
     return pout;
 }
 
-const float* signedPowerFrom(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; i++){
+const float* signedPowerFrom(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL) {
             _pow(pout + i * stockSize, coff, pleft + i * stockSize, stockSize);
         } else {
@@ -581,8 +600,8 @@ const float* signedPowerFrom(const float* pleft, const float* pright, float coff
     return pout;
 }
 
-const float* signedPowerTo(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; i++){
+const float* signedPowerTo(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL) {
             _pow(pout + i * stockSize, pleft + i * stockSize, coff, stockSize);
         } else {
@@ -592,8 +611,8 @@ const float* signedPowerTo(const float* pleft, const float* pright, float coff, 
     return pout;
 }
 
-const float* lessCond(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; i++){
+const float* lessCond(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL) {
             _lessCond(pout + i * stockSize, pleft + i * stockSize, pright + i * stockSize, stockSize);
         } else {
@@ -603,12 +622,12 @@ const float* lessCond(const float* pleft, const float* pright, float coff, size_
     return pout;
 }
 
-const float* moreCond(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    return lessCond(pright, pleft, coff, historySize, stockSize, pflag,pout);
+const float* moreCond(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    return lessCond(pright, pleft, coff, historySize, stockSize, pflag, pStockFlag, pout);
 }
 
-const float* lessCondFrom(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; i++){
+const float* lessCondFrom(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL) {
             _lessCond(pout + i * stockSize, coff, pleft + i * stockSize, stockSize);
         } else {
@@ -618,8 +637,8 @@ const float* lessCondFrom(const float* pleft, const float* pright, float coff, s
     return pout;
 }
 
-const float* lessCondTo(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; i++){
+const float* lessCondTo(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL) {
             _lessCond(pout + i * stockSize, pleft + i * stockSize, coff, stockSize);
         } else {
@@ -629,8 +648,8 @@ const float* lessCondTo(const float* pleft, const float* pright, float coff, siz
     return pout;
 }
 
-const float* moreCondFrom(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; i++){
+const float* moreCondFrom(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL) {
             _moreCond(pout + i * stockSize, coff, pleft + i * stockSize, stockSize);
         } else {
@@ -640,8 +659,8 @@ const float* moreCondFrom(const float* pleft, const float* pright, float coff, s
     return pout;
 }
 
-const float* moreCondTo(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-    for(int i = 0; i < historySize; i++){
+const float* moreCondTo(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    for(size_t i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL) {
             _moreCond(pout + i * stockSize, pleft + i * stockSize, coff, stockSize);
         } else {
@@ -652,8 +671,8 @@ const float* moreCondTo(const float* pleft, const float* pright, float coff, siz
 }
 
 const float* elseCond(const float *pleft, const float *pright, float coff, size_t historySize, size_t stockSize,
-                      CacheFlag* pflag, float *pout){
-    for(int i = 0; i < historySize; i++){
+                      CacheFlag* pflag, bool* pStockFlag, float *pout){
+    for(size_t i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL) {
             _elseCond(pout + i * stockSize, pleft + i * stockSize, pright + i * stockSize, stockSize);
         } else {
@@ -664,8 +683,8 @@ const float* elseCond(const float *pleft, const float *pright, float coff, size_
 }
 
 const float* elseCondTo(const float *pleft, const float *pright, float coff, size_t historySize, size_t stockSize,
-                        CacheFlag* pflag, float *pout){
-    for(int i = 0; i < historySize; i++){
+                        CacheFlag* pflag, bool* pStockFlag, float *pout){
+    for(size_t i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL) {
             _elseCond(pout + i * stockSize, pleft + i * stockSize, coff, stockSize);
         } else {
@@ -676,9 +695,9 @@ const float* elseCondTo(const float *pleft, const float *pright, float coff, siz
 }
 
 const float* ifCond(const float *pleft, const float *pright, float coff, size_t historySize, size_t stockSize,
-                    CacheFlag* pflag, float *pout){
+                    CacheFlag* pflag, bool* pStockFlag, float *pout){
 
-    for(int i = 0; i < historySize; i++){
+    for(size_t i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL) {
             _ifCond(pout + i * stockSize, pleft + i * stockSize, pright + i * stockSize, stockSize);
         } else {
@@ -689,8 +708,8 @@ const float* ifCond(const float *pleft, const float *pright, float coff, size_t 
 }
 
 const float* ifCondTo(const float *pleft, const float *pright, float coff, size_t historySize, size_t stockSize,
-                      CacheFlag* pflag, float *pout){
-    for(int i = 0; i < historySize; i++){
+                      CacheFlag* pflag, bool* pStockFlag, float *pout){
+    for(size_t i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL) {
             _ifCond(pout + i * stockSize, pleft + i * stockSize, coff, stockSize);
         } else {
@@ -700,8 +719,8 @@ const float* ifCondTo(const float *pleft, const float *pright, float coff, size_
     return pout;
 }
 
-const float* indneutralize(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout) {
-    for(int i = 0; i < historySize; i++) {
+const float* indneutralize(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout) {
+    for(size_t i = 0; i < historySize; ++i) {
         if(pflag[i] == CacheFlag::NEED_CAL) {
             memcpy(pout + i * stockSize, pleft + i * stockSize, stockSize * sizeof(float));
         } else {
@@ -711,11 +730,11 @@ const float* indneutralize(const float* pleft, const float* pright, float coff, 
     return pout;
 }
 
-const float* kd(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout) {
+const float* kd(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout) {
     int curIndex = 0;
-    for(int i = 0; i < historySize; i++) {
+    for(size_t i = 0; i < historySize; ++i) {
         if(pflag[i] == CacheFlag::NEED_CAL && i > 0) {
-            for(int j = 0; j < stockSize; ++j){
+            for(size_t j = 0; j < stockSize; ++j){
                 curIndex = i * stockSize + j;
                 pout[curIndex] = pout[curIndex - stockSize] * (2.f / 3.f) + pleft[curIndex] * (1.f / 3.f);
             }
@@ -726,11 +745,11 @@ const float* kd(const float* pleft, const float* pright, float coff, size_t hist
     return pout;
 }
 
-const float* cross(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout) {
+const float* cross(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout) {
     int curIndex = 0;
-    for(int i = 0; i < historySize; i++) {
+    for(size_t i = 0; i < historySize; ++i) {
         if(pflag[i] == CacheFlag::NEED_CAL && i > 0) {
-            for(int j = 0; j < stockSize; ++j){
+            for(size_t j = 0; j < stockSize; ++j){
                 curIndex = i * stockSize + j;
                 pout[curIndex] = (pleft[curIndex - stockSize] < pright[curIndex - stockSize] && pleft[curIndex] > pright[curIndex]) ? 1 : 0;
             }
@@ -741,11 +760,11 @@ const float* cross(const float* pleft, const float* pright, float coff, size_t h
     return pout;
 }
 
-const float* crossFrom(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout) {
+const float* crossFrom(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout) {
     int curIndex = 0;
-    for(int i = 0; i < historySize; i++) {
+    for(size_t i = 0; i < historySize; ++i) {
         if(pflag[i] == CacheFlag::NEED_CAL && i > 0) {
-            for(int j = 0; j < stockSize; ++j){
+            for(size_t j = 0; j < stockSize; ++j){
                 curIndex = i * stockSize + j;
                 pout[curIndex] = (coff < pleft[curIndex - stockSize] && coff > pleft[curIndex]) ? 1 : 0;
             }
@@ -756,11 +775,11 @@ const float* crossFrom(const float* pleft, const float* pright, float coff, size
     return pout;
 }
 
-const float* crossTo(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout) {
+const float* crossTo(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout) {
     int curIndex = 0;
-    for(int i = 0; i < historySize; i++) {
+    for(size_t i = 0; i < historySize; ++i) {
         if(pflag[i] == CacheFlag::NEED_CAL && i > 0) {
-            for(int j = 0; j < stockSize; ++j){
+            for(size_t j = 0; j < stockSize; ++j){
                 curIndex = i * stockSize + j;
                 pout[curIndex] = (pleft[curIndex - stockSize] < coff && pleft[curIndex] > coff) ? 1 : 0;
             }

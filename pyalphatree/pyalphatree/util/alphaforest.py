@@ -10,37 +10,41 @@ import json
 
 class AlphaForest(object):
 
-    def __init__(self, cache_size = 4):
+    def __init__(self, cache_size = 4, max_stock_num = 4096, max_day_num = 4096):
         alphatree.initializeAlphaforest(cache_size)
 
-        self.max_sample_size = 0
-        self.max_stoct_size = 0
-        self.max_alpha_tree_size = 0
-        self.check_alpha_size(2500, 3600)
-        self.check_tree_size(1024)
+        #self.max_sample_size = 0
+        #self.max_stoct_size = 0
+        self.code_cache = (c_char * (max_stock_num * 64))()
+        self.alpha_cache = (c_float * (max_stock_num * max_day_num))()
+        #self.max_alpha_tree_size = 0
+        #self.check_alpha_size(2500, 3600)
+        #self.check_tree_size(1024)
 
         self.max_alpha_tree_str_len = 4096;
         self.sub_alphatree_str_cache = (c_char * (self.max_alpha_tree_str_len * 1024))()
+        self.alphatree_id_cache = (c_int * 1024)()
+
         self.encode_cache = (c_char * self.max_alpha_tree_str_len)()
         self.process_cache = (c_char * (4096 * 64))()
 
-    def check_alpha_size(self, sample_size, stock_size):
-        is_resize_alpha = False
-        if sample_size > self.max_sample_size:
-            self.max_sample_size = sample_size
-            self.sample_flag_cache = (c_bool * self.max_sample_size)
-            is_resize_alpha = True
-        if stock_size > self.max_stoct_size:
-            self.max_stoct_size = stock_size
-            self.code_cache = (c_char * (self.max_stoct_size * 64))()
-            is_resize_alpha = True
-        if is_resize_alpha:
-            self.alpha_cache = (c_float * (self.max_stoct_size * self.max_sample_size))()
+    # def check_alpha_size(self, sample_size, stock_size):
+    #     is_resize_alpha = False
+    #     if sample_size > self.max_sample_size:
+    #         self.max_sample_size = sample_size
+    #         self.sample_flag_cache = (c_bool * self.max_sample_size)
+    #         is_resize_alpha = True
+    #     if stock_size > self.max_stoct_size:
+    #         self.max_stoct_size = stock_size
+    #         self.code_cache = (c_char * (self.max_stoct_size * 64))()
+    #         is_resize_alpha = True
+    #     if is_resize_alpha:
+    #         self.alpha_cache = (c_float * (self.max_stoct_size * self.max_sample_size))()
 
-    def check_tree_size(self, alpha_tree_size):
-        if alpha_tree_size > self.max_alpha_tree_size:
-            self.max_alpha_tree_size = alpha_tree_size
-            self.alphatree_id_cache = (c_int * self.max_alpha_tree_size)()
+    # def check_tree_size(self, alpha_tree_size):
+    #     if alpha_tree_size > self.max_alpha_tree_size:
+    #         self.max_alpha_tree_size = alpha_tree_size
+    #         self.alphatree_id_cache = (c_int * self.max_alpha_tree_size)()
 
     def __del__(self):
         alphatree.releaseAlphaforest()
@@ -72,68 +76,105 @@ class AlphaForest(object):
         return alphatree.getMaxHistoryDays(alphatree_id)
 
     #读取数据
-    def load_data(self, cache_path = "data", is_offline = False, sample_beta_len = 20):
-        alphatree.clearAllStock()
-        codeProxy = LocalCodeProxy(cache_path, is_offline)
-        dataProxy = LocalDataProxy(cache_path, is_offline)
-        classifiedProxy = LocalClassifiedProxy(cache_path, is_offline)
-        codes = codeProxy.get_codes()
+    def load_db(self, path):
+        alphatree.loadDataBase(c_char_p(path))
 
-        data_size = len(dataProxy.trading_calender_int)
-        open = (c_float * data_size)()
-        high = (c_float * data_size)()
-        low = (c_float * data_size)()
-        close = (c_float * data_size)()
-        volume = (c_float * data_size)()
-        vwap = (c_float * data_size)()
-        returns = (c_float * data_size)()
+    # def load_data(self, codeProxy, dataProxy, classifiedProxy):
+    #     data_size = len(dataProxy.trading_calender_int)
+    #     stock_dict, market_dict, industry_dict, concept_dict = load_all_stock_flat(codeProxy, dataProxy,
+    #                                                                                classifiedProxy)
+    #     stock_size = len(stock_dict) + len(market_dict) + len(industry_dict) + len(concept_dict)
+    #
+    #     open = (c_float * (data_size * stock_size))()
+    #     high = (c_float * (data_size * stock_size))()
+    #     low = (c_float * (data_size * stock_size))()
+    #     close = (c_float * (data_size * stock_size))()
+    #     volume = (c_float * (data_size * stock_size))()
+    #     vwap = (c_float * (data_size * stock_size))()
+    #     returns = (c_float * (data_size * stock_size))()
+    #
+    #     if stock_size > self.max_stoct_size:
+    #         self.max_stoct_size = stock_size
+    #         self.code_cache = (c_char * (self.max_stoct_size * 64))()
+    #         self.alpha_cache = (c_float * (self.max_stoct_size * data_size))()
+    #     market_index_cache = (c_int * self.max_stoct_size)()
+    #     industry_index_cache = (c_int * self.max_stoct_size)()
+    #     concept_index_cache = (c_int * self.max_stoct_size)()
+    #
+    #     market_index = {}
+    #     industry_index = {}
+    #     concept_index = {}
+    #     cur_index = 0
+    #     cur_code_index = 0
+    #     cur_data_index = 0
+    #     for key, value in market_dict.items():
+    #         self._write_data(open, high, low, close, volume, vwap, returns, value.bar, cur_data_index)
+    #         cur_data_index += data_size
+    #
+    #         market_index[key] = cur_index
+    #         cur_code_index = self._write_code(key, self.code_cache, cur_code_index)
+    #         market_index_cache[cur_index] = -2
+    #         industry_index_cache[cur_index] = -1
+    #         concept_index_cache[cur_index] = -1
+    #         cur_index += 1
+    #     for key, value in industry_dict.items():
+    #         self._write_data(open, high, low, close, volume, vwap, returns, value.bar, cur_data_index)
+    #         cur_data_index += data_size
+    #
+    #         industry_index[key] = cur_index
+    #         cur_code_index = self._write_code(key, self.code_cache, cur_code_index)
+    #         market_index_cache[cur_index] = -1
+    #         industry_index_cache[cur_index] = -2
+    #         concept_index_cache[cur_index] = -1
+    #         cur_index += 1
+    #     for key, value in concept_dict.items():
+    #         self._write_data(open, high, low, close, volume, vwap, returns, value.bar, cur_data_index)
+    #         cur_data_index += data_size
+    #
+    #         concept_index[key] = cur_index
+    #         cur_code_index = self._write_code(key, self.code_cache, cur_code_index)
+    #         market_index_cache[cur_index] = -1
+    #         industry_index_cache[cur_index] = -1
+    #         concept_index_cache[cur_index] = -2
+    #         cur_index += 1
+    #     for key, value in stock_dict.items():
+    #         self._write_data(open, high, low, close, volume, vwap, returns, value.bar, cur_data_index)
+    #         cur_data_index += data_size
+    #
+    #         cur_code_index = self._write_code(key, self.code_cache, cur_code_index)
+    #         market_index_cache[cur_index] = market_index[value.market]
+    #         industry_index_cache[cur_index] = industry_index[value.industry]
+    #         concept_index_cache[cur_index] = concept_index[value.concept]
+    #         cur_index += 1
+    #
+    #     alphatree.loadStockMeta(self.code_cache, market_index_cache, industry_index_cache, concept_index_cache, stock_size, data_size)
+    #     alphatree.loadDataElement("open", open, 0)
+    #     alphatree.loadDataElement("high", high, 0)
+    #     alphatree.loadDataElement("low", low, 0)
+    #     alphatree.loadDataElement("close", close, 0)
+    #     alphatree.loadDataElement("volume", volume, 0)
+    #     alphatree.loadDataElement("vwap", vwap, 0)
+    #     alphatree.loadDataElement("returns", returns, 0)
 
-        data = dataProxy.get_all_Data('0000001')
-        self._add_stock('sh',None,None,None,data,open,high,low,close, volume,vwap,returns,0)
-        data = dataProxy.get_all_Data('1399001')
-        self._add_stock('sz', None, None, None, data, open, high, low, close, volume, vwap, returns, 0)
 
-        stock_size = 0
-        for code in codes:
-            data = dataProxy.get_all_Data(code[0])
-            if data is not None:
-                totals = int(code[2]/code[1])
-                industry = classifiedProxy.industry_info(code[0])
-                concept = classifiedProxy.concept_info(code[0])
-                if industry is None or len(industry) == 0:
-                    industry = '其他'
-                else:
-                    industry = industry.encode('utf8')
-                if concept is None or len(concept) == 0:
-                    concept = '其他'
-                else:
-                    concept = concept.encode('utf8')
-                if code[0][0] == '0':
-                    market = 'sh'
-                else:
-                    market = 'sz'
+    def get_stock_codes(self):
+        stock_size = alphatree.getStockCodes(self.code_cache)
+        return np.array(self._read_str_list(self.code_cache, stock_size))
 
-                if self._add_stock(code[0], market, industry, concept, data, open, high, low, close, volume, vwap, returns, totals):
-                    stock_size += 1
-
-        alphatree.calClassifiedData()
-        self.check_alpha_size(self.max_sample_size, stock_size)
-
-    def get_codes(self, daybefore, history_num, sample_size):
-        stock_size = alphatree.getCodes(daybefore, history_num, sample_size, self.code_cache)
-        return np.array(self._read_codes(stock_size))
-
-    def flag_alpha(self, alphatree_id, cache_id, daybefore, sample_size, codes, sample_flag = None, is_cal_all_node = False):
+    def flag_alpha(self, alphatree_id, cache_id, daybefore, sample_size, codes, sample_flag = None, is_flag_stock = False, is_cal_all_node = False):
         stock_size = len(codes)
-        self.check_alpha_size(sample_size, stock_size)
+        #self.check_alpha_size(sample_size, stock_size)
         self._write_codes(codes)
         if sample_flag:
             for id, f in enumerate(sample_flag): self.sample_flag_cache[id] = f
-        alphatree.flagAlpha(alphatree_id, cache_id, daybefore, sample_size, self.code_cache, stock_size, self.sample_flag_cache if sample_flag else None, c_bool(is_cal_all_node))
+        alphatree.flagAlpha(alphatree_id, cache_id, daybefore, sample_size, self.code_cache, stock_size, self.sample_flag_cache if sample_flag else None, c_bool(is_flag_stock), c_bool(is_cal_all_node))
 
 
     def cal_alpha(self, alphatree_id, cache_id):
         alphatree.calAlpha(alphatree_id, cache_id)
+
+    def cache_alpha(self, alphatree_id, cache_id):
+        alphatree.cacheAlpha(alphatree_id, cache_id)
 
     def get_root_alpha(self, alphatree_id, root_name, cache_id, sample_size):
         data_size = alphatree.getRootAlpha(alphatree_id, c_char_p(root_name), cache_id, self.alpha_cache)
@@ -173,13 +214,14 @@ class AlphaForest(object):
         return alpha_list
 
     @classmethod
-    def _read_str(cls, str_cache):
-        code = list()
-        cur_index = 0
-        while str_cache[cur_index] != '\0':
-            code.append(str_cache[cur_index])
+    def _write_code(cls, code, code_cache, cur_index):
+        code_list = list(code)
+        for c in code_list:
+            code_cache[cur_index] = c
             cur_index += 1
-        return "".join(code)
+        code_cache[cur_index] = '\0'
+        cur_index += 1;
+        return cur_index
 
     @classmethod
     def _read_str_list(clf, str_cache, str_num):
@@ -193,6 +235,36 @@ class AlphaForest(object):
             cur_index += 1
             str_list.append("".join(code))
         return str_list;
+
+
+    @classmethod
+    def _write_data(cls, open, high, low, close, volume, vwap, returns, bar, start_index):
+        for id, v in enumerate(bar["open"]):
+            open[start_index + id] = v
+        for id, v in enumerate(bar["high"]):
+            high[start_index + id] = v
+        for id, v in enumerate(bar["low"]):
+            low[start_index + id] = v
+        for id, v in enumerate(bar["close"]):
+            close[start_index + id] = v
+        for id, v in enumerate(bar["volume"]):
+            volume[start_index + id] = v
+        for id, v in enumerate(bar["vwap"]):
+            vwap[start_index + id] = v
+        for id, v in enumerate(bar["rise"]):
+            returns[start_index + id] = v
+
+
+    @classmethod
+    def _read_str(cls, str_cache):
+        code = list()
+        cur_index = 0
+        while str_cache[cur_index] != '\0':
+            code.append(str_cache[cur_index])
+            cur_index += 1
+        return "".join(code)
+
+
 
     @classmethod
     def _read_str(cls, str_cache):

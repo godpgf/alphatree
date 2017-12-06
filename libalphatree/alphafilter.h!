@@ -6,10 +6,10 @@
 #define ALPHATREE_ALPHAFILTER_H
 
 #include "alphaforest.h"
-#include "filter/alphawork.h"
-#include "filter/collectwork.h"
-#include "filter/vgwork.h"
-#include "filter/flagwork.h"
+#include "alphawork.h!"
+#include "collectwork.h!"
+#include "vgwork.h!"
+#include "flagwork.h!"
 
 class AlphaFilter{
     public:

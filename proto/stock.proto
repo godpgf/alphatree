@@ -1,0 +1,31 @@
+syntax = "proto3";
+package stp;
+
+message StockMeta{
+    enum StockType{
+        MARKET = 0;
+        INDUSTRY = 1;
+        CONCEPT = 2;
+        STOCK = 3;
+    }
+    string code = 1;
+    StockType stockType = 2;
+    int32 marketIndex = 3;
+    int32 industryIndex = 4;
+    int32 conceptIndex = 5;
+}
+
+message StockElement{
+    int32 needDay = 1;
+    repeated float data = 2;
+    repeated bool flag = 3;
+    string line = 4;
+}
+
+message StockDB{
+    int32 days = 1;
+    int32 stockSize = 2;
+    repeated StockMeta metas = 3;
+    map<string, StockElement> elements = 4;
+    map<string, int32> stockIndex = 5;
+}

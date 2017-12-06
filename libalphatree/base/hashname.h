@@ -12,7 +12,7 @@ template<int HASH_TABLE_LENGTH = 2048, int HASH_NAME_BLOCK_SIZE = 4096>
 class HashName{
     public:
         HashName(){
-            for(int i = 0; i < HASH_TABLE_LENGTH; ++i)
+            for(auto i = 0; i < HASH_TABLE_LENGTH; ++i)
                 hashNameNodes_[i] = nullptr;
         }
 
@@ -28,13 +28,13 @@ class HashName{
 
         void clear(){
             //cout<<"clear\n";
-            for(int i = 0; i < HASH_TABLE_LENGTH; ++i)
+            for(auto i = 0; i < HASH_TABLE_LENGTH; ++i)
                 if(hashNameNodes_[i] != nullptr){
                     destroyHashNameNode(hashNameNodes_[i]);
                     hashNameNodes_[i] = nullptr;
                 }
 
-            for(int i = 0; i < nameTable_.getSize(); ++i)
+            for(auto i = 0; i < nameTable_.getSize(); ++i)
             {
                 delete []nameTable_[i];
             }
@@ -96,7 +96,7 @@ class HashName{
             int len = strlen(name);
             int hash = 0;
             int seed = 131;
-            for(int i = 0; i < len; ++i){
+            for(auto i = 0; i < len; ++i){
                 hash = hash * seed + name[i];
             }
             return (hash & 0x7FFFFFFF);

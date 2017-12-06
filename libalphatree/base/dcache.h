@@ -4,8 +4,6 @@
 
 #ifndef ALPHATREE_DCACHE_H
 #define ALPHATREE_DCACHE_H
-
-#include <iostream>
 #include "darray.h"
 
 #define DCACHE_BLOCK_SIZE 512

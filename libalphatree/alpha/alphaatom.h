@@ -33,13 +33,11 @@ class IAlphaElement{
         //返回最小需要考虑的历史天数
         virtual int getMinHistoryDays(){ return 0;}
         //传入左右孩子的参数,系数,输出内存块   得到运算结果
-        virtual const float* cast(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout) = 0;
+        virtual const float* cast(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout) = 0;
         //得到系数类型
         virtual CoffUnit getCoffUnit() { return CoffUnit::COFF_NONE;}
         //得到计算天数
         virtual DateRange getDateRange(){ return DateRange::CUR_DAY; }
-        //是否将缺失数据补0去计算
-        virtual bool isCalculateLossDataAsZero(){ return true;}
 };
 
 //原子alpha
@@ -47,13 +45,12 @@ class AlphaAtom: public IAlphaElement{
     public:
         AlphaAtom(
                 const char* name,
-                const float* (*opt) (const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout),
+                const float* (*opt) (const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout),
                 int childNum = 0,
                 CoffUnit coffUnit = CoffUnit::COFF_NONE,
                 DateRange dateRange = DateRange::CUR_DAY,
-                int minHistoryDays = 0,
-                bool isCalLossDataAsZero = true
-        ):name_(name), opt_(opt), childNum_(childNum), coffUnit_(coffUnit), dateRange_(dateRange), isCalLossDataAsZero_(isCalLossDataAsZero), minHistoryDays_(minHistoryDays){
+                int minHistoryDays = 0
+        ):name_(name), opt_(opt), childNum_(childNum), coffUnit_(coffUnit), dateRange_(dateRange), minHistoryDays_(minHistoryDays){
         }
 
         virtual const char* getName(){ return name_;}
@@ -62,15 +59,13 @@ class AlphaAtom: public IAlphaElement{
 
         virtual int getMinHistoryDays(){ return minHistoryDays_;}
 
-        virtual const float* cast(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
-            return opt_(pleft, pright, coff, historySize, stockSize, pflag, pout);
+        virtual const float* cast(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+            return opt_(pleft, pright, coff, historySize, stockSize, pflag, pStockFlag, pout);
         }
 
         virtual CoffUnit getCoffUnit() { return coffUnit_;}
 
         virtual DateRange getDateRange(){ return dateRange_; }
-
-        virtual bool isCalculateLossDataAsZero(){ return isCalLossDataAsZero_;}
 
         static AlphaAtom alphaAtomList[];
 
@@ -78,20 +73,18 @@ class AlphaAtom: public IAlphaElement{
 
         const char*name_;
 
-        const float* (*opt_) (const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout);
+        const float* (*opt_) (const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout);
         int childNum_;
         //参数单位
         CoffUnit coffUnit_;
         //计算天数
         DateRange dateRange_;
-        //是否将缺失数据补0去计算
-        bool isCalLossDataAsZero_;
         //最小考虑的历史天数
         int minHistoryDays_;
 };
 
 AlphaAtom AlphaAtom::alphaAtomList[] = {
-        //AlphaAtom("none", none, 1),
+        AlphaAtom("valid", valid, 1),
         AlphaAtom("mean", mean, 1, CoffUnit::COFF_DAY, DateRange::ALL_DAY, 1),
         AlphaAtom("lerp", lerp, 2, CoffUnit::COFF_CONST),
         AlphaAtom("mean_rise", meanRise, 1, CoffUnit::COFF_DAY, DateRange::CUR_AND_BEFORE_DAY, 1),
@@ -103,14 +96,14 @@ AlphaAtom AlphaAtom::alphaAtomList[] = {
 
         //AlphaAtom("rank", ranking, 1),
         AlphaAtom("rank_scale", rankScale, 1),
-        AlphaAtom("rank_sort", rankSort, 1, CoffUnit::COFF_NONE, DateRange::CUR_DAY, 1, false),
+        AlphaAtom("rank_sort", rankSort, 1, CoffUnit::COFF_NONE, DateRange::CUR_DAY, 1),
 
         AlphaAtom("ts_rank", tsRank, 1, CoffUnit::COFF_DAY, DateRange::ALL_DAY, 1),
         AlphaAtom("delay", delay, 1, CoffUnit::COFF_DAY, DateRange::BEFORE_DAY, 1),
         //AlphaAtom("future", future, 1, CoffUnit::COFF_FUTURE_DAY, DateRange::FUTURE_DAY),
         AlphaAtom("delta", delta, 1, CoffUnit::COFF_DAY, DateRange::CUR_AND_BEFORE_DAY, 1),
         AlphaAtom("correlation", correlation, 2, CoffUnit::COFF_DAY, DateRange::ALL_DAY, 1),
-        AlphaAtom("scale", scale, 1, CoffUnit::COFF_NONE, DateRange::CUR_DAY, 1, false),
+        AlphaAtom("scale", scale, 1, CoffUnit::COFF_NONE, DateRange::CUR_DAY, 1),
         AlphaAtom("decay_linear", decayLinear, 1, CoffUnit::COFF_DAY, DateRange::ALL_DAY, 1),
         AlphaAtom("ts_min", tsMin, 1, CoffUnit::COFF_DAY, DateRange::ALL_DAY, 1),
         AlphaAtom("ts_max", tsMax, 1, CoffUnit::COFF_DAY, DateRange::ALL_DAY, 1),
@@ -163,16 +156,16 @@ AlphaAtom AlphaAtom::alphaAtomList[] = {
 };
 
 //参数alpha
-class AlphaPar:public IAlphaElement{
+/*class AlphaPar:public IAlphaElement{
     public:
         AlphaPar(const char* name) : name_(name){
-            this->leafDataType = str2LeafDataType(name);
+            //this->leafDataType = str2LeafDataType(name);
         }
-        LeafDataType leafDataType;
+        //LeafDataType leafDataType;
 
         virtual const char* getName(){ return name_;}
 
-        virtual const float* cast(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, float* pout){
+        virtual const float* cast(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
             return pleft;
         }
 
@@ -191,6 +184,6 @@ AlphaPar AlphaPar::alphaParList[] = {
         AlphaPar("vwap"),
         AlphaPar("returns"),
         AlphaPar("tr"),
-};
+};*/
 
 #endif //ALPHATREE_ALPHATREE_H

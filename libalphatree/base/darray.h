@@ -6,7 +6,6 @@
 #define ALPHATREE_DARRAY_H
 #include <stdlib.h>
 #include <string.h>
-#include <iostream>
 using namespace std;
 
 #define DARRAY_HASH_TABLE_LEN 512
@@ -22,7 +21,7 @@ class DArray{
         };
     public:
         DArray(){
-            for(int i = 0; i < DARRAY_HASH_TABLE_LEN; ++i){
+            for(auto i = 0; i < DARRAY_HASH_TABLE_LEN; ++i){
                 blockHashTable[i] = nullptr;
             }
         }
@@ -32,7 +31,7 @@ class DArray{
         }
 
         void clear(){
-            for(int i = 0; i < DARRAY_HASH_TABLE_LEN; ++i){
+            for(auto i = 0; i < DARRAY_HASH_TABLE_LEN; ++i){
                 if(blockHashTable[i] != nullptr){
                     destroyBlock(blockHashTable[i]);
                     blockHashTable[i] = nullptr;
@@ -115,7 +114,7 @@ class DArray{
         }
 
     protected:
-        int size_{0};
+        size_t size_{0};
 
         inline void destroyBlock(DArrayBlock* block){
             if(block->next != nullptr)

@@ -2,12 +2,10 @@
 # author=godpgf
 
 from stdb import *
-from pyalphatree import *
+from pyalphatree import AlphaForest, read_alpha_tree_list, read_alpha_tree_dict, write_alpha_tree_list, write_alpha_tree_dict, get_sub_alphatree
 import numpy as np
 import math
 import time
-import os
-import json
 
 
 def float_equal(a, b):
@@ -38,7 +36,7 @@ def ts_rank(x, d):
     return np.array(y) / float(d)
 
 
-def pearson_def(x, y, is_print = False):
+def pearson_def(x, y):
     assert len(x) == len(y)
     n = len(x)
     assert n > 0
@@ -54,498 +52,63 @@ def pearson_def(x, y, is_print = False):
         xdiff2 += xdiff * xdiff
         ydiff2 += ydiff * ydiff
 
-    if is_print:
-        print "%.10f %.10f %.10f %.10f %.10f"%(avg_x, avg_y, xdiff2, ydiff2, diffprod)
+    return diffprod / math.sqrt(xdiff2 * ydiff2)
 
-    return 1 if xdiff2 < 0.000000001 or ydiff2 < 0.000000001 else diffprod / math.sqrt(xdiff2)/math.sqrt(ydiff2)
-
-def cal_alpha(af, line, sample_size, sub_tree = None, daybefore = 0):
-    alphatree_id = af.create_alphatree()
-    cache_id = af.use_cache()
-    if sub_tree:
-        for key, value in sub_tree.items():
-            af.decode_alphatree(alphatree_id, key, value)
-    af.decode_alphatree(alphatree_id, "alpha", line)
-    history_days = af.get_max_history_days(alphatree_id)
-    codes = af.get_stock_codes()
-    af.flag_alpha(alphatree_id, cache_id, daybefore, sample_size, codes, is_flag_stock=True)
-    af.cal_alpha(alphatree_id, cache_id)
-    alpha = af.get_root_alpha(alphatree_id, "alpha", cache_id, sample_size)
-    af.release_cache(cache_id)
-    af.release_alphatree(alphatree_id)
-    return alpha, codes
-
-def cache_alpha(af, name, line):
-    alphatree_id = af.create_alphatree()
-    cache_id = af.use_cache()
-    af.decode_alphatree(alphatree_id, name, line)
-    af.cache_alpha(alphatree_id, cache_id)
-    af.release_cache(cache_id)
-    af.release_alphatree(alphatree_id)
-
-
-def test_alphaforest(af, alphatree_list, subalphatree_dict, sample_size = 1):
+def test_alphaforest(af, alphatree_list, subalphatree_dict):
     alphatree_id_list = []
     for id, at in enumerate(alphatree_list):
-        print at
-        sub_tree = get_sub_alphatree(at, subalphatree_dict)
 
-        alphatree_id = af.create_alphatree()
-        print "aid %d" % alphatree_id
-        cache_id = af.use_cache()
-        if sub_tree:
-            for key, value in sub_tree.items():
-                af.decode_alphatree(alphatree_id, key, value)
-        af.decode_alphatree(alphatree_id, "alpha", at)
-        encodestr = af.encode_alphatree(alphatree_id, "alpha")
-        history_days = af.get_max_history_days(alphatree_id)
-        print "days %d" % history_days
-        #codes = af.get_codes(0, history_days, sample_size)
-        codes = af.get_stock_codes()
-        af.flag_alpha(alphatree_id, cache_id, 0, sample_size, codes)
-        print "finish flag"
-        af.cal_alpha(alphatree_id, cache_id)
-        print "finish cal req"
-        alpha = af.get_root_alpha(alphatree_id, "alpha", cache_id, sample_size)
-        print "finish cal"
+        sub_alpha_dict = get_sub_alphatree(at, subalphatree_dict)
 
-        af.release_cache(cache_id)
-        #af.release_alphatree(alphatree_id)
-
+        alphatree_id = af.create_alphatree(at, sub_alpha_dict)
+        #af.load_alphatree(alphatree_id, sample_size=20)
         alphatree_id_list.append(alphatree_id)
+        encodestr = af.encode_alphatree(alphatree_id)
 
-
+        print ">>>>>>>>>>>>>>>>>>>>>>>>>>"
+        print at
         if at != encodestr:
             print encodestr
         assert at == encodestr
-        avg = np.array(alpha[-1]).reshape(-1).mean()
-        assert math.isnan(avg) is False
-        print ">>>>>>>>>>>>>>>>>>>>>>>>>> mean %.4f" % avg
 
+        root = af.load_alphatree(alphatree_id)
+        encode_line = root.encode()
+        print encode_line
+        tmp_alphatree_id = af.create_alphatree(encode_line, sub_alpha_dict)
+        encodestr = af.encode_alphatree(tmp_alphatree_id)
+        if at != encodestr:
+            print encodestr
+        assert at == encodestr
 
+        a1,c1 = af.cal_alphatree(alphatree_id)
+        a2,c2 = af.cal_alphatree(tmp_alphatree_id)
+        for ind in xrange(len(a1[0])):
+            if a1[0][ind] != a2[0][ind]:
+                print c1[ind]
+                print c2[ind]
+            float_equal( a1[0][ind], a2[0][ind])
+
+        af.release_alphatree(tmp_alphatree_id)
+        print "score %.4f"%af.eval_alphatree(alphatree_id)['bestSharp']
+        res, stocks = af.predict_alphatree(alphatree_id, sample_size=16)
+        print stocks
+        print "avg %.4f   sharp %.4f"%(res["avg"], res["bestSharp"])
     return alphatree_id_list
 
-def test_base_calculate(af, dataProxy):
-    print "start test base calculate .................."
-
-    print "cache alpha"
-    cache_alpha(af, "atr15", "mean(max((high - low), max((high - delay(close, 1)), (delay(close, 1) - low))), 14)")
-    alpha, codes = cal_alpha(af, "atr15", 1)
-    for index, code in enumerate(codes):
-        close = dataProxy.get_all_Data(code)[-16][4]
-        high = dataProxy.get_all_Data(code)[-16][2]
-        low = dataProxy.get_all_Data(code)[-16][3]
-        sum = 0
-        for i in xrange(15):
-            tr = max((dataProxy.get_all_Data(code)[-15 + i][2] - dataProxy.get_all_Data(code)[-15 + i][3]), (dataProxy.get_all_Data(code)[-15 + i][2] - close),(close - dataProxy.get_all_Data(code)[-15 + i][3]))
-            sum += tr
-            close = dataProxy.get_all_Data(code)[-15+i][4]
-            high = dataProxy.get_all_Data(code)[-15+i][2]
-            low = dataProxy.get_all_Data(code)[-15+i][3]
-        float_equal(sum / 15, alpha[-1][index])
-
-
-
-    print "valid(open)"
-    alpha, codes = cal_alpha(af, "valid(open)", 2)
-    for index,code in enumerate(codes):
-        if dataProxy.get_all_Data(code)[-1][5] == 0:
-            assert alpha[-1][index] == 0
-        else:
-            assert alpha[-1][index] != 0
-        if dataProxy.get_all_Data(code)[-2][5] == 0:
-            assert alpha[-2][index] == 0
-        else:
-            assert alpha[-2][index] != 0
-        #float_equal(dataProxy.get_all_Data(code)[-1][5],alpha[-1][index])
-        #float_equal(dataProxy.get_all_Data(code)[-2][5],alpha[-2][index])
-
-    print "returns"
-    alpha, codes = cal_alpha(af, "returns", 2)
-    for index,code in enumerate(codes):
-        float_equal(dataProxy.get_all_Data(code)[-1][7],alpha[-1][index])
-        float_equal(dataProxy.get_all_Data(code)[-2][7],alpha[-2][index])
-        
-    print "sum(high, 2)"
-    alpha, codes = cal_alpha(af, "sum(high, 2)", 2)
-    #今天、昨天、前天数据一共3天
-    for index,code in enumerate(codes):
-        float_equal(dataProxy.get_all_Data(code)[-1][2]+dataProxy.get_all_Data(code)[-2][2]+dataProxy.get_all_Data(code)[-3][2],alpha[-1][index])
-        float_equal(dataProxy.get_all_Data(code)[-2][2]+dataProxy.get_all_Data(code)[-3][2]+dataProxy.get_all_Data(code)[-4][2],alpha[-2][index])
-
-    print "product(low, 1)"
-    alpha, codes = cal_alpha(af, "product(low, 1)", 2)
-    for index,code in enumerate(codes):
-        float_equal(dataProxy.get_all_Data(code)[-1][3]*dataProxy.get_all_Data(code)[-2][3]/100,alpha[-1][index]/100)
-        float_equal(dataProxy.get_all_Data(code)[-2][3]*dataProxy.get_all_Data(code)[-3][3]/100,alpha[-2][index]/100)
-
-    print "mean(close, 1)"
-    alpha, codes = cal_alpha(af, "mean(close, 1)", 2)
-    for index,code in enumerate(codes):
-        float_equal((dataProxy.get_all_Data(code)[-1][4]+dataProxy.get_all_Data(code)[-2][4])/2,alpha[-1][index])
-        float_equal((dataProxy.get_all_Data(code)[-2][4]+dataProxy.get_all_Data(code)[-3][4])/2,alpha[-2][index])
-
-    print "lerp(high, low, 0.4)"
-    alpha, codes = cal_alpha(af, "lerp(high, low, 0.4)", 2)
-    for index,code in enumerate(codes):
-        float_equal((dataProxy.get_all_Data(code)[-1][2]*0.4+dataProxy.get_all_Data(code)[-1][3]*0.6),alpha[-1][index])
-        float_equal((dataProxy.get_all_Data(code)[-2][2]*0.4+dataProxy.get_all_Data(code)[-2][3]*0.6),alpha[-2][index])
-
-    print "delta(open, 5)"
-    alpha, codes = cal_alpha(af, "delta(open, 5)", 2)
-    for index,code in enumerate(codes):
-        #往后推1天就是-2，所以是-6
-        float_equal(dataProxy.get_all_Data(code)[-1][1] - dataProxy.get_all_Data(code)[-6][1],alpha[-1][index])
-        float_equal(dataProxy.get_all_Data(code)[-2][1] - dataProxy.get_all_Data(code)[-7][1],alpha[-2][index])
-
-    print "mean_rise(open, 5)"
-    alpha, codes = cal_alpha(af, "mean_rise(open, 5)", 2)
-    for index,code in enumerate(codes):
-        #往后推1天就是-2，所以是-6
-        float_equal((dataProxy.get_all_Data(code)[-1][1] - dataProxy.get_all_Data(code)[-6][1])/5,alpha[-1][index])
-        float_equal((dataProxy.get_all_Data(code)[-2][1] - dataProxy.get_all_Data(code)[-7][1])/5,alpha[-2][index])
-
-    print "(low / high)"
-    alpha, codes = cal_alpha(af, "(low / high)", 2)
-    for index,code in enumerate(codes):
-        #往后推1天就是-2，所以是-6
-        float_equal(dataProxy.get_all_Data(code)[-1][3]/dataProxy.get_all_Data(code)[-1][2],alpha[-1][index])
-        float_equal(dataProxy.get_all_Data(code)[-2][3]/dataProxy.get_all_Data(code)[-2][2],alpha[-2][index])
-
-    print "div_from:(100 / low)"
-    alpha, codes = cal_alpha(af, "(100 / low)", 2)
-    for index,code in enumerate(codes):
-        #往后推1天就是-2，所以是-6
-        float_equal(100 / dataProxy.get_all_Data(code)[-1][3],alpha[-1][index])
-        float_equal(100 / dataProxy.get_all_Data(code)[-2][3],alpha[-2][index])
-
-    print "div_to:(low / 2)"
-    alpha, codes = cal_alpha(af, "(low / 2)", 2)
-    for index,code in enumerate(codes):
-        #往后推1天就是-2，所以是-6
-        float_equal(dataProxy.get_all_Data(code)[-1][3],alpha[-1][index] * 2)
-        float_equal(dataProxy.get_all_Data(code)[-2][3],alpha[-2][index] * 2)
-
-    print "mean_ratio(close, 1)"
-    alpha, codes = cal_alpha(af, "mean_ratio(close, 1)", 2)
-    for index,code in enumerate(codes):
-        float_equal(dataProxy.get_all_Data(code)[-1][4] / (dataProxy.get_all_Data(code)[-1][4]+dataProxy.get_all_Data(code)[-2][4])*2,alpha[-1][index])
-        float_equal(dataProxy.get_all_Data(code)[-2][4] / (dataProxy.get_all_Data(code)[-2][4]+dataProxy.get_all_Data(code)[-3][4])*2,alpha[-2][index])
-
-    print "(high + low)"
-    alpha, codes = cal_alpha(af, "(high + low)", 2)
-    for index,code in enumerate(codes):
-        float_equal((dataProxy.get_all_Data(code)[-1][2]+dataProxy.get_all_Data(code)[-1][3]),alpha[-1][index])
-        float_equal((dataProxy.get_all_Data(code)[-2][2]+dataProxy.get_all_Data(code)[-2][3]),alpha[-2][index])
-
-    print "add_from:(1 + low)"
-    alpha, codes = cal_alpha(af, "(1 + low)", 2)
-    for index,code in enumerate(codes):
-        float_equal((1+dataProxy.get_all_Data(code)[-1][3]),alpha[-1][index])
-        float_equal((1+dataProxy.get_all_Data(code)[-2][3]),alpha[-2][index])
-
-    print "add_to:(high + 1)"
-    alpha, codes = cal_alpha(af, "(high + 1)", 2)
-    for index,code in enumerate(codes):
-        float_equal((dataProxy.get_all_Data(code)[-1][2]+1),alpha[-1][index])
-        float_equal((dataProxy.get_all_Data(code)[-2][2]+1),alpha[-2][index])
-
-    print "reduce:(high - low)"
-    alpha, codes = cal_alpha(af, "(high - low)", 2)
-    for index,code in enumerate(codes):
-        float_equal((dataProxy.get_all_Data(code)[-1][2]-dataProxy.get_all_Data(code)[-1][3]),alpha[-1][index])
-        float_equal((dataProxy.get_all_Data(code)[-2][2]-dataProxy.get_all_Data(code)[-2][3]),alpha[-2][index])
-
-    print "reduce_from:(1000 - low)"
-    alpha, codes = cal_alpha(af, "(1000 - low)", 2)
-    for index,code in enumerate(codes):
-        float_equal((1000-dataProxy.get_all_Data(code)[-1][3]),alpha[-1][index])
-        float_equal((1000-dataProxy.get_all_Data(code)[-2][3]),alpha[-2][index])
-
-    print "reduce_to:(high - 1)"
-    alpha, codes = cal_alpha(af, "(high - 1)", 2)
-    for index,code in enumerate(codes):
-        float_equal((dataProxy.get_all_Data(code)[-1][2]-1),alpha[-1][index])
-        float_equal((dataProxy.get_all_Data(code)[-2][2]-1),alpha[-2][index])
-
-    print "(high * low)"
-    alpha, codes = cal_alpha(af, "(high * low)", 2)
-    for index,code in enumerate(codes):
-        float_equal((dataProxy.get_all_Data(code)[-1][2]*dataProxy.get_all_Data(code)[-1][3]),alpha[-1][index])
-        float_equal((dataProxy.get_all_Data(code)[-2][2]*dataProxy.get_all_Data(code)[-2][3]),alpha[-2][index])
-
-    print "mul_from:(2 * low)"
-    alpha, codes = cal_alpha(af, "(2 * low)", 2)
-    for index,code in enumerate(codes):
-        float_equal((2*dataProxy.get_all_Data(code)[-1][3]),alpha[-1][index])
-        float_equal((2*dataProxy.get_all_Data(code)[-2][3]),alpha[-2][index])
-
-    print "mul_to:(high * 3)"
-    alpha, codes = cal_alpha(af, "(high * 3)", 2)
-    for index,code in enumerate(codes):
-        float_equal((dataProxy.get_all_Data(code)[-1][2]*3),alpha[-1][index])
-        float_equal((dataProxy.get_all_Data(code)[-2][2]*3),alpha[-2][index])
-
-    print "mid(high, low)"
-    alpha, codes = cal_alpha(af, "mid(high, low)", 2)
-    for index,code in enumerate(codes):
-        float_equal((dataProxy.get_all_Data(code)[-1][2]+dataProxy.get_all_Data(code)[-1][3])*0.5,alpha[-1][index])
-        float_equal((dataProxy.get_all_Data(code)[-2][2]+dataProxy.get_all_Data(code)[-2][3])*0.5,alpha[-2][index])
-
-    print "stddev(open, 2)"
-    alpha, codes = cal_alpha(af, "stddev(open, 2)", 2)
-    for index,code in enumerate(codes):
-        #往后推1天就是-2，所以是-6
-        res = np.array([dataProxy.get_all_Data(code)[-3][1],dataProxy.get_all_Data(code)[-2][1],dataProxy.get_all_Data(code)[-1][1]])
-        float_equal(res.std(),alpha[-1][index])
-        res = np.array([dataProxy.get_all_Data(code)[-4][1], dataProxy.get_all_Data(code)[-3][1],
-                        dataProxy.get_all_Data(code)[-2][1]])
-        float_equal(res.std(), alpha[-2][index])
-
-    print "up(close, 2)"
-    alpha, codes = cal_alpha(af, "up(close, 2)", 1)
-    for index,code in enumerate(codes):
-        res = np.array([dataProxy.get_all_Data(code)[-3][4],dataProxy.get_all_Data(code)[-2][4],dataProxy.get_all_Data(code)[-1][4]])
-        float_equal(res.std() + res.mean(),alpha[-1][index])
-
-    print "down(returns, 2)"
-    alpha, codes = cal_alpha(af, "down(returns, 2)", 1)
-    for index,code in enumerate(codes):
-        res = np.array([dataProxy.get_all_Data(code)[-3][7],dataProxy.get_all_Data(code)[-2][7],dataProxy.get_all_Data(code)[-1][7]])
-        float_equal(res.mean() - res.std(),alpha[-1][index])
-
-    print "rank(open)"
-    alpha, codes = cal_alpha(af, "rank(open)", 1)
-
-    v_open = []
-    v_volume = []
-    for code in codes:
-        d = dataProxy.get_all_Data(code)[-1]
-        v_volume.append(d[5])
-        if d[5] > 0:
-            v_open.append(d[1])
-
-    v_open = np.array(v_open)
-    r_open = rank(v_open)
-    c_id = 0
-    for i in xrange(len(alpha[-1])):
-        if alpha[-1][i] >= 0:
-            assert v_volume[i] > 0
-            float_equal(r_open[c_id], alpha[-1][i])
-            c_id += 1
-        else:
-            assert v_volume[i] == 0
-    assert c_id == len(r_open)
-
-    print "power_mid(delay(open, 25), high)"
-    alpha, codes = cal_alpha(af, "power_mid(delay(open, 25), high)", 2)
-    for index,code in enumerate(codes):
-        #往后推1天就是-2，所以是-6
-        #math.sqrt(5)
-        value = dataProxy.get_all_Data(code)[-26][1]*dataProxy.get_all_Data(code)[-1][2]
-        #print value
-        float_equal(math.sqrt(value),alpha[-1][index])
-        value = dataProxy.get_all_Data(code)[-27][1]*dataProxy.get_all_Data(code)[-2][2]
-        #print value
-        float_equal(math.sqrt(value),alpha[-2][index])
-
-    print "signed_power_to:(returns ^ 2)"
-    alpha, codes = cal_alpha(af, "(returns ^ 2)", 1)
-    for index, code in enumerate(codes):
-        float_equal((dataProxy.get_all_Data(code)[-1][7] * dataProxy.get_all_Data(code)[-1][7]),
-                    alpha[-1][index])
-
-    print "ts_rank(returns, 5)"
-    alpha, codes = cal_alpha(af, "ts_rank(returns, 5)", 2)
-    for index, code in enumerate(codes):
-        returns = np.array([dataProxy.get_all_Data(code)[i-6][7] for i in xrange(6)])
-        float_equal(ts_rank(returns, 5)[-1], alpha[-1][index])
-        returns = np.array([dataProxy.get_all_Data(code)[i - 6-1][7] for i in xrange(6)])
-        float_equal(ts_rank(returns, 5)[-1], alpha[-2][index])
-
-    print "delay(open, 5)"
-    alpha, codes = cal_alpha(af, "delay(open, 5)", 2)
-    for index,code in enumerate(codes):
-        #往后推1天就是-2，所以是-6
-        float_equal(dataProxy.get_all_Data(code)[-6][1],alpha[-1][index])
-        float_equal(dataProxy.get_all_Data(code)[-7][1],alpha[-2][index])
-
-    print "correlation(delay(returns, 3), returns, 10)"
-    alpha, codes = cal_alpha(af, "correlation(delay(returns, 3), returns, 10)", 2)
-    for index, code in enumerate(codes):
-        returns = np.array([dataProxy.get_all_Data(code)[i - 11][7] for i in xrange(11)])
-        d_returns = np.array([dataProxy.get_all_Data(code)[i - 14][7] for i in xrange(11)])
-        v1 = pearson_def(d_returns, returns)
-        v2 = alpha[-1][index]
-        float_equal(v1*0.1, v2*0.1)
-
-        returns = np.array([dataProxy.get_all_Data(code)[i - 12][7] for i in xrange(11)])
-        d_returns = np.array([dataProxy.get_all_Data(code)[i - 15][7] for i in xrange(11)])
-        v1 = pearson_def(d_returns, returns)
-        v2 = alpha[-2][index]
-        float_equal(v1*0.1, v2*0.1)
-
-
-    print "scale(delay(open, 1))"
-    alpha, codes = cal_alpha(af, "scale(delay(open, 1))", 1)
-
-    v_open = []
-    v_volume = []
-    for code in codes:
-        d = dataProxy.get_all_Data(code)[-2]
-        v_volume.append(d[5])
-        if d[5] > 0:
-            v_open.append(d[1])
-
-    v_open = np.array(v_open)
-    v_open /= v_open.sum()
-    c_id = 0
-    for i in xrange(len(alpha[-1])):
-        if v_volume[i] > 0:
-            float_equal(v_open[c_id], alpha[-1][i])
-            c_id += 1
-
-
-    print "decay_linear(high, 2)"
-    alpha, codes = cal_alpha(af, "decay_linear(high, 2)", 2)
-    #今天、昨天、前天数据一共3天
-    for index,code in enumerate(codes):
-        float_equal(dataProxy.get_all_Data(code)[-1][2]*3+dataProxy.get_all_Data(code)[-2][2]*2+dataProxy.get_all_Data(code)[-3][2],alpha[-1][index] * 6)
-        float_equal(dataProxy.get_all_Data(code)[-2][2]*3+dataProxy.get_all_Data(code)[-3][2]*2+dataProxy.get_all_Data(code)[-4][2],alpha[-2][index] * 6)
-
-    print "ts_min(high, 2)"
-    alpha, codes = cal_alpha(af, "ts_min(high, 2)", 2)
-    #今天、昨天、前天数据一共3天
-    for index,code in enumerate(codes):
-        float_equal(min([dataProxy.get_all_Data(code)[-1][2],dataProxy.get_all_Data(code)[-2][2],dataProxy.get_all_Data(code)[-3][2]]),alpha[-1][index])
-        float_equal(min([dataProxy.get_all_Data(code)[-2][2],dataProxy.get_all_Data(code)[-3][2],dataProxy.get_all_Data(code)[-4][2]]),alpha[-2][index])
-
-    print "ts_max(high, 2)"
-    alpha, codes = cal_alpha(af, "ts_max(high, 2)", 2)
-    #今天、昨天、前天数据一共3天
-    for index,code in enumerate(codes):
-        float_equal(max([dataProxy.get_all_Data(code)[-1][2],dataProxy.get_all_Data(code)[-2][2],dataProxy.get_all_Data(code)[-3][2]]),alpha[-1][index])
-        float_equal(max([dataProxy.get_all_Data(code)[-2][2],dataProxy.get_all_Data(code)[-3][2],dataProxy.get_all_Data(code)[-4][2]]),alpha[-2][index])
-
-
-    print "min(delay(before_high, 1), before_high)"
-    sub_dict = {"before_high":"delay(high, 2)"}
-    alpha, codes = cal_alpha(af, "min(delay(before_high, 1), before_high)", 2, sub_dict)
-    # 今天、昨天、前天数据一共3天
-    for index, code in enumerate(codes):
-        float_equal(min([dataProxy.get_all_Data(code)[-4][2], dataProxy.get_all_Data(code)[-3][2]]), alpha[-1][index])
-        float_equal(min([dataProxy.get_all_Data(code)[-5][2], dataProxy.get_all_Data(code)[-4][2]]), alpha[-2][index])
-
-    print "max(high, before_high)"
-    sub_dict = {"before_high": "delay(high, 50)"}
-    alpha, codes = cal_alpha(af, "max(high, before_high)", 2,sub_dict)
-    # 今天、昨天、前天数据一共3天
-    for index, code in enumerate(codes):
-        float_equal(max([dataProxy.get_all_Data(code)[-1][2], dataProxy.get_all_Data(code)[-51][2]]), alpha[-1][index])
-        float_equal(max([dataProxy.get_all_Data(code)[-2][2], dataProxy.get_all_Data(code)[-52][2]]), alpha[-2][index])
-
-    print "ts_argmin(volume, 2)"
-    alpha, codes = cal_alpha(af, "ts_argmin(volume, 2)", 2)
-    #今天、昨天、前天数据一共3天
-    for index,code in enumerate(codes):
-        if dataProxy.get_all_Data(code)[-3][5] != dataProxy.get_all_Data(code)[-2][5] and dataProxy.get_all_Data(code)[-2][5] != dataProxy.get_all_Data(code)[-1][5]:
-            float_equal(np.argmin(np.array([dataProxy.get_all_Data(code)[-3][5],dataProxy.get_all_Data(code)[-2][5],dataProxy.get_all_Data(code)[-1][5]])),alpha[-1][index])
-        if dataProxy.get_all_Data(code)[-4][5] != dataProxy.get_all_Data(code)[-3][5] and dataProxy.get_all_Data(code)[-3][5] != dataProxy.get_all_Data(code)[-2][5]:
-            float_equal(np.argmin(np.array([dataProxy.get_all_Data(code)[-4][5],dataProxy.get_all_Data(code)[-3][5],dataProxy.get_all_Data(code)[-2][5]])),alpha[-2][index])
-
-    print "ts_argmax(volume, 2)"
-    alpha, codes = cal_alpha(af, "ts_argmax(volume, 2)", 2)
-    #今天、昨天、前天数据一共3天
-    for index,code in enumerate(codes):
-        if dataProxy.get_all_Data(code)[-3][5] != dataProxy.get_all_Data(code)[-2][5] and dataProxy.get_all_Data(code)[-2][5] != dataProxy.get_all_Data(code)[-1][5]:
-            float_equal(np.argmax(np.array([dataProxy.get_all_Data(code)[-3][5],dataProxy.get_all_Data(code)[-2][5],dataProxy.get_all_Data(code)[-1][5]])),alpha[-1][index])
-        if dataProxy.get_all_Data(code)[-4][5] != dataProxy.get_all_Data(code)[-3][5] and dataProxy.get_all_Data(code)[-3][5] != dataProxy.get_all_Data(code)[-2][5]:
-            float_equal(np.argmax(np.array([dataProxy.get_all_Data(code)[-4][5],dataProxy.get_all_Data(code)[-3][5],dataProxy.get_all_Data(code)[-2][5]])),alpha[-2][index])
-
-    print "sign(returns)"
-    alpha, codes = cal_alpha(af, "sign(returns)", 2)
-    for index,code in enumerate(codes):
-        v = dataProxy.get_all_Data(code)[-1][7]
-        float_equal(1 if v > 0 else (-1 if v < 0 else 0),alpha[-1][index])
-        v = dataProxy.get_all_Data(code)[-2][7]
-        float_equal(1 if v > 0 else (-1 if v < 0 else 0),alpha[-2][index])
-
-    print "abs(returns)"
-    alpha, codes = cal_alpha(af, "abs(returns)", 2)
-    for index,code in enumerate(codes):
-        float_equal(abs(dataProxy.get_all_Data(code)[-1][7]),alpha[-1][index])
-        float_equal(abs(dataProxy.get_all_Data(code)[-2][7]),alpha[-2][index])
-
-    print "(open ^ returns)"
-    alpha, codes = cal_alpha(af, "(open ^ returns)", 2)
-    for index,code in enumerate(codes):
-        float_equal(math.pow(dataProxy.get_all_Data(code)[-1][1], dataProxy.get_all_Data(code)[-1][7]),alpha[-1][index])
-        float_equal(math.pow(dataProxy.get_all_Data(code)[-2][1], dataProxy.get_all_Data(code)[-2][7]),alpha[-2][index])
-
-    print "less:(delay(returns, 1) < returns)"
-    alpha, codes = cal_alpha(af, "(delay(returns, 1) < returns)", 2)
-    for index,code in enumerate(codes):
-        float_equal((1 if dataProxy.get_all_Data(code)[-2][7] < dataProxy.get_all_Data(code)[-1][7] else 0),alpha[-1][index])
-        float_equal((1 if dataProxy.get_all_Data(code)[-3][7] < dataProxy.get_all_Data(code)[-2][7] else 0),alpha[-2][index])
-
-    print "less_to:(returns < 0)"
-    alpha, codes = cal_alpha(af, "(returns < 0)", 2)
-    for index,code in enumerate(codes):
-        float_equal((1 if dataProxy.get_all_Data(code)[-1][7] < 0 else 0),alpha[-1][index])
-        float_equal((1 if dataProxy.get_all_Data(code)[-2][7] < 0 else 0),alpha[-2][index])
-
-    print "less_from:(0 < returns)"
-    alpha, codes = cal_alpha(af, "(0 < returns)", 2)
-    for index,code in enumerate(codes):
-        float_equal((1 if 0 < dataProxy.get_all_Data(code)[-1][7] else 0),alpha[-1][index])
-        float_equal((1 if 0 < dataProxy.get_all_Data(code)[-2][7] else 0),alpha[-2][index])
-
-    print "((delay(returns, 1) < returns) ? open : close)"
-    alpha, codes = cal_alpha(af, "((delay(returns, 1) < returns) ? open : close)", 2)
-    for index,code in enumerate(codes):
-        float_equal((dataProxy.get_all_Data(code)[-1][1] if dataProxy.get_all_Data(code)[-2][7] < dataProxy.get_all_Data(code)[-1][7] else dataProxy.get_all_Data(code)[-1][4]),alpha[-1][index])
-        float_equal((dataProxy.get_all_Data(code)[-2][1] if dataProxy.get_all_Data(code)[-3][7] < dataProxy.get_all_Data(code)[-2][7] else dataProxy.get_all_Data(code)[-2][4]),alpha[-2][index])
-
-    print "if_to:((delay(returns, 1) < returns) ? 1 : close)"
-    alpha, codes = cal_alpha(af, "((delay(returns, 1) < returns) ? 1 : close)", 2)
-    for index,code in enumerate(codes):
-        float_equal((1 if dataProxy.get_all_Data(code)[-2][7] < dataProxy.get_all_Data(code)[-1][7] else dataProxy.get_all_Data(code)[-1][4]),alpha[-1][index])
-        float_equal((1 if dataProxy.get_all_Data(code)[-3][7] < dataProxy.get_all_Data(code)[-2][7] else dataProxy.get_all_Data(code)[-2][4]),alpha[-2][index])
-
-    print "else_to:((delay(returns, 1) < returns) ? open : 1)"
-    alpha, codes = cal_alpha(af, "((delay(returns, 1) < returns) ? open : 1)", 2)
-    for index,code in enumerate(codes):
-        float_equal((dataProxy.get_all_Data(code)[-1][1] if dataProxy.get_all_Data(code)[-2][7] < dataProxy.get_all_Data(code)[-1][7] else 1),alpha[-1][index])
-        float_equal((dataProxy.get_all_Data(code)[-2][1] if dataProxy.get_all_Data(code)[-3][7] < dataProxy.get_all_Data(code)[-2][7] else 1),alpha[-2][index])
-
-    print "if_to_else_to:((delay(returns, 1) < returns) ? 1 : -1)"
-    alpha, codes = cal_alpha(af, "((delay(returns, 1) < returns) ? 1 : -1)", 2)
-    for index,code in enumerate(codes):
-        float_equal((1 if dataProxy.get_all_Data(code)[-2][7] < dataProxy.get_all_Data(code)[-1][7] else -1),alpha[-1][index])
-        float_equal((1 if dataProxy.get_all_Data(code)[-3][7] < dataProxy.get_all_Data(code)[-2][7] else -1),alpha[-2][index])
-
-    # print "up_mean"
-    # alpha, codes = cal_alpha(af, "up_mean(volume, 1)", 2)
-    # for index,code in enumerate(codes):
-    #     float_equal(1 if dataProxy.get_all_Data(code)[-1][5] >= (dataProxy.get_all_Data(code)[-1][5]+dataProxy.get_all_Data(code)[-2][5])/2 else 0,alpha[-1][index])
-    #     float_equal(1 if dataProxy.get_all_Data(code)[-2][5] >= (dataProxy.get_all_Data(code)[-2][5]+dataProxy.get_all_Data(code)[-3][5])/2 else 0,alpha[-2][index])
-
-    print "indneutralize:(returns - indneutralize(returns, IndClass.market))"
-    alpha, codes = cal_alpha(af, "(returns - indneutralize(returns, IndClass.market))", 2)
-    for index,code in enumerate(codes):
-        if code[0] == '0':
-            market = '0000001'
-        else:
-            market = '1399001'
-        float_equal(dataProxy.get_all_Data(code)[-1][7] - dataProxy.get_all_Data(market)[-1][7],alpha[-1][index])
-        float_equal(dataProxy.get_all_Data(code)[-2][7] - dataProxy.get_all_Data(market)[-2][7],alpha[-2][index])
-
-    print "finish test base calculate ................."
-
-def test_alpha101(af):
-    print "test alpha101........................."
-    alphatree_list = read_alpha_tree_list("../doc/alpha.txt")
+def test():
+#if __name__ == '__main__':
+    print "start"
     subalphatree_dict = read_alpha_tree_dict("../doc/subalpha.txt")
+    #write_alpha_tree_dict(subalphatree_dict, "../doc/subalpha_copy.txt")
+
+    af = AlphaForest()
+    af.load_data(is_offline=True)
+    dataProxy = LocalDataProxy("data", True)
+
+    alphatree_list = read_alpha_tree_list("../doc/alpha.txt")
+    #write_alpha_tree_list(alphatree_list, "../doc/alpha_copy.txt")
+
+
     start = time.time()
 
     alphatree_id_list = test_alphaforest(af, alphatree_list, subalphatree_dict)
@@ -566,74 +129,409 @@ def test_alpha101(af):
     return
     print "start test --------"
 
-def cache_path(af, path):
-    with open(path, 'r') as f:
-        iter_f = iter(f);  # 创建迭代器
-        for line in iter_f:
-            if line.startswith("#"):
-                print line[1:-1]
-                continue
-            tmp = line.split('=')
-            cache_alpha(af, tmp[0], tmp[1][:-1])
+    #测试-----------------------------------------------------------
+    print "target"
+    codes = af.get_codes(0,5,1,32)
+    alphatree_id = af.create_alphatree("close")
+    alpha = af.cal_stock_alpha(alphatree_id, codes, 5, 32)
+    for index, code in enumerate(codes):
+        for i in xrange(32):
+            float_equal(dataProxy.get_all_Data(code)[-(32+5)+i][4], alpha[i][index])
+    for future_index in xrange(5):
+        target = af.get_target(future_index, 5, codes, 32)
+        all_sum = 0
+        for index, code in enumerate(codes):
+            if code[0] == '0':
+                market = '0000001'
+            else:
+                market = '1399001'
+
+            for i in xrange(32):
+                sumV = 0
+                for j in xrange(future_index+1):
+                    sumV += math.log((dataProxy.get_all_Data(code)[-(32+5)+i+(j+1)][7] - dataProxy.get_all_Data(market)[-(32+5)+i+(j+1)][7]) + 1)
+                sumV /= (future_index+1)
+                all_sum += sumV
+                float_equal(sumV, target[i][index])
+        print all_sum
+    af.release_alphatree(alphatree_id)
+
+    print "returns"
+    alpha, codes = af.cal_alpha("returns", 0, 2)
+    for index,code in enumerate(codes):
+        float_equal(dataProxy.get_all_Data(code)[-1][7],alpha[-1][index])
+        float_equal(dataProxy.get_all_Data(code)[-2][7],alpha[-2][index])
+
+    print "sum(high, 2)"
+    alpha, codes = af.cal_alpha("sum(high, 2)", 0, 2)
+    #今天、昨天、前天数据一共3天
+    for index,code in enumerate(codes):
+        float_equal(dataProxy.get_all_Data(code)[-1][2]+dataProxy.get_all_Data(code)[-2][2]+dataProxy.get_all_Data(code)[-3][2],alpha[-1][index])
+        float_equal(dataProxy.get_all_Data(code)[-2][2]+dataProxy.get_all_Data(code)[-3][2]+dataProxy.get_all_Data(code)[-4][2],alpha[-2][index])
+
+    print "product(low, 1)"
+    alpha, codes = af.cal_alpha("product(low, 1)", 0, 2)
+    for index,code in enumerate(codes):
+        float_equal(dataProxy.get_all_Data(code)[-1][3]*dataProxy.get_all_Data(code)[-2][3]/100,alpha[-1][index]/100)
+        float_equal(dataProxy.get_all_Data(code)[-2][3]*dataProxy.get_all_Data(code)[-3][3]/100,alpha[-2][index]/100)
+
+    print "mean(close, 1)"
+    alpha, codes = af.cal_alpha("mean(close, 1)", 0, 2)
+    for index,code in enumerate(codes):
+        float_equal((dataProxy.get_all_Data(code)[-1][4]+dataProxy.get_all_Data(code)[-2][4])/2,alpha[-1][index])
+        float_equal((dataProxy.get_all_Data(code)[-2][4]+dataProxy.get_all_Data(code)[-3][4])/2,alpha[-2][index])
+
+    print "lerp(high, low, 0.4)"
+    alpha, codes = af.cal_alpha("lerp(high, low, 0.4)", 0, 2)
+    for index,code in enumerate(codes):
+        float_equal((dataProxy.get_all_Data(code)[-1][2]*0.4+dataProxy.get_all_Data(code)[-1][3]*0.6),alpha[-1][index])
+        float_equal((dataProxy.get_all_Data(code)[-2][2]*0.4+dataProxy.get_all_Data(code)[-2][3]*0.6),alpha[-2][index])
+
+    print "delta(open, 5)"
+    alpha, codes = af.cal_alpha("delta(open, 5)", 0, 2)
+    for index,code in enumerate(codes):
+        #往后推1天就是-2，所以是-6
+        float_equal(dataProxy.get_all_Data(code)[-1][1] - dataProxy.get_all_Data(code)[-6][1],alpha[-1][index])
+        float_equal(dataProxy.get_all_Data(code)[-2][1] - dataProxy.get_all_Data(code)[-7][1],alpha[-2][index])
+
+    print "mean_rise(open, 5)"
+    alpha, codes = af.cal_alpha("mean_rise(open, 5)", 0, 2)
+    for index,code in enumerate(codes):
+        #往后推1天就是-2，所以是-6
+        float_equal((dataProxy.get_all_Data(code)[-1][1] - dataProxy.get_all_Data(code)[-6][1])/5,alpha[-1][index])
+        float_equal((dataProxy.get_all_Data(code)[-2][1] - dataProxy.get_all_Data(code)[-7][1])/5,alpha[-2][index])
+
+    print "(low / high)"
+    alpha, codes = af.cal_alpha("(low / high)", 0, 2)
+    for index,code in enumerate(codes):
+        #往后推1天就是-2，所以是-6
+        float_equal(dataProxy.get_all_Data(code)[-1][3]/dataProxy.get_all_Data(code)[-1][2],alpha[-1][index])
+        float_equal(dataProxy.get_all_Data(code)[-2][3]/dataProxy.get_all_Data(code)[-2][2],alpha[-2][index])
+
+    print "div_from:(100 / low)"
+    alpha, codes = af.cal_alpha("(100 / low)", 0, 2)
+    for index,code in enumerate(codes):
+        #往后推1天就是-2，所以是-6
+        float_equal(100 / dataProxy.get_all_Data(code)[-1][3],alpha[-1][index])
+        float_equal(100 / dataProxy.get_all_Data(code)[-2][3],alpha[-2][index])
+
+    print "div_to:(low / 2)"
+    alpha, codes = af.cal_alpha("(low / 2)", 0, 2)
+    for index,code in enumerate(codes):
+        #往后推1天就是-2，所以是-6
+        float_equal(dataProxy.get_all_Data(code)[-1][3],alpha[-1][index] * 2)
+        float_equal(dataProxy.get_all_Data(code)[-2][3],alpha[-2][index] * 2)
+
+    print "mean_ratio(close, 1)"
+    alpha, codes = af.cal_alpha("mean_ratio(close, 1)", 0, 2)
+    for index,code in enumerate(codes):
+        float_equal(dataProxy.get_all_Data(code)[-1][4] / (dataProxy.get_all_Data(code)[-1][4]+dataProxy.get_all_Data(code)[-2][4])*2,alpha[-1][index])
+        float_equal(dataProxy.get_all_Data(code)[-2][4] / (dataProxy.get_all_Data(code)[-2][4]+dataProxy.get_all_Data(code)[-3][4])*2,alpha[-2][index])
+
+    print "(high + low)"
+    alpha, codes = af.cal_alpha("(high + low)", 0, 2)
+    for index,code in enumerate(codes):
+        float_equal((dataProxy.get_all_Data(code)[-1][2]+dataProxy.get_all_Data(code)[-1][3]),alpha[-1][index])
+        float_equal((dataProxy.get_all_Data(code)[-2][2]+dataProxy.get_all_Data(code)[-2][3]),alpha[-2][index])
+
+    print "add_from:(1 + low)"
+    alpha, codes = af.cal_alpha("(1 + low)", 0, 2)
+    for index,code in enumerate(codes):
+        float_equal((1+dataProxy.get_all_Data(code)[-1][3]),alpha[-1][index])
+        float_equal((1+dataProxy.get_all_Data(code)[-2][3]),alpha[-2][index])
+
+    print "add_to:(high + 1)"
+    alpha, codes = af.cal_alpha("(high + 1)", 0, 2)
+    for index,code in enumerate(codes):
+        float_equal((dataProxy.get_all_Data(code)[-1][2]+1),alpha[-1][index])
+        float_equal((dataProxy.get_all_Data(code)[-2][2]+1),alpha[-2][index])
+
+    print "reduce:(high - low)"
+    alpha, codes = af.cal_alpha("(high - low)", 0, 2)
+    for index,code in enumerate(codes):
+        float_equal((dataProxy.get_all_Data(code)[-1][2]-dataProxy.get_all_Data(code)[-1][3]),alpha[-1][index])
+        float_equal((dataProxy.get_all_Data(code)[-2][2]-dataProxy.get_all_Data(code)[-2][3]),alpha[-2][index])
+
+    print "reduce_from:(1000 - low)"
+    alpha, codes = af.cal_alpha("(1000 - low)", 0, 2)
+    for index,code in enumerate(codes):
+        float_equal((1000-dataProxy.get_all_Data(code)[-1][3]),alpha[-1][index])
+        float_equal((1000-dataProxy.get_all_Data(code)[-2][3]),alpha[-2][index])
+
+    print "reduce_to:(high - 1)"
+    alpha, codes = af.cal_alpha("(high - 1)", 0, 2)
+    for index,code in enumerate(codes):
+        float_equal((dataProxy.get_all_Data(code)[-1][2]-1),alpha[-1][index])
+        float_equal((dataProxy.get_all_Data(code)[-2][2]-1),alpha[-2][index])
+
+    print "(high * low)"
+    alpha, codes = af.cal_alpha("(high * low)", 0, 2)
+    for index,code in enumerate(codes):
+        float_equal((dataProxy.get_all_Data(code)[-1][2]*dataProxy.get_all_Data(code)[-1][3]),alpha[-1][index])
+        float_equal((dataProxy.get_all_Data(code)[-2][2]*dataProxy.get_all_Data(code)[-2][3]),alpha[-2][index])
+
+    print "mul_from:(2 * low)"
+    alpha, codes = af.cal_alpha("(2 * low)", 0, 2)
+    for index,code in enumerate(codes):
+        float_equal((2*dataProxy.get_all_Data(code)[-1][3]),alpha[-1][index])
+        float_equal((2*dataProxy.get_all_Data(code)[-2][3]),alpha[-2][index])
+
+    print "mul_to:(high * 3)"
+    alpha, codes = af.cal_alpha("(high * 3)", 0, 2)
+    for index,code in enumerate(codes):
+        float_equal((dataProxy.get_all_Data(code)[-1][2]*3),alpha[-1][index])
+        float_equal((dataProxy.get_all_Data(code)[-2][2]*3),alpha[-2][index])
+
+    print "mid(high, low)"
+    alpha, codes = af.cal_alpha("mid(high, low)", 0, 2)
+    for index,code in enumerate(codes):
+        float_equal((dataProxy.get_all_Data(code)[-1][2]+dataProxy.get_all_Data(code)[-1][3])*0.5,alpha[-1][index])
+        float_equal((dataProxy.get_all_Data(code)[-2][2]+dataProxy.get_all_Data(code)[-2][3])*0.5,alpha[-2][index])
+
+    print "stddev(open, 2)"
+    alpha, codes = af.cal_alpha("stddev(open, 2)", 0, 2)
+    for index,code in enumerate(codes):
+        #往后推1天就是-2，所以是-6
+        res = np.array([dataProxy.get_all_Data(code)[-3][1],dataProxy.get_all_Data(code)[-2][1],dataProxy.get_all_Data(code)[-1][1]])
+        float_equal(res.std(),alpha[-1][index])
+        res = np.array([dataProxy.get_all_Data(code)[-4][1], dataProxy.get_all_Data(code)[-3][1],
+                        dataProxy.get_all_Data(code)[-2][1]])
+        float_equal(res.std(), alpha[-2][index])
+
+    print "up(close, 2)"
+    alpha, codes = af.cal_alpha("up(close, 2)", 0, 1)
+    for index,code in enumerate(codes):
+        res = np.array([dataProxy.get_all_Data(code)[-3][4],dataProxy.get_all_Data(code)[-2][4],dataProxy.get_all_Data(code)[-1][4]])
+        float_equal(res.std() + res.mean(),alpha[-1][index])
+
+    print "down(returns, 2)"
+    alpha, codes = af.cal_alpha("down(returns, 2)", 0, 1)
+    for index,code in enumerate(codes):
+        res = np.array([dataProxy.get_all_Data(code)[-3][7],dataProxy.get_all_Data(code)[-2][7],dataProxy.get_all_Data(code)[-1][7]])
+        float_equal(res.mean() - res.std(),alpha[-1][index])
+
+    print "rank(open)"
+    alpha, codes = af.cal_alpha("rank(open)", 0, 1)
+    v_open = np.array([dataProxy.get_all_Data(code)[-1][1] for code in codes])
+    r_open = rank(v_open)
+    for i in xrange(len(v_open)):
+        float_equal(r_open[i], alpha[-1][i])
+
+    print "power_mid(delay(open, 25), high)"
+    alpha, codes = af.cal_alpha("power_mid(delay(open, 25), high)", 0, 2)
+    for index,code in enumerate(codes):
+        #往后推1天就是-2，所以是-6
+        #math.sqrt(5)
+        value = dataProxy.get_all_Data(code)[-26][1]*dataProxy.get_all_Data(code)[-1][2]
+        #print value
+        float_equal(math.sqrt(value),alpha[-1][index])
+        value = dataProxy.get_all_Data(code)[-27][1]*dataProxy.get_all_Data(code)[-2][2]
+        #print value
+        float_equal(math.sqrt(value),alpha[-2][index])
+
+    print "signed_power_to:(returns ^ 2)"
+    alpha, codes = af.cal_alpha("(returns ^ 2)", 0, 1)
+    for index, code in enumerate(codes):
+        float_equal((dataProxy.get_all_Data(code)[-1][7] * dataProxy.get_all_Data(code)[-1][7]),
+                    alpha[-1][index])
+
+    print "ts_rank(returns, 5)"
+    alpha, codes = af.cal_alpha("ts_rank(returns, 5)", 0, 2)
+    for index, code in enumerate(codes):
+        returns = np.array([dataProxy.get_all_Data(code)[i-6][7] for i in xrange(6)])
+        float_equal(ts_rank(returns, 5)[-1], alpha[-1][index])
+        returns = np.array([dataProxy.get_all_Data(code)[i - 6-1][7] for i in xrange(6)])
+        float_equal(ts_rank(returns, 5)[-1], alpha[-2][index])
+
+    print "delay(open, 5)"
+    alpha, codes = af.cal_alpha("delay(open, 5)", 0, 2)
+    for index,code in enumerate(codes):
+        #往后推1天就是-2，所以是-6
+        float_equal(dataProxy.get_all_Data(code)[-6][1],alpha[-1][index])
+        float_equal(dataProxy.get_all_Data(code)[-7][1],alpha[-2][index])
+
+    print "future"
+    alphatree_id = af.create_alphatree("delay(open, 1)")
+    future_alphatree_id = af.create_alphatree("future(open, 2)")
+    history_num = af.get_history_num(alphatree_id)
+    watch_future_num = af.get_future_num(future_alphatree_id)
+    print history_num
+    print watch_future_num
+    codes = af.get_codes(0,watch_future_num,history_num,2)
+    alpha = af.cal_stock_alpha(alphatree_id, codes, 2, 2)
+
+    future_alpha = af.cal_stock_alpha(future_alphatree_id, codes, 0, 2)
+    af.release_alphatree(alphatree_id)
+    af.release_alphatree(future_alphatree_id)
+    for index, code in enumerate(codes):
+        float_equal(dataProxy.get_all_Data(code)[-1][1], future_alpha[-1][index])
+        float_equal(dataProxy.get_all_Data(code)[-2][1], future_alpha[-2][index])
+        float_equal(dataProxy.get_all_Data(code)[-4][1], alpha[-1][index])
+        float_equal(dataProxy.get_all_Data(code)[-5][1], alpha[-2][index])
+
+    print "correlation(delay(returns, 3), returns, 10)"
+    alpha, codes = af.cal_alpha("correlation(delay(returns, 3), returns, 10)", 0, 2)
+    print "f coorelation"
+    for index, code in enumerate(codes):
+        returns = np.array([dataProxy.get_all_Data(code)[i - 11][7] for i in xrange(11)])
+        d_returns = np.array([dataProxy.get_all_Data(code)[i - 14][7] for i in xrange(11)])
+        v1 = pearson_def(returns, d_returns)*10
+        v2 = alpha[-1][index]*10
+        float_equal(v1, v2)
+
+        returns = np.array([dataProxy.get_all_Data(code)[i - 12][7] for i in xrange(11)])
+        d_returns = np.array([dataProxy.get_all_Data(code)[i - 15][7] for i in xrange(11)])
+        v1 = pearson_def(returns, d_returns)*10
+        v2 = alpha[-2][index]*10
+        float_equal(v1, v2)
 
 
-def test_eraito_strategy(af, daybefore = 0, sample_size = 250):
-    print "test eratio-------------------------------------"
-    root = "../strategy"
-    cache_path(af,"../strategy/base.txt")
+    print "scale(delay(returns, 1))"
+    alpha, codes = af.cal_alpha("scale(delay(returns, 1))", 0, 2)
+    returns = np.array([dataProxy.get_all_Data(code)[-2][7] for code in codes])
+    abs_returns = np.array([abs(r) for r in returns])
+    returns /= abs_returns.sum()
+    for i in xrange(len(returns)):
+        float_equal(returns[i], alpha[-1][i])
 
-    paths = os.listdir(root)
-    for path in paths:
-        if os.path.isdir(root + "/" + path):
-            print path
-            files = os.listdir(root + "/" + path)
-            for file in files:  # 遍历文件夹
-                if not os.path.isdir(root + "/" + path + "/" + file) and file.endswith(".txt"):  # 判断是否是文件夹，不是文件夹才打开
+    returns = np.array([dataProxy.get_all_Data(code)[-3][7] for code in codes])
+    abs_returns = np.array([abs(r) for r in returns])
+    returns /= abs_returns.sum()
+    for i in xrange(len(returns)):
+        float_equal(returns[i], alpha[-2][i])
 
-                    print path + "/" + file
-                    f = open(root + "/" + path + "/" + file);  # 打开文件
-                    iter_f = iter(f);  # 创建迭代器
+    print "decay_linear(high, 2)"
+    alpha, codes = af.cal_alpha("decay_linear(high, 2)", 0, 2)
+    #今天、昨天、前天数据一共3天
+    for index,code in enumerate(codes):
+        float_equal(dataProxy.get_all_Data(code)[-1][2]*3+dataProxy.get_all_Data(code)[-2][2]*2+dataProxy.get_all_Data(code)[-3][2],alpha[-1][index] * 6)
+        float_equal(dataProxy.get_all_Data(code)[-2][2]*3+dataProxy.get_all_Data(code)[-3][2]*2+dataProxy.get_all_Data(code)[-4][2],alpha[-2][index] * 6)
 
-                    alphatree_id = af.create_alphatree()
-                    cache_id = af.use_cache()
+    print "ts_min(high, 2)"
+    alpha, codes = af.cal_alpha("ts_min(high, 2)", 0, 2)
+    #今天、昨天、前天数据一共3天
+    for index,code in enumerate(codes):
+        float_equal(min([dataProxy.get_all_Data(code)[-1][2],dataProxy.get_all_Data(code)[-2][2],dataProxy.get_all_Data(code)[-3][2]]),alpha[-1][index])
+        float_equal(min([dataProxy.get_all_Data(code)[-2][2],dataProxy.get_all_Data(code)[-3][2],dataProxy.get_all_Data(code)[-4][2]]),alpha[-2][index])
 
-                    for line in iter_f:
-                        if line.startswith("#"):
-                            print line[1:-1]
-                            continue
-                        tmp = line.split('=')
-                        af.decode_alphatree(alphatree_id, tmp[0], tmp[1][:-1])
+    print "ts_max(high, 2)"
+    alpha, codes = af.cal_alpha("ts_max(high, 2)", 0, 2)
+    #今天、昨天、前天数据一共3天
+    for index,code in enumerate(codes):
+        float_equal(max([dataProxy.get_all_Data(code)[-1][2],dataProxy.get_all_Data(code)[-2][2],dataProxy.get_all_Data(code)[-3][2]]),alpha[-1][index])
+        float_equal(max([dataProxy.get_all_Data(code)[-2][2],dataProxy.get_all_Data(code)[-3][2],dataProxy.get_all_Data(code)[-4][2]]),alpha[-2][index])
 
-                        #print af.encode_alphatree(alphatree_id, tmp[0])
+    print "min(delay(before_high, 1), before_high)"
+    sub_dict = {"before_high":"delay(high, 2)"}
+    alpha, codes = af.cal_alpha("min(delay(before_high, 1), before_high)", 0, 2, sub_dict)
+    # 今天、昨天、前天数据一共3天
+    for index, code in enumerate(codes):
+        float_equal(min([dataProxy.get_all_Data(code)[-4][2], dataProxy.get_all_Data(code)[-3][2]]), alpha[-1][index])
+        float_equal(min([dataProxy.get_all_Data(code)[-5][2], dataProxy.get_all_Data(code)[-4][2]]), alpha[-2][index])
 
-                    af.decode_process(alphatree_id, "res", "eratio(buy, sell, high, low, close, atr)")
+    print "max(high, before_high)"
+    sub_dict = {"before_high": "delay(high, 50)"}
+    alpha, codes = af.cal_alpha("max(high, before_high)", 0, 2,sub_dict)
+    # 今天、昨天、前天数据一共3天
+    for index, code in enumerate(codes):
+        float_equal(max([dataProxy.get_all_Data(code)[-1][2], dataProxy.get_all_Data(code)[-51][2]]), alpha[-1][index])
+        float_equal(max([dataProxy.get_all_Data(code)[-2][2], dataProxy.get_all_Data(code)[-52][2]]), alpha[-2][index])
 
-                    history_days = af.get_max_history_days(alphatree_id)
-                    codes = af.get_stock_codes()
-                    af.flag_alpha(alphatree_id, cache_id, daybefore, sample_size, codes)
-                    af.cal_alpha(alphatree_id, cache_id)
-                    sell = np.array(af.get_root_alpha(alphatree_id, "sell", cache_id, sample_size))
-                    buy = np.array(af.get_root_alpha(alphatree_id, "buy", cache_id, sample_size))
-                    af.process_alpha(alphatree_id, cache_id)
+    print "ts_argmin(volume, 2)"
+    alpha, codes = af.cal_alpha("ts_argmin(volume, 2)", 0, 2)
+    #今天、昨天、前天数据一共3天
+    for index,code in enumerate(codes):
+        float_equal(np.argmin(np.array([dataProxy.get_all_Data(code)[-3][5],dataProxy.get_all_Data(code)[-2][5],dataProxy.get_all_Data(code)[-1][5]])),alpha[-1][index])
+        float_equal(np.argmin(np.array([dataProxy.get_all_Data(code)[-4][5],dataProxy.get_all_Data(code)[-3][5],dataProxy.get_all_Data(code)[-2][5]])),alpha[-2][index])
 
-                    process_res = json.loads(af.get_process(alphatree_id, "res", cache_id))
+    print "ts_argmax(volume, 2)"
+    alpha, codes = af.cal_alpha("ts_argmax(volume, 2)", 0, 2)
+    #今天、昨天、前天数据一共3天
+    for index,code in enumerate(codes):
+        float_equal(np.argmax(np.array([dataProxy.get_all_Data(code)[-3][5],dataProxy.get_all_Data(code)[-2][5],dataProxy.get_all_Data(code)[-1][5]])),alpha[-1][index])
+        float_equal(np.argmax(np.array([dataProxy.get_all_Data(code)[-4][5],dataProxy.get_all_Data(code)[-3][5],dataProxy.get_all_Data(code)[-2][5]])),alpha[-2][index])
 
-                    af.release_cache(cache_id)
-                    af.release_alphatree(alphatree_id)
+    print "sign(returns)"
+    alpha, codes = af.cal_alpha("sign(returns)", 0, 2)
+    for index,code in enumerate(codes):
+        v = dataProxy.get_all_Data(code)[-1][7]
+        float_equal(1 if v > 0 else (-1 if v < 0 else 0),alpha[-1][index])
+        v = dataProxy.get_all_Data(code)[-2][7]
+        float_equal(1 if v > 0 else (-1 if v < 0 else 0),alpha[-2][index])
 
-                    print process_res["eratio"]
+    print "abs(returns)"
+    alpha, codes = af.cal_alpha("abs(returns)", 0, 2)
+    for index,code in enumerate(codes):
+        float_equal(abs(dataProxy.get_all_Data(code)[-1][7]),alpha[-1][index])
+        float_equal(abs(dataProxy.get_all_Data(code)[-2][7]),alpha[-2][index])
 
+    print "(open ^ returns)"
+    alpha, codes = af.cal_alpha("(open ^ returns)", 0, 2)
+    for index,code in enumerate(codes):
+        float_equal(math.pow(dataProxy.get_all_Data(code)[-1][1], dataProxy.get_all_Data(code)[-1][7]),alpha[-1][index])
+        float_equal(math.pow(dataProxy.get_all_Data(code)[-2][1], dataProxy.get_all_Data(code)[-2][7]),alpha[-2][index])
+
+    print "less:(delay(returns, 1) < returns)"
+    alpha, codes = af.cal_alpha("(delay(returns, 1) < returns)", 0, 2)
+    for index,code in enumerate(codes):
+        float_equal((1 if dataProxy.get_all_Data(code)[-2][7] < dataProxy.get_all_Data(code)[-1][7] else 0),alpha[-1][index])
+        float_equal((1 if dataProxy.get_all_Data(code)[-3][7] < dataProxy.get_all_Data(code)[-2][7] else 0),alpha[-2][index])
+
+    print "less_to:(returns < 0)"
+    alpha, codes = af.cal_alpha("(returns < 0)", 0, 2)
+    for index,code in enumerate(codes):
+        float_equal((1 if dataProxy.get_all_Data(code)[-1][7] < 0 else 0),alpha[-1][index])
+        float_equal((1 if dataProxy.get_all_Data(code)[-2][7] < 0 else 0),alpha[-2][index])
+
+    print "less_from:(0 < returns)"
+    alpha, codes = af.cal_alpha("(0 < returns)", 0, 2)
+    for index,code in enumerate(codes):
+        float_equal((1 if 0 < dataProxy.get_all_Data(code)[-1][7] else 0),alpha[-1][index])
+        float_equal((1 if 0 < dataProxy.get_all_Data(code)[-2][7] else 0),alpha[-2][index])
+
+    print "((delay(returns, 1) < returns) ? open : close)"
+    alpha, codes = af.cal_alpha("((delay(returns, 1) < returns) ? open : close)", 0, 2)
+    for index,code in enumerate(codes):
+        float_equal((dataProxy.get_all_Data(code)[-1][1] if dataProxy.get_all_Data(code)[-2][7] < dataProxy.get_all_Data(code)[-1][7] else dataProxy.get_all_Data(code)[-1][4]),alpha[-1][index])
+        float_equal((dataProxy.get_all_Data(code)[-2][1] if dataProxy.get_all_Data(code)[-3][7] < dataProxy.get_all_Data(code)[-2][7] else dataProxy.get_all_Data(code)[-2][4]),alpha[-2][index])
+
+    print "if_to:((delay(returns, 1) < returns) ? 1 : close)"
+    alpha, codes = af.cal_alpha("((delay(returns, 1) < returns) ? 1 : close)", 0, 2)
+    for index,code in enumerate(codes):
+        float_equal((1 if dataProxy.get_all_Data(code)[-2][7] < dataProxy.get_all_Data(code)[-1][7] else dataProxy.get_all_Data(code)[-1][4]),alpha[-1][index])
+        float_equal((1 if dataProxy.get_all_Data(code)[-3][7] < dataProxy.get_all_Data(code)[-2][7] else dataProxy.get_all_Data(code)[-2][4]),alpha[-2][index])
+
+    print "else_to:((delay(returns, 1) < returns) ? open : 1)"
+    alpha, codes = af.cal_alpha("((delay(returns, 1) < returns) ? open : 1)", 0, 2)
+    for index,code in enumerate(codes):
+        float_equal((dataProxy.get_all_Data(code)[-1][1] if dataProxy.get_all_Data(code)[-2][7] < dataProxy.get_all_Data(code)[-1][7] else 1),alpha[-1][index])
+        float_equal((dataProxy.get_all_Data(code)[-2][1] if dataProxy.get_all_Data(code)[-3][7] < dataProxy.get_all_Data(code)[-2][7] else 1),alpha[-2][index])
+
+    print "if_to_else_to:((delay(returns, 1) < returns) ? 1 : -1)"
+    alpha, codes = af.cal_alpha("((delay(returns, 1) < returns) ? 1 : -1)", 0, 2)
+    for index,code in enumerate(codes):
+        float_equal((1 if dataProxy.get_all_Data(code)[-2][7] < dataProxy.get_all_Data(code)[-1][7] else -1),alpha[-1][index])
+        float_equal((1 if dataProxy.get_all_Data(code)[-3][7] < dataProxy.get_all_Data(code)[-2][7] else -1),alpha[-2][index])
+
+    # print "up_mean"
+    # alpha, codes = af.cal_alpha("up_mean(volume, 1)", 0, 2)
+    # for index,code in enumerate(codes):
+    #     float_equal(1 if dataProxy.get_all_Data(code)[-1][5] >= (dataProxy.get_all_Data(code)[-1][5]+dataProxy.get_all_Data(code)[-2][5])/2 else 0,alpha[-1][index])
+    #     float_equal(1 if dataProxy.get_all_Data(code)[-2][5] >= (dataProxy.get_all_Data(code)[-2][5]+dataProxy.get_all_Data(code)[-3][5])/2 else 0,alpha[-2][index])
+
+    print "indneutralize:(returns - indneutralize(returns, IndClass.market))"
+    alpha, codes = af.cal_alpha("(returns - indneutralize(returns, IndClass.market))", 0, 2)
+    for index,code in enumerate(codes):
+        if code[0] == '0':
+            market = '0000001'
+        else:
+            market = '1399001'
+        float_equal(dataProxy.get_all_Data(code)[-1][7] - dataProxy.get_all_Data(market)[-1][7],alpha[-1][index])
+        float_equal(dataProxy.get_all_Data(code)[-2][7] - dataProxy.get_all_Data(market)[-2][7],alpha[-2][index])
+
+
+    print "finish"
 
 if __name__ == '__main__':
-    codeProxy = LocalCodeProxy(cache_path = "data", is_offline = True)
-    dataProxy = LocalDataProxy(cache_path = "data", is_offline = True)
-    classifiedProxy = LocalClassifiedProxy(cache_path = "data", is_offline = True)
-
-    #write_stock_data("data/stockdb.byte",codeProxy, dataProxy, classifiedProxy)
-
-    af = AlphaForest()
-    af.load_db("data/stockdb.byte")
-
-    #test_base_calculate(af, dataProxy)
-    #test_alpha101(af)
-    test_eraito_strategy(af)
+    while True:
+        test()

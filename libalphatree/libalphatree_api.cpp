@@ -61,27 +61,32 @@ extern "C"
         AlphaForest::getAlphaforest()->decodeProcess(alphaTreeId, processName, line);
     }
 
-    void addStock(const char* code, const char* market, const char* industry, const char* concept,
-                  const float* open, const float* high, const float* low, const float* close, const float* volume, const float* vwap, const float* returns,
-                  int size, int totals){
-        AlphaForest::getAlphaforest()->addStock(code, market, industry, concept, open, high, low, close, volume, vwap, returns, size, totals);
+    void loadDataBase(const char* path){
+        AlphaForest::getAlphaforest()->getAlphaDataBase()->loadDataBase(path);
     }
 
-    void clearAllStock(){
-        AlphaForest::getAlphaforest()->getAlphaDataBase()->clear();
+//    void loadStockMeta(const char* codes, int* marketIndex, int* industryIndex, int* conceptIndex, int size, int days){
+//        AlphaForest::getAlphaforest()->getAlphaDataBase()->loadStockMeta(codes, marketIndex, industryIndex, conceptIndex, size, days);
+//    }
+//
+//    void loadDataElement(const char* elementName, const float* data, int needDays){
+//        AlphaForest::getAlphaforest()->getAlphaDataBase()->loadDataElement(elementName, data, needDays);
+//    }
+
+    int getStockCodes(char* codes){
+        return AlphaForest::getAlphaforest()->getAlphaDataBase()->getStockCodes(codes);
     }
 
-    void calClassifiedData(){
-        AlphaForest::getAlphaforest()->getAlphaDataBase()->calClassifiedData(true);
-        AlphaForest::getAlphaforest()->getAlphaDataBase()->calClassifiedData(false);
+    int getMarketCodes(const char* marketName, char* codes){
+        return AlphaForest::getAlphaforest()->getAlphaDataBase()->getMarketCodes(marketName, codes);
     }
 
-    int getCodes(int dayBefore, int historyNum, int sampleNum, char* codes){
-        return AlphaForest::getAlphaforest()->getCodes(dayBefore, historyNum, sampleNum, codes);
+    int getIndustryCodes(const char* industryName, char* codes){
+        return AlphaForest::getAlphaforest()->getAlphaDataBase()->getIndustryCodes(industryName, codes);
     }
 
-    int getAllCodes(char* codes){
-        return AlphaForest::getAlphaforest()->getCodes(codes);
+    int getConceptCodes(const char* conceptName, char* codes){
+        return AlphaForest::getAlphaforest()->getAlphaDataBase()->getConceptCodes(conceptName, codes);
     }
 
     int getMaxHistoryDays(int alphaTreeId){ return AlphaForest::getAlphaforest()->getMaxHistoryDays(alphaTreeId);}
@@ -92,6 +97,10 @@ extern "C"
 
     void calAlpha(int alphaTreeId, int cacheId){
         AlphaForest::getAlphaforest()->calAlpha(alphaTreeId, cacheId);
+    }
+
+    void cacheAlpha(int alphaTreeId, int cacheId, bool isFeature){
+        AlphaForest::getAlphaforest()->cacheAlpha(alphaTreeId, cacheId, isFeature);
     }
 
     void processAlpha(int alphaTreeId, int cacheId){

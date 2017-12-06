@@ -5,7 +5,7 @@
 #ifndef ALPHATREE_COLLECTWORK_H
 #define ALPHATREE_COLLECTWORK_H
 
-#include "alphawork.h"
+#include "alphawork.h!"
 
 class CollectWork : public AlphaWork{
     public:

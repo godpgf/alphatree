@@ -5,7 +5,6 @@
 #ifndef ALPHATREE_BASEALPHATREE_H
 #define ALPHATREE_BASEALPHATREE_H
 
-#include "unit.h"
 #include "alphaatom.h"
 #include "alphaprocess.h"
 #include "converter.h"
@@ -16,7 +15,7 @@ const size_t MAX_SUB_ALPHATREE_STR_NUM = 512;
 const size_t MAX_DECODE_RANGE_LEN = 10;
 const size_t MAX_OPT_STR_LEN = 64;
 
-const size_t MAX_LEAF_DATA_CLASS_LEN = 64;
+const size_t MAX_LEAF_DATA_STR_LEN = 64;
 const size_t MAX_NODE_NAME_LEN = 64;
 
 const size_t MAX_SUB_TREE_BLOCK = 16;
@@ -31,7 +30,7 @@ public:
     //是否是子树
     bool isRoot(){ return preId == -1;}
     //得到名字
-    const char* getName(){ return element_->getName();}
+    const char* getName(){ return element_ ?  element_->getName() : dataName_;}
     //得到系数
     double getCoff(DArray<double, MAX_NODE_BLOCK>& coffList){
         if(isLocalCoff())
@@ -74,24 +73,32 @@ public:
                 strcpy(coffStr, getWatchLeafDataClass());
                 return strlen(coffStr);
         }
-        //return 0;
+        return 0;
     }
 
 
     void setup(IAlphaElement* element, double coff = 0, const char* watchLeafDataClass = nullptr, int externalCoffIndex = -1){
         CHECK(element != nullptr, "err");
+        setup(nullptr, watchLeafDataClass);
         element_ = element;
         externalCoffIndex_ = externalCoffIndex;
         coff_ = coff;
         preId = -1;
+    }
 
+    void setup(const char* name = nullptr, const char* watchLeafDataClass = nullptr){
         if(watchLeafDataClass)
             strcpy(dataClass_, watchLeafDataClass);
         else
             dataClass_[0] = 0;
+        if(name)
+            strcpy(dataName_, name);
+        else
+            dataName_[0] = 0;
+        element_ = nullptr;
     }
 
-    int getChildNum(){ return element_->getChildNum();}
+    int getChildNum(){return element_ == nullptr ? 0 : element_->getChildNum();}
 
     CoffUnit getCoffUnit(){return element_->getCoffUnit();}
 
@@ -121,7 +128,8 @@ public:
 protected:
     int externalCoffIndex_ = {-1};
     double coff_ = {0};
-    char dataClass_[MAX_LEAF_DATA_CLASS_LEN] = {0};
+    char dataClass_[MAX_LEAF_DATA_STR_LEN] = {0};
+    char dataName_[MAX_LEAF_DATA_STR_LEN] = {0};
     IAlphaElement* element_ = {nullptr};
 };
 
@@ -135,6 +143,7 @@ public:
     bool isLocal;
 };
 
+//后处理,在树计算完成后的结果上再做处理
 class AlphaProcessNode{
     public:
         void setup(const char* name, IAlphaProcess* process){
@@ -211,7 +220,7 @@ public:
         subtreeList_[subtreeLen].rootId = rootId;
         subtreeList_[subtreeLen].isLocal = isLocal;
         //恢复被写坏的preId
-        for(int i = 0; i < subtreeLen; ++i)
+        for(auto i = 0; i < subtreeLen; ++i)
             nodeList_[subtreeList_[i].rootId].preId = -1;
     }
 
@@ -283,7 +292,7 @@ public:
     }
     //解码后处理
     const char* encodeProcess(const char* processName, char* pout){
-        for(int i = 0; i < processList_.getSize(); ++i){
+        for(auto i = 0; i < processList_.getSize(); ++i){
             if(strcmp(processList_[i].name, processName) == 0){
                 strcpy(pout, processList_[i].getProcess()->getName());
                 char* curStr = pout + strlen(pout);
@@ -333,7 +342,7 @@ protected:
 
         int leftId = -1, rightId = -1;
 
-        char curDataClass[MAX_LEAF_DATA_CLASS_LEN];
+        char curDataClass[MAX_LEAF_DATA_STR_LEN];
         if(parDataClass != nullptr)
             strcpy(curDataClass, parDataClass);
         char* dataClass = (parDataClass == nullptr) ? nullptr : curDataClass;
@@ -374,7 +383,7 @@ protected:
         }
 
         //特殊处理子树
-        for(int i = 0; i < subtreeList_.getSize(); i++){
+        for(auto i = 0; i < subtreeList_.getSize(); i++){
             if(strcmp(opt, subtreeList_[i].name) == 0){
                 return subtreeList_[i].rootId;
             }
@@ -390,6 +399,13 @@ protected:
             return nodeId;
         }
         //-----------------------------------------------------------------------------------------
+
+        //特殊处理叶节点
+        auto iter = *alphaElementMap.find(opt);
+        if(iter == nullptr){
+            nodeId = createNode(opt, dataClass);
+            return nodeId;
+        }
 
         alphaElement = alphaElementMap[opt];
         if(alphaElement->getCoffUnit() != CoffUnit::COFF_NONE){
@@ -507,7 +523,7 @@ protected:
         if(subtreeSize == -1)
             subtreeSize = subtreeList_.getSize();
         if(nodeList_[nodeId].isRoot()){
-            for(int i = 0; i < subtreeSize; ++i){
+            for(auto i = 0; i < subtreeSize; ++i){
                 if(subtreeList_[i].rootId == nodeId){
                     return subtreeList_[i].name;
                 }
@@ -517,14 +533,14 @@ protected:
     }
 
     int getSubtreeRootId(const char* rootName){
-        for(int i = 0; i < subtreeList_.getSize(); ++i)
+        for(auto i = 0; i < subtreeList_.getSize(); ++i)
             if(strcmp(subtreeList_[i].name, rootName) == 0)
                 return subtreeList_[i].rootId;
         return -1;
     }
 
     int getSubtreeIndex(const char* rootName){
-        for(int i = 0; i < subtreeList_.getSize(); ++i)
+        for(auto i = 0; i < subtreeList_.getSize(); ++i)
             if(strcmp(subtreeList_[i].name, rootName) == 0)
                 return i;
         return -1;
@@ -543,6 +559,12 @@ protected:
     inline int createNode(IAlphaElement* element, double coff = 0, const char* watchLeafDataClass = nullptr,  int externalCoffIndex = -1){
         int nodeLen = nodeList_.getSize();
         nodeList_[nodeLen].setup(element, coff, watchLeafDataClass, externalCoffIndex);
+        return nodeLen;
+    }
+
+    inline int createNode(const char* name, const char* watchLeafDataClass = nullptr){
+        int nodeLen = nodeList_.getSize();
+        nodeList_[nodeLen].setup(name, watchLeafDataClass);
         return nodeLen;
     }
 

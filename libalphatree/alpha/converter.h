@@ -8,6 +8,8 @@
 #include <map>
 using namespace std;
 
+#define NONE -1
+
 class AlphaTreeConverter{
 public:
     AlphaTreeConverter(){
@@ -50,7 +52,7 @@ public:
 
     //把一些基础符号函数化
     char* operator2function(const char* line, char* pout){
-        int i = 0;
+        size_t i = 0;
         int curIndex = 0;
         size_t size = strlen(line);
         map<char, const char*>::iterator it;
@@ -104,13 +106,6 @@ public:
         }
         pout[curIndex] = 0;
         return pout;
-    }
-
-    int getCacheSize(const int* outCache){
-        int id = 0;
-        while (outCache[id] != NONE)
-            ++id;
-        return (id >> 1);
     }
 
     //输出当前行操作符的范围,以及左右孩子范围,没有就返回(-1,-1)
