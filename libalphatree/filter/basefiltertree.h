@@ -45,16 +45,13 @@ namespace fb{
 
             FilterNodeType getNodeType(){
                 if(name_[0] == '+')
-                    return FilterNodeType::LEAF;
-                if(strcmp("boosting",name_) == 0)
                     return FilterNodeType::BOOSTING;
-                if(strcmp("bagging",name_) == 0)
-                    return FilterNodeType::BAGGING;
-                return FilterNodeType::BRANCH;
+                if(leftId != -1)
+                    return FilterNodeType::BRANCH;
+                return FilterNodeType::LEAF;
             }
 
             void setup(double coff = 0, const char* name = nullptr){
-                condId = -1;
                 leftId = -1;
                 rightId = -1;
                 coff_ = coff;
@@ -65,8 +62,6 @@ namespace fb{
             }
             int leftId = {-1};
             int rightId = {-1};
-            //条件孩子id
-            int condId = {-1};
         protected:
             //过滤的系数
             double coff_ = {0};
@@ -112,67 +107,35 @@ namespace fb{
                     //找到?所在位置,并标记是否是boost节点
                     int index_if = -1;
                     int index_else = -1;
-                    bool isBoostNode = getIfElseIndex(line, l, r, index_if, index_else);
-
                     int nodeId = -1;
-                    if(index_if != -1 && index_else != -1){
-                        //这是一个boosting或者branch节点
+                    if(getIfElseIndex(line, l, r, index_if, index_else)){
                         int leftId = decode(line,index_if+2,index_else-2);
                         int rightId = decode(line, index_else+2, r);
-
-                        int condId = -1;
-
-                        if(isBoostNode){
-                            condId = decode(line, l, index_if - 2);
-                            nodeId = createNode(0, "boosting");
-                        } else{
-                            CHECK(line[l] == '(' && line[index_if-2] == ')',"format error!");
-                            curIndex = l+1;
-                            while(curIndex < index_if && line[curIndex] != '<')
-                                ++curIndex;
-                            CHECK(line[curIndex] == '<',"format error!");
-
-                            //读出系数
-                            char lastChar = line[index_if-2];
-                            line[index_if-2] = 0;
-                            double coff = atof(line+(curIndex+2));
-                            line[index_if-2] = lastChar;
-
-                            //读出名字
-                            lastChar = line[curIndex-1];
-                            line[curIndex-1] = 0;
-                            nodeId = createNode(coff, line + (l + 1));
-                            line[curIndex-1] = lastChar;
-                        }
-                        nodeList_[nodeId].condId = condId;
-                        nodeList_[nodeId].leftId = leftId;
-                        nodeList_[nodeId].rightId = rightId;
-                    } else {
-                        bool isAddNode = getAddOrMulIndex(line, l, r, curIndex);
-                        int leftId = -1;
-                        int rightId = -1;
-                        //这是一个bagging节点
-                        if(isAddNode){
-                            //即有乘法又有加法,这个括号就是乘法的
-                            rightId = decode(line, curIndex+2, r);
-                            ++l;
-                            r = curIndex-3;
-                            isAddNode = getAddOrMulIndex(line, l, r, curIndex);
-                            CHECK(!isAddNode,"format err!");
-
-                        }
+                        CHECK(line[l] == '(' && line[index_if-2] == ')',"format error!");
+                        curIndex = l+1;
+                        while(curIndex < index_if && line[curIndex] != '<')
+                            ++curIndex;
+                        CHECK(line[curIndex] == '<',"format error!");
 
                         //读出系数
-                        char lastChar = line[r+1];
-                        line[r+1] = 0;
+                        char lastChar = line[index_if-2];
+                        line[index_if-2] = 0;
                         double coff = atof(line+(curIndex+2));
-                        line[r+1] = lastChar;
+                        line[index_if-2] = lastChar;
 
-                        leftId = decode(line, l, curIndex-2);
-                        nodeId = createNode(coff,"bagging");
+                        //读出名字
+                        lastChar = line[curIndex-1];
+                        line[curIndex-1] = 0;
+                        nodeId = createNode(coff, line + (l + 1));
+                        line[curIndex-1] = lastChar;
+                    } else if(getAddIndex(line, l, r, curIndex)){
+                        int leftId = decode(line, l, curIndex-2);
+                        int rightId = decode(line, curIndex+2, r);
+                        nodeId = createNode(0,"+");
                         nodeList_[nodeId].leftId = leftId;
                         nodeList_[nodeId].rightId = rightId;
                     }
+
                     return nodeId;
                 }
                 else {
@@ -184,43 +147,31 @@ namespace fb{
                     curIndex = nodeList_[nodeId].getCoffStr(pout + curIndex);
                 } else {
                     pout[curIndex++] = '(';
-                    if(nodeList_[nodeId].getNodeType() == FilterNodeType::BAGGING){
-                        if(nodeList_[nodeId].rightId != -1)
-                            pout[curIndex++] = '(';
 
-                        //记录乘法
+                    if(nodeList_[nodeId].getNodeType() == FilterNodeType::BRANCH){
                         pout[curIndex++] = '(';
-                        encode(pout, nodeList_[nodeId].leftId, curIndex);
-                        strcpy(pout+curIndex," * ");
+                        strcpy(pout+curIndex,nodeList_[nodeId].getName());
+                        curIndex += strlen(nodeList_[nodeId].getName());
+                        strcpy(pout+curIndex," < ");
                         curIndex += 3;
                         curIndex = nodeList_[nodeId].getCoffStr(pout + curIndex);
                         pout[curIndex++] = ')';
 
-                        if(nodeList_[nodeId].rightId != -1){
-                            strcpy(pout+curIndex," + ");
-                            curIndex += 3;
-                            encode(pout, nodeList_[nodeId].rightId, curIndex);
-                            pout[curIndex++] = ')';
-                        }
-                    } else{
-                        if(nodeList_[nodeId].getNodeType() == FilterNodeType::BOOSTING){
-                            encode(pout, nodeList_[nodeId].condId, curIndex);
-                        } else {
-                            pout[curIndex++] = '(';
-                            strcpy(pout+curIndex,nodeList_[nodeId].getName());
-                            curIndex += strlen(nodeList_[nodeId].getName());
-                            strcpy(pout+curIndex," < ");
-                            curIndex += 3;
-                            curIndex = nodeList_[nodeId].getCoffStr(pout + curIndex);
-                            pout[curIndex++] = ')';
-                        }
                         strcpy(pout + curIndex, " ? ");
                         curIndex += 3;
                         encode(pout, nodeList_[nodeId].leftId, curIndex);
                         strcpy(pout + curIndex, " : ");
                         curIndex += 3;
                         encode(pout, nodeList_[nodeId].rightId, curIndex);
+                    } else {
+                        pout[curIndex++] = '(';
+                        encode(pout, nodeList_[nodeId].leftId, curIndex);
+                        strcpy(pout+curIndex," + ");
+                        curIndex += 3;
+                        encode(pout, nodeList_[nodeId].rightId, curIndex);
+                        pout[curIndex++] = ')';
                     }
+
                     pout[curIndex++] = ')';
                 }
             }
@@ -257,7 +208,7 @@ namespace fb{
                 return isBoostNode;
             }
 
-            bool getAddOrMulIndex(char* line, int l, int r, int& curIndex){
+            bool getAddIndex(char* line, int l, int r, int& curIndex){
                 curIndex = l;
                 int depth = 0;
                 while(curIndex < r){
@@ -265,7 +216,7 @@ namespace fb{
                         ++depth;
                     else if(line[curIndex] == ')')
                         --depth;
-                    else if(depth == 0 && (line[curIndex] == '*' || line[curIndex] == '+'))
+                    else if(depth == 0 && line[curIndex] == '+')
                         return line[curIndex] == '+';
                     ++curIndex;
                 }
