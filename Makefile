@@ -4,6 +4,3 @@ all:
 
 clean:
 	cd libalphatree; make clean
-
-
-
