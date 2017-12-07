@@ -19,13 +19,10 @@ namespace fb{
         LEAF = 0,
         BRANCH = 1,
         BOOSTING = 2,
-        BAGGING = 3,
     };
 
     class FilterNode{
         public:
-            //是否是子树
-            bool isRoot(){ return condId == -1;}
             //得到名字
             const char* getName(){ return name_;}
             //得到系数
@@ -47,7 +44,7 @@ namespace fb{
             }
 
             FilterNodeType getNodeType(){
-                if(condId != -1 && name_[0] == 0)
+                if(name_[0] == '+')
                     return FilterNodeType::LEAF;
                 if(strcmp("boosting",name_) == 0)
                     return FilterNodeType::BOOSTING;
