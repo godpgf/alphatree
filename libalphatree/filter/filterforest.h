@@ -50,11 +50,8 @@ namespace fb{
                 return filterTreeCache_->useCacheMemory();
             }
 
-            /*
-             * minSampleSize: 决策树最小圈选的样本数
-             * maxSamplePerTree: 每棵树随机使用的样本数
-             */
-            int randomForestTrain(int cacheId, int minSampleSize = 30, int maxSamplePerTree = 0){
+            
+            int train(int cacheId, float lambda, ){
                 //TODO
             }
         protected:

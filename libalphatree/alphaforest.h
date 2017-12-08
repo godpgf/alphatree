@@ -195,7 +195,7 @@ class AlphaForest{
             int filterCacheId = filterForest_.useCache();
             FilterCache* filterCache = filterForest_.getCache(filterCacheId);
             filterCache->initialize(maxSampleSize, alphaDataBase_.getFeatureSize());
-            filterCache->sampleSize = alphaDataBase_.getFeature(cache->dayBefore, cache->sampleDays, cache->stockSize, cache->codes, buy, sell, filterCache->feature, filterCache->returns, filterCache->risk, filterCache->featureSort);
+            filterCache->sampleSize = alphaDataBase_.getFeature(cache->dayBefore, cache->sampleDays, cache->stockSize, cache->codes, buy, sell, filterCache->feature, filterCache->returns, filterCache->risk, filterCache->weight);
 
             filterForest_.releaseCache(filterCacheId);
         }
