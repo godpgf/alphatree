@@ -51,7 +51,7 @@ namespace fb{
             }
 
             
-            int train(int cacheId, float lambda, ){
+            int train(int cacheId, float lambda, int maxIteratorNum){
                 //TODO
             }
         protected:

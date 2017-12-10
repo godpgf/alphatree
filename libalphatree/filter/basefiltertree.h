@@ -26,20 +26,20 @@ namespace fb{
             //得到名字
             const char* getName(){ return name_;}
             //得到系数
-            double getCoff(){
+            double getWeight(){
                 return coff_;
             }
-            int getCoffStr(char* coffStr){
-                sprintf(coffStr,"%.8f", coff_);
-                int curIndex = strlen(coffStr);
-                while(coffStr[curIndex-1] == '0' || coffStr[curIndex-1] == '.') {
+            int getWeightStr(char *weightStr){
+                sprintf(weightStr,"%.8f", coff_);
+                int curIndex = strlen(weightStr);
+                while(weightStr[curIndex-1] == '0' || weightStr[curIndex-1] == '.') {
                     --curIndex;
-                    if(coffStr[curIndex] == '.'){
-                        coffStr[curIndex] = 0;
+                    if(weightStr[curIndex] == '.'){
+                        weightStr[curIndex] = 0;
                         break;
                     }
                 }
-                coffStr[curIndex] = 0;
+                weightStr[curIndex] = 0;
                 return curIndex;
             }
 
@@ -51,10 +51,10 @@ namespace fb{
                 return FilterNodeType::LEAF;
             }
 
-            void setup(double coff = 0, const char* name = nullptr){
+            void setup(double weight = 0, const char* name = nullptr){
                 leftId = -1;
                 rightId = -1;
-                coff_ = coff;
+                coff_ = weight;
                 if(name == nullptr)
                     strcpy(name_, name);
                 else
@@ -144,7 +144,7 @@ namespace fb{
             }
             void encode(char* pout, int nodeId, int& curIndex){
                 if(nodeList_[nodeId].getNodeType() == FilterNodeType::LEAF){
-                    curIndex = nodeList_[nodeId].getCoffStr(pout + curIndex);
+                    curIndex = nodeList_[nodeId].getWeightStr(pout + curIndex);
                 } else {
                     pout[curIndex++] = '(';
 
@@ -154,7 +154,7 @@ namespace fb{
                         curIndex += strlen(nodeList_[nodeId].getName());
                         strcpy(pout+curIndex," < ");
                         curIndex += 3;
-                        curIndex = nodeList_[nodeId].getCoffStr(pout + curIndex);
+                        curIndex = nodeList_[nodeId].getWeightStr(pout + curIndex);
                         pout[curIndex++] = ')';
 
                         strcpy(pout + curIndex, " ? ");
