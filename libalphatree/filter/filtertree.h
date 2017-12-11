@@ -16,6 +16,19 @@ namespace fb {
     const size_t MAX_TREE_SIZE = 64;
     const size_t MAX_LEAF_SIZE = 1024;
 
+    inline float mean(const float* v, size_t n){
+        float avg = 0;
+	for(size_t i = 0; i < n; ++i)
+	    avg += v[i];
+	return avg / n;
+    }
+    inline float std(const float* v, float avg, size_t n){
+        float s = 0;
+	for(size_t i = 0; i < n; ++i)
+	    s += (v[i] - avg) * (v[i] - avg);
+	return fsqrt(s / n);
+    }
+
     class BaseFilterCache {
     public:
         BaseFilterCache() {
@@ -148,6 +161,8 @@ namespace fb {
         float lambda;
         size_t maxAdjWeightTime;
         float adjWeightRule;
+	size_t maxBarSize;
+	float maxBarPercent;
 
 	//监控分裂线程
         std::shared_future<SplitRes>* splitRes = {nullptr};
@@ -308,9 +323,9 @@ namespace fb {
         }
 
         void doBoost(FilterCache *data, size_t treeId, ThreadPool *threadPool) {
-            size_t dataSize = data->sampleSize * MAX_TREE_SIZE;
-            size_t treeFlag = (((size_t) 1) << treeId);
+            size_t dataSize = data->sampleSize;
             int *curNodeId = data->trainRaw.nodeId + treeId * dataSize;
+	    float* curPred = data->pred + treeId * dataSize;
             //先把所有样本分配到当前节点名下
             int rootId = createNode();
             for (size_t i = 0; i < data->sampleSize; ++i) {
@@ -324,28 +339,70 @@ namespace fb {
             //尝试把从startIndex开始的elementSize个节点继续分割
             int startIndex = rootId;
             size_t elementSize = 1;
+	    std::shared_future<SplitRes>* splitRes = data->splitRes + treeId * data->maxLeafSize;
             for (size_t i = 0; i < data->maxDepth; ++i) {
+                //尝试分裂
+		if(elementSize == 0)
+		    break;
+		for(size_t j = 0; j < elementSize; ++j){
+		    int cmpNodeId = j + startIndex;
+		    splitRes[j] = threadPool->enqueue([data, treeId, cmpNodeId]{
+		        return split(data, treeId, cmpNodeId);
+		    }).share();
+		}
+		//尝试创建节点
+		for(size_t j = 0; j < elementSize; ++j){
+		    if(splitRes[j].get().isValid()){
+			int preId = j + startIndex;
+	                int leftId = createNode(-splitRes[j].get().gl/(splitRes[j].get().hl + data->lambda));
+			int rightId = createNode(-splitRes[j].get().gr/(splitRes[j].get().gl + data->lambda));
+			nodeList_[preId].setup(splitRes[j].get().slpitValue, data->featureName + splitRes[j].get().featureIndex * MAX_FEATURE_NAME_LEN);
+			nodeList_[preId].leftId = leftId;
+			nodeList_[preId].rightId = rightId;
+			nodeList_[leftId].preId = preId;
+			nodeList_[rightId].preId = preId;
+                        //重新划分样本归属的叶节点
+			float* curFeature = data->feature + splitRes[j].get().featureIndex * data->sampleSize;
+			for(size_t k = 0; k < data->sampleSize; ++k){
+			    if(curNodeId[k] == preId){
+		                if(curFeature[k] < splitRes[j].get().slpitValue)
+				    curNodeId[k] = leftId;
+				else
+				    curNodeId[k] = rightId;
+			    }
+			}
+		    }
+		}
+		//将叶节点的预测加到之前t-1棵树的结果上
+                for(size_t j = 0; j < dataSize; ++j)
+		    curPred[j] += nodeList_[curNodeId[j]].getWeight();
+		//刷新样本权重
+
 
             }
         }
 
     protected:
+	static void refreshWeight(const float* pred, float* weight, size_t sampleSize, size_t weightLevelNum = 128){
+	   float avgValue = mean(pred, sampleSize);
+	   float stdValue = std(pred, avgValue, sampleSize);
+
+	}
         /*
          * 找到最好的分裂，返回分裂和gain:
          * feature
          * */
         static SplitRes
-        split(const float* feature, const size_t* featureFlag, size_t featureSize, size_t treeId, const float *target, const float* g, const float* h, const float *w, const int *nodeId, int cmpNodeId,
-              size_t sampleSize, float gamma, float lambda, size_t maxBarSize, float mergeBarPercent){
+        split(FilterCache *data,  size_t treeId, int cmpNodeId){
             SplitRes bestRes;
             size_t treeFlag = (((size_t) 1) << treeId);
             float maxGain = 0;
-            for(size_t i = 0; i < featureSize; ++i){
-                if(featureFlag[i] & treeFlag){
-	            float* curFeature = feature + sampleSize * i;
-		    SplitRes res = split(curFeature, target, g, h, w, nodeId, cmpNodeId, sampleSize, gamma, lambda, maxBarSize, mergeBarPercent);
+            for(size_t i = 0; i < data->featureSize; ++i){
+                if(data->featureFlag[i] & treeFlag){
+	            float* curFeature = data->feature + data->sampleSize * i;
+		    SplitRes res = split(curFeature, data->target, data->g, data->h, data->trainRaw.weight+treeId*data->sampleSize, data->trainRaw.nodeId + treeId*data->sampleSize, cmpNodeId, data->sampleSize, data->gamma, data->lambda, data->maxBarSize, data->mergeBarPercent);
                     if(res.isValid()){
-		        float gain = res.gain(gamma, lambda);
+		        float gain = res.gain(data->gamma, data->lambda);
 			if(gain > maxGain){
 			    maxGain = gain;
                             bestRes = res;

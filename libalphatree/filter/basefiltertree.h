@@ -60,6 +60,7 @@ namespace fb{
                 else
                     name_[0] = 0;
             }
+	    int preId = {-1};
             int leftId = {-1};
             int rightId = {-1};
         protected:
@@ -127,6 +128,10 @@ namespace fb{
                         lastChar = line[curIndex-1];
                         line[curIndex-1] = 0;
                         nodeId = createNode(coff, line + (l + 1));
+			nodeList_[nodeId].leftId = leftId;
+			nodeList_[nodeId].rightId = rightId;
+			nodeList_[leftId].preId = nodeId;
+			nodeList_[rightId].preId = nodeId;
                         line[curIndex-1] = lastChar;
                     } else if(getAddIndex(line, l, r, curIndex)){
                         int leftId = decode(line, l, curIndex-2);
@@ -134,6 +139,8 @@ namespace fb{
                         nodeId = createNode(0,"+");
                         nodeList_[nodeId].leftId = leftId;
                         nodeList_[nodeId].rightId = rightId;
+			nodeList_[leftId].preId = nodeId;
+			nodeList_[rightId].preId = nodeId;
                     }
 
                     return nodeId;
