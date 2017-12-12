@@ -212,7 +212,7 @@ namespace fb {
          * data: 所有训练数据
          * treeId: 标注此树序号
          * */
-        void train(FilterCache *data, int treeId, ThreadPool* threadPool) {
+        void train(FilterCache *data, int treeId, ThreadPool *threadPool) {
             //标注此树取样的训练数据
             size_t treeFlag = (((size_t) 1) << treeId);
             initialize(data, treeId);
@@ -225,15 +225,15 @@ namespace fb {
                 calGradient(data, treeId);
                 //创建第t棵树
                 int rootId = doBoost(data, treeId, threadPool);
-                if(i == 0)
+                if (i == 0)
                     lastRootId = rootId;
-                else{
-                    createNode(0,"+");
-                    nodeList_[nodeList_.getSize()-1].leftId = lastRootId;
-                    nodeList_[lastRootId].preId = nodeList_.getSize()-1;
-                    nodeList_[nodeList_.getSize()-1].rightId = rootId;
-                    nodeList_[rootId].preId = nodeList_.getSize()-1;
-                    lastRootId = nodeList_.getSize()-1;
+                else {
+                    createNode(0, "+");
+                    nodeList_[nodeList_.getSize() - 1].leftId = lastRootId;
+                    nodeList_[lastRootId].preId = nodeList_.getSize() - 1;
+                    nodeList_[nodeList_.getSize() - 1].rightId = rootId;
+                    nodeList_[rootId].preId = nodeList_.getSize() - 1;
+                    lastRootId = nodeList_.getSize() - 1;
                 }
             }
         }
@@ -247,7 +247,7 @@ namespace fb {
         }
 
     protected:
-        static void initialize(FilterCache *data, int treeId){
+        static void initialize(FilterCache *data, int treeId) {
             //初始化
             size_t dataSize = data->sampleSize * MAX_TREE_SIZE;
             memset(data->trainRaw.pred + treeId * dataSize, 0, sizeof(float) * dataSize);
@@ -310,20 +310,20 @@ namespace fb {
                 if (elementSize == 0)
                     break;
                 //不断的调整权重，分裂节点
-                for (size_t wt = 0; wt < data->maxAdjWeightTime; ++wt){
+                for (size_t wt = 0; wt < data->maxAdjWeightTime; ++wt) {
                     //如果有新节点加入
-                    if(nodeList_.getSize() > startIndex + elementSize){
+                    if (nodeList_.getSize() > startIndex + elementSize) {
                         //将叶节点的预测加到之前t-1棵树的结果上
                         for (size_t j = 0; j < dataSize; ++j)
                             curPred[j] += nodeList_[curNodeId[j]].getWeight();
                         //刷新样本权重
                         refreshWeight(curPred, curWeight, dataSize);
                         //恢复当前预测
-                        for(size_t j = 0; j < dataSize; ++j)
+                        for (size_t j = 0; j < dataSize; ++j)
                             curPred[j] -= nodeList_[curNodeId[j]].getWeight();
                         //恢复节点所属于的叶节点
-                        for(size_t j = 0; j < dataSize; ++j)
-                            if(curNodeId[j] >= startIndex + elementSize){
+                        for (size_t j = 0; j < dataSize; ++j)
+                            if (curNodeId[j] >= startIndex + elementSize) {
                                 curNodeId[j] = nodeList_[curNodeId[j]].preId;
                             }
                         //删除新节点
@@ -384,16 +384,18 @@ namespace fb {
             float stdScale = normsinv(1.0 - 1.0 / weightLevelNum);
             float startValue = avgValue - stdValue * stdScale;
             float deltaStd = stdValue * stdScale / (0.5f * (weightLevelNum - 2));
-            size_t* ranking = new size_t[weightLevelNum];
-            float* rankingWeight = new float[weightLevelNum];
+            size_t *ranking = new size_t[weightLevelNum];
+            float *rankingWeight = new float[weightLevelNum];
 
-            for(size_t i = 0; i < sampleSize; ++i){
-                int index = pred[i] < startValue ? 0 : min((int) ((pred[i] - startValue) / deltaStd) + 1, weightLevelNum - 1);
+            for (size_t i = 0; i < sampleSize; ++i) {
+                int index = pred[i] < startValue ? 0 : min((int) ((pred[i] - startValue) / deltaStd) + 1,
+                                                           weightLevelNum - 1);
                 ++ranking[index];
             }
             distributionWeightPr(ranking, weightLevelNum, rankingWeight);
-            for(size_t i = 0; i < sampleSize; ++i){
-                int index = pred[i] < startValue ? 0 : min((int) ((pred[i] - startValue) / deltaStd) + 1, weightLevelNum - 1);
+            for (size_t i = 0; i < sampleSize; ++i) {
+                int index = pred[i] < startValue ? 0 : min((int) ((pred[i] - startValue) / deltaStd) + 1,
+                                                           weightLevelNum - 1);
                 weight[i] = rankingWeight[index];
             }
 
@@ -467,7 +469,7 @@ namespace fb {
                 res.hr = bars[barSize - 1].h - res.hl;
                 res.leftElementNum = bars[bestSplit - 1].dataNum;
                 res.rightElementNum = bars[barSize - 1].dataNum - res.leftElementNum;
-		res.splitValue = bars[bestSplit].startValue;
+                res.splitValue = bars[bestSplit].startValue;
             } else {
                 res.leftElementNum = 0;
                 res.rightElementNum = 0;

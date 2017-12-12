@@ -11,10 +11,20 @@
 #include "../base/threadpool.h"
 
 namespace fb {
-    class FilterForest {
+    class FilterForest{
     public:
-        FilterForest(int cacheSize, ThreadPool *threadPool) : threadPool_(threadPool) {
+        void clean(){
+            treeNum = 0;
+        }
+        size_t treeNum = {0};
+        int filterTrees[MAX_TREE_SIZE];
+    };
+
+    class FilterMachine {
+    public:
+        FilterMachine(int cacheSize, ThreadPool *threadPool) : threadPool_(threadPool) {
             filterTreeCache_ = DCache<FilterTree>::create();
+            filterForestCache_ = DCache<FilterForest>::create();
             filterCache_ = Cache<FilterCache>::create(cacheSize + 1);
             char *p = filterCache_->getBuff();
             for (auto i = 0; i != filterCache_->getMaxCacheSize(); ++i) {
@@ -23,8 +33,9 @@ namespace fb {
             }
         }
 
-        ~FilterForest() {
+        ~FilterMachine() {
             DCache<FilterTree>::release(filterTreeCache_);
+            DCache<FilterForest>::release(filterForestCache_);
             for (auto i = 0; i != filterCache_->getMaxCacheSize(); ++i)
                 filterCache_->getCacheMemory(i)->~FilterCache();
             Cache<FilterCache>::release(filterCache_);
@@ -42,18 +53,30 @@ namespace fb {
             filterCache_->releaseCacheMemory(cacheId);
         }
 
-        void releaseFilterTree(int id) {
-            getFilterTree(id)->clean();
-            filterTreeCache_->releaseCacheMemory(id);
+        void releaseFilterForest(int id) {
+            FilterForest* f = getFilterForest(id);
+            for(size_t i = 0; i < f->treeNum; ++i) {
+                getFilterTree(f->filterTrees[i])->clean();
+                filterTreeCache_->releaseCacheMemory(f->filterTrees[i]);
+            }
+
+            getFilterForest(id)->clean();
+            filterForestCache_->releaseCacheMemory(id);
         }
 
-        int useFilterTree() {
-            return filterTreeCache_->useCacheMemory();
+        int useFilterForest() {
+            return filterForestCache_->useCacheMemory();
         }
 
+        void decode(int forestId, const char* line, size_t size){
 
-        int train(int cacheId, float lambda, int maxIteratorNum) {
-            //TODO
+        }
+        const char* encode(int forestId, char* pout){
+
+        }
+
+        int train(int cacheId, int forestId) {
+
         }
 
     protected:
@@ -61,8 +84,13 @@ namespace fb {
             return &filterTreeCache_->getCacheMemory(id);
         }
 
+        FilterForest *getFilterForest(int id){
+            return &filterForestCache_->getCacheMemory(id);
+        }
+
         //filtertree的内存空间
         DCache<FilterTree> *filterTreeCache_ = {nullptr};
+        DCache<FilterForest> *filterForestCache_ = {nullptr};
         Cache<FilterCache> *filterCache_ = {nullptr};
         //计算中间结果对应的线程
         ThreadPool *threadPool_;

@@ -255,7 +255,7 @@ class AlphaForest{
         ThreadPool threadPool_;
 
         //机器学习进一步过滤
-        FilterForest filterForest_;
+        FilterMachine filterForest_;
 
         AlphaDB alphaDataBase_;
         HashMap<IAlphaElement*> alphaElementMap_;
