@@ -16,8 +16,66 @@ namespace fb {
         void clean(){
             treeNum = 0;
         }
+        void addTree(int treeId){
+            filterTrees[treeNum++] = treeId;
+        }
+        template <class F>
+        void decode(const char* line, size_t size, F&& f){
+            decode(line, 0, size-1, f);
+        }
+        template <class F>
+        char* encode(char* pout, F&& f){
+            int curIndex = 0;
+            if(treeNum == 1){
+
+            }else if(treeNum > 1){
+
+            }
+            pout[curIndex] = 0;
+            return pout;
+        }
         size_t treeNum = {0};
         int filterTrees[MAX_TREE_SIZE];
+    protected:
+        template <class F>
+        void decode(char* line, int l, int r, F&& f){
+            int curIndex = l;
+            if(line[curIndex] == '(' && line[r] == ')'){
+                int depth = 0;
+                ++l;
+                --r;
+                curIndex = l;
+
+                int nodeId = -1;
+                if(getAddIndex(line, l, r, curIndex)){
+                    decode(line, l, curIndex-2, f);
+                    decode(line, curIndex+2, r, f);
+                } else {
+                    addTree(f(lind, l-1, r+1));
+                }
+            }
+            else {
+                CHECK(false, "format error!");
+            }
+        }
+        template <class F>
+        void encode(char* pout, int curIndex, int curTreeIndex, F&& f){
+
+        }
+        static bool getAddIndex(char* line, int l, int r, int& curIndex){
+            curIndex = l;
+            int depth = 0;
+            while(curIndex < r){
+                if(line[curIndex] == '(')
+                    ++depth;
+                else if(line[curIndex] == ')')
+                    --depth;
+                else if(depth == 0 && line[curIndex] == '+')
+                    return line[curIndex] == '+';
+                ++curIndex;
+            }
+            throw "format err";
+        }
     };
 
     class FilterMachine {
@@ -94,6 +152,9 @@ namespace fb {
         Cache<FilterCache> *filterCache_ = {nullptr};
         //计算中间结果对应的线程
         ThreadPool *threadPool_;
+
+
+
     };
 }
 
