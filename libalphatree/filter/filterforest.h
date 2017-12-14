@@ -25,12 +25,7 @@ namespace fb {
         }
         template <class F>
         char* encode(char* pout, F&& f){
-            int curIndex = 0;
-            if(treeNum == 1){
-
-            }else if(treeNum > 1){
-
-            }
+            int curIndex = encode(pout, 0, 0, f);
             pout[curIndex] = 0;
             return pout;
         }
@@ -59,8 +54,18 @@ namespace fb {
             }
         }
         template <class F>
-        void encode(char* pout, int curIndex, int curTreeIndex, F&& f){
-
+        int encode(char* pout, int curIndex, int curTreeIndex, F&& f){
+            if(curTreeIndex == treeNum - 1){
+                return f(filterTrees[curTreeIndex], pout, curIndex);
+            } else {
+                pout[curIndex++] = '(';
+                curIndex = f(filterTrees[curTreeIndex], pout, curIndex);
+                strcpy(pout + curIndex, " + ");
+                curIndex += 3;
+                curIndex = encode(pout, curIndex, curTreeIndex+1, f);
+                pout[curIndex++] = ')';
+                return;curIndex;
+            }
         }
         static bool getAddIndex(char* line, int l, int r, int& curIndex){
             curIndex = l;
@@ -80,10 +85,10 @@ namespace fb {
 
     class FilterMachine {
     public:
-        FilterMachine(int cacheSize, ThreadPool *threadPool) : threadPool_(threadPool) {
+        FilterMachine(int cacheSize) : threadPool_(cacheSize) {
             filterTreeCache_ = DCache<FilterTree>::create();
             filterForestCache_ = DCache<FilterForest>::create();
-            filterCache_ = Cache<FilterCache>::create(cacheSize + 1);
+            filterCache_ = Cache<FilterCache>::create(cacheSize);
             char *p = filterCache_->getBuff();
             for (auto i = 0; i != filterCache_->getMaxCacheSize(); ++i) {
                 new(p)FilterCache();
@@ -133,8 +138,22 @@ namespace fb {
 
         }
 
-        int train(int cacheId, int forestId) {
-
+        void train(int cacheId, int forestId, ThreadPool* forestThreadPoll) {
+            FilterForest *forest = getFilterForest(forestId);
+            FilterCache* cache = getCache(cacheId);
+            for(size_t i = 0; i < cache->treeSize; ++i){
+                forest->addTree(filterTreeCache_->useCacheMemory());
+            }
+            for(size_t i = 0; i < cache->treeSize; ++i) {
+                FilterTree* ftree = filterTreeCache_->getCacheMemory(forest->filterTrees[i]);
+                int treeIndex = i;
+                ThreadPool* tpool = &threadPool_;
+                cache->treeRes[i] = forestThreadPoll->enqueue([ftree, cache, treeIndex, tpool]{
+                    return ftree->train(cache, treeIndex, tpool);
+                }).share();
+            }
+            for(size_t i = 0; i < cache->treeSize; ++i)
+                cache->treeRes[i].get();
         }
 
     protected:
@@ -151,10 +170,7 @@ namespace fb {
         DCache<FilterForest> *filterForestCache_ = {nullptr};
         Cache<FilterCache> *filterCache_ = {nullptr};
         //计算中间结果对应的线程
-        ThreadPool *threadPool_;
-
-
-
+        ThreadPool threadPool_;
     };
 }
 

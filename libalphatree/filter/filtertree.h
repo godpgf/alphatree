@@ -135,6 +135,7 @@ namespace fb {
             h = new float[MAX_SAMPLE_SIZE * MAX_TREE_SIZE];
             treeFlag = new size_t[MAX_SAMPLE_SIZE];
             splitRes = new std::shared_future<SplitRes>[MAX_LEAF_SIZE * MAX_TREE_SIZE];
+            treeRes = new std::shared_future<void>[MAX_TREE_SIZE];
         }
 
         virtual ~FilterCache() {
@@ -144,6 +145,7 @@ namespace fb {
             delete[]h;
             delete[]treeFlag;
             delete[]splitRes;
+            delete[]treeRes;
         }
 
         //训练和交叉验证的中间数据
@@ -159,6 +161,8 @@ namespace fb {
         size_t *treeFlag = {nullptr};
         //最大迭代次数（boosting用到的回归树数量），迭代次数多了的boosting会过拟合，但配合bagging又可以缓解它
         size_t maxIteratorNum;
+        //随机森林中树的数量
+        size_t treeSize;
         //每一棵回归树最大深度
         size_t maxDepth;
         size_t maxLeafSize;
@@ -173,6 +177,8 @@ namespace fb {
 
         //监控分裂线程
         std::shared_future<SplitRes> *splitRes = {nullptr};
+        //监控随机森林中各个树的线程
+        std::shared_future<void>* treeRes = {nullptr};
 
         virtual void initialize(size_t sampleSize, size_t featureSize, size_t maxLeafSize) {
             this->maxLeafSize = maxLeafSize;
@@ -234,6 +240,12 @@ namespace fb {
                     nodeList_[nodeList_.getSize() - 1].rightId = rootId;
                     nodeList_[rootId].preId = nodeList_.getSize() - 1;
                     lastRootId = nodeList_.getSize() - 1;
+                }
+            }
+            //随机森林权重在计算平均时会除树数，这里先除了
+            for(size_t i = 0; i < nodeList_.getSize(); ++i){
+                if(nodeList_[i].getNodeType() == FilterNodeType::LEAF){
+                    nodeList_[i].setup(nodeList_[i].getWeight() / data->treeSize);
                 }
             }
         }
