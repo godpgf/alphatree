@@ -132,10 +132,18 @@ namespace fb {
         }
 
         void decode(int forestId, const char* line, size_t size){
-
+            FilterMachine* fm = this;
+            getFilterForest(forestId)->decode(line, size, [fm](const char* line, int l, int r){
+                int treeId = fm->filterTreeCache_->useCacheMemory();
+                fm->getFilterTree(treeId)->decode(line, l, r);
+                return treeId;
+            });
         }
         const char* encode(int forestId, char* pout){
-
+            FilterMachine* fm = this;
+            getFilterForest(forestId)->encode(pout, [fm](int treeId, char* pout, int curIndex){
+                fm->getFilterTree(treeId)->encode(pout, curIndex);
+            });
         }
 
         void train(int cacheId, int forestId, ThreadPool* forestThreadPoll) {
@@ -164,6 +172,7 @@ namespace fb {
         FilterForest *getFilterForest(int id){
             return &filterForestCache_->getCacheMemory(id);
         }
+
 
         //filtertree的内存空间
         DCache<FilterTree> *filterTreeCache_ = {nullptr};
