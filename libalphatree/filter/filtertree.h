@@ -135,6 +135,7 @@ namespace fb {
             h = new float[MAX_SAMPLE_SIZE * MAX_TREE_SIZE];
             treeFlag = new size_t[MAX_SAMPLE_SIZE];
             splitRes = new std::shared_future<SplitRes>[MAX_LEAF_SIZE * MAX_TREE_SIZE];
+            sample2nodeRes = new std::shared_future<void>[MAX_LEAF_SIZE * MAX_TREE_SIZE];
             treeRes = new std::shared_future<void>[MAX_TREE_SIZE];
         }
 
@@ -145,6 +146,8 @@ namespace fb {
             delete[]h;
             delete[]treeFlag;
             delete[]splitRes;
+            delete[]sample2nodeRes
+                    ;
             delete[]treeRes;
         }
 
@@ -177,6 +180,8 @@ namespace fb {
 
         //监控分裂线程
         std::shared_future<SplitRes> *splitRes = {nullptr};
+        //监控样本归属叶节点的划分线程
+        std::shared_future<void>* sample2nodeRes = {nullptr};
         //监控随机森林中各个树的线程
         std::shared_future<void>* treeRes = {nullptr};
 
@@ -184,7 +189,9 @@ namespace fb {
             this->maxLeafSize = maxLeafSize;
             if (maxLeafSize > maxLeafSize_) {
                 delete[]splitRes;
+                delete[]sample2nodeRes;
                 splitRes = new std::shared_future<SplitRes>[maxLeafSize * MAX_TREE_SIZE];
+                sample2nodeRes = new std::shared_future<void>[maxLeafSize * MAX_TREE_SIZE];
             }
             if (featureSize > maxFeatureSize_ || sampleSize > maxSampleSize_) {
                 if (sampleSize > maxSampleSize_) {
@@ -218,19 +225,19 @@ namespace fb {
          * data: 所有训练数据
          * treeId: 标注此树序号
          * */
-        void train(FilterCache *data, int treeId, ThreadPool *threadPool) {
+        void train(FilterCache *data, int treeIndex, ThreadPool *threadPool) {
             //标注此树取样的训练数据
-            size_t treeFlag = (((size_t) 1) << treeId);
-            initialize(data, treeId);
+            size_t treeFlag = (((size_t) 1) << treeIndex);
+            initialize(data, treeIndex);
 
             int lastRootId = -1;
             for (size_t i = 0; i < maxIteratorNum; ++i) {
                 //计算上次迭代的预测
-                boostAdjustPred(data, treeId, treeFlag);
+                boostAdjustPred(data, treeIndex, treeFlag);
                 //计算梯度
-                calGradient(data, treeId);
+                calGradient(data, treeIndex);
                 //创建第t棵树
-                int rootId = doBoost(data, treeId, threadPool);
+                int rootId = doBoost(data, treeIndex, threadPool);
                 if (i == 0)
                     lastRootId = rootId;
                 else {
@@ -250,13 +257,10 @@ namespace fb {
             }
         }
 
-        float *pred(FilterCache *data, int treeId, int nodeId, size_t treeFlag) {
+        float *pred(FilterCache *data, int treeId, ThreadPool *threadPool) {
 
         }
 
-        float eval(FilterCache *data, int treeId, size_t treeFlag) {
-
-        }
 
     protected:
         static void initialize(FilterCache *data, int treeId) {
@@ -318,6 +322,7 @@ namespace fb {
             int startIndex = rootId;
             size_t elementSize = 1;
             std::shared_future<SplitRes> *splitRes = data->splitRes + treeId * data->maxLeafSize;
+            std::shared_future<void> *sample2NodeRes = data->sample2nodeRes + treeId * data->maxLeafSize;
             for (size_t i = 0; i < data->maxDepth; ++i) {
                 if (elementSize == 0)
                     break;
@@ -363,16 +368,15 @@ namespace fb {
                             nodeList_[preId].rightId = rightId;
                             nodeList_[leftId].preId = preId;
                             nodeList_[rightId].preId = preId;
-                            //重新划分样本归属的叶节点
-                            float *curFeature = data->feature + splitRes[j].get().featureIndex * data->sampleSize;
-                            for (size_t k = 0; k < data->sampleSize; ++k) {
-                                if (curNodeId[k] == preId) {
-                                    if (curFeature[k] < splitRes[j].get().slpitValue)
-                                        curNodeId[k] = leftId;
-                                    else
-                                        curNodeId[k] = rightId;
-                                }
-                            }
+                            if(nodeList_[preId].preId != -1)
+                                sample2NodeRes[nodeList_[preId].preId].get();
+                            float* curFeature = data->feature + splitRes[j].get().featureIndex * data->sampleSize;
+                            float slpitValue = splitRes[j].get().slpitValue;
+                            sample2NodeRes[preId] = threadPool->enqueue([curFeature, slpitValue, preId, leftId, rightId, curNodeId, dataSize]{
+                                //重新划分样本归属的叶节点
+                                return refreshNodeId(curFeature, slpitValue, preId, leftId, rightId, curNodeId, dataSize);
+                            }).share();
+
                         }
                     }
 
@@ -390,6 +394,17 @@ namespace fb {
         }
 
     protected:
+        //刷新样本归属的叶节点
+        static void refreshNodeId(const float *curFeature, float slpitValue, int preId, int leftId, int rightId, int *curNodeId, size_t sampleSize){
+            for (size_t k = 0; k < sampleSize; ++k) {
+                if (curNodeId[k] == preId) {
+                    if (curFeature[k] < slpitValue)
+                        curNodeId[k] = leftId;
+                    else
+                        curNodeId[k] = rightId;
+                }
+            }
+        }
         static void refreshWeight(const float *pred, float *weight, size_t sampleSize, size_t weightLevelNum = 128) {
             float avgValue = mean(pred, sampleSize);
             float stdValue = std(pred, avgValue, sampleSize);
