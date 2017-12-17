@@ -371,6 +371,13 @@ const StockMeta& StockMeta::default_instance() {
   return *internal_default_instance();
 }
 
+StockMeta* StockMeta::New(::google::protobuf::Arena* arena) const {
+  StockMeta* n = new StockMeta;
+  if (arena != NULL) {
+    arena->Own(n);
+  }
+  return n;
+}
 
 void StockMeta::Clear() {
 // @@protoc_insertion_point(message_clear_start:stp.StockMeta)
@@ -772,6 +779,13 @@ const StockElement& StockElement::default_instance() {
   return *internal_default_instance();
 }
 
+StockElement* StockElement::New(::google::protobuf::Arena* arena) const {
+  StockElement* n = new StockElement;
+  if (arena != NULL) {
+    arena->Own(n);
+  }
+  return n;
+}
 
 void StockElement::Clear() {
 // @@protoc_insertion_point(message_clear_start:stp.StockElement)
@@ -1218,6 +1232,13 @@ const StockDB& StockDB::default_instance() {
   return *internal_default_instance();
 }
 
+StockDB* StockDB::New(::google::protobuf::Arena* arena) const {
+  StockDB* n = new StockDB;
+  if (arena != NULL) {
+    arena->Own(n);
+  }
+  return n;
+}
 
 void StockDB::Clear() {
 // @@protoc_insertion_point(message_clear_start:stp.StockDB)
@@ -1276,8 +1297,7 @@ bool StockDB::MergePartialFromCodedStream(
       case 3: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(26u /* 26 & 0xFF */)) {
-          DO_(::google::protobuf::internal::WireFormatLite::ReadMessage(
-                input, add_metas()));
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessage(input, add_metas()));
         } else {
           goto handle_unusual;
         }
@@ -1370,9 +1390,7 @@ void StockDB::SerializeWithCachedSizes(
   for (unsigned int i = 0,
       n = static_cast<unsigned int>(this->metas_size()); i < n; i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      3,
-      this->metas(static_cast<int>(i)),
-      output);
+      3, this->metas(static_cast<int>(i)), output);
   }
 
   // map<string, .stp.StockElement> elements = 4;
@@ -1745,7 +1763,7 @@ void StockDB::Swap(StockDB* other) {
 }
 void StockDB::InternalSwap(StockDB* other) {
   using std::swap;
-  CastToBase(&metas_)->InternalSwap(CastToBase(&other->metas_));
+  metas_.InternalSwap(&other->metas_);
   elements_.Swap(&other->elements_);
   stockindex_.Swap(&other->stockindex_);
   swap(days_, other->days_);
@@ -1762,24 +1780,5 @@ void StockDB::InternalSwap(StockDB* other) {
 
 // @@protoc_insertion_point(namespace_scope)
 }  // namespace stp
-namespace google {
-namespace protobuf {
-template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::stp::StockMeta* Arena::Create< ::stp::StockMeta >(Arena* arena) {
-  return Arena::CreateInternal< ::stp::StockMeta >(arena);
-}
-template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::stp::StockElement* Arena::Create< ::stp::StockElement >(Arena* arena) {
-  return Arena::CreateInternal< ::stp::StockElement >(arena);
-}
-template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::stp::StockDB_ElementsEntry_DoNotUse* Arena::Create< ::stp::StockDB_ElementsEntry_DoNotUse >(Arena* arena) {
-  return Arena::CreateInternal< ::stp::StockDB_ElementsEntry_DoNotUse >(arena);
-}
-template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::stp::StockDB_StockIndexEntry_DoNotUse* Arena::Create< ::stp::StockDB_StockIndexEntry_DoNotUse >(Arena* arena) {
-  return Arena::CreateInternal< ::stp::StockDB_StockIndexEntry_DoNotUse >(arena);
-}
-template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::stp::StockDB* Arena::Create< ::stp::StockDB >(Arena* arena) {
-  return Arena::CreateInternal< ::stp::StockDB >(arena);
-}
-}  // namespace protobuf
-}  // namespace google
 
 // @@protoc_insertion_point(global_scope)

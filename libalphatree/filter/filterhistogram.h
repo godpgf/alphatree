@@ -5,11 +5,12 @@
 #ifndef ALPHATREE_HISTOGRAM_H
 #define ALPHATREE_HISTOGRAM_H
 
-#include "normal.h"
+#include "../base/normal.h"
 #include <stddef.h>
 #include <stdlib.h>
 #include <math.h>
 #include <float.h>
+#include <algorithm>
 
 struct HistogrmBar {
     float avgValue;
@@ -89,7 +90,7 @@ createHistogrmBars(const float *x, const int *nodeId, const float *y, size_t cmp
 
     for (size_t i = 0; i < dataSize; ++i) {
         if (nodeId[i] == cmpNodeId) {
-            int index = x[i] < startValue ? 0 : min((int) ((x[i] - startValue) / deltaStd) + 1, maxBarSize-1);
+            int index = x[i] < startValue ? 0 : std::min((size_t) ((x[i] - startValue) / deltaStd) + 1, maxBarSize-1);
             outBars[index].avgValue += x[i];
 	    outBars[index].g += g[i] * w[i];
 	    outBars[index].h += h[i] * w[i];
@@ -102,7 +103,7 @@ createHistogrmBars(const float *x, const int *nodeId, const float *y, size_t cmp
 
     for (size_t i = 0; i < dataSize; ++i) {
         if (nodeId[i] & cmpNodeId) {
-            int index = x[i] < startValue ? 0 : min((int) ((x[i] - startValue) / deltaStd) + 1, maxBarSize-1);
+            int index = x[i] < startValue ? 0 : std::min((size_t) ((x[i] - startValue) / deltaStd) + 1, maxBarSize-1);
             outBars[index].stdValue += (x[i] - outBars[index].avgValue) * (x[i] - outBars[index].avgValue);
         }
     }

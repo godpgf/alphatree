@@ -24,13 +24,16 @@ const char* eratio(AlphaDB* alphaDataBase, DArray<const float*, MAX_PROCESS_BLOC
     const float* atr = childRes[5];
     int signCount = 0;
 
-    //int testIndex =0;
+    float holdDay = 0;
+    float yearReturns = 0;
 
     for(size_t j = 0; j < stockSize; ++j){
         int buyIndex = -1;
         float maxPrice = 0;
         float minPrice = FLT_MAX;
         int curIndex = 0;
+
+
 
         for(size_t i = 1; i < sampleSize; ++i){
             curIndex = i * stockSize + j;
@@ -46,8 +49,10 @@ const char* eratio(AlphaDB* alphaDataBase, DArray<const float*, MAX_PROCESS_BLOC
                 minPrice = min(minPrice, low[curIndex]);
                 if(sell[curIndex] > 0){
 
-                    MFE += ((maxPrice - close[buyIndex]) / close[buyIndex] / atr[buyIndex]);
-                    MAE += ((close[buyIndex] - minPrice) / close[buyIndex] / atr[buyIndex]);
+                    MFE += ((maxPrice - close[buyIndex]) / atr[buyIndex]);
+                    MAE += ((close[buyIndex] - minPrice) / atr[buyIndex]);
+                    yearReturns += (close[curIndex] - close[buyIndex]) / close[buyIndex] / ((curIndex - buyIndex) / stockSize);
+                    holdDay += (curIndex - buyIndex) / stockSize;
 
                     buyIndex = -1;
                     maxPrice = 0;
@@ -57,7 +62,8 @@ const char* eratio(AlphaDB* alphaDataBase, DArray<const float*, MAX_PROCESS_BLOC
             }
         }
     }
-    sprintf(pout,"{\"eratio\" : %.4f, \"sign_cnt\" : %d}", MAE == 0 ? 0 : MFE / MAE, signCount);
+    yearReturns = powf(1 + (yearReturns / signCount), 250) - 1;
+    sprintf(pout,"{\"eratio\" : %.4f, \"sign_cnt\" : %d, \"year_return\" : %.4f, \"hold_day\" : %.4f}", MAE == 0 ? 0 : MFE / MAE, signCount, yearReturns, holdDay / signCount);
     //cout<<MAE<<" "<<MFE<<" "<<pout<<endl;
     return pout;
 }

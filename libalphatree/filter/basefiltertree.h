@@ -170,7 +170,7 @@ namespace fb {
                 return nodeId;
             }
             if (line[curIndex] == '(' && line[r] == ')') {
-                int depth = 0;
+                //int depth = 0;
                 ++l;
                 --r;
                 curIndex = l;
@@ -263,7 +263,7 @@ namespace fb {
         DArray<FilterNode, MAX_FILTER_NODE_BLOCK> nodeList_;
     private:
         //得到if else 语句符号位置,返回这个if else 语句是否属于boosting
-        bool getIfElseIndex(char *line, int l, int r, int &index_if, int &index_else) {
+        bool getIfElseIndex(const char *line, int l, int r, int &index_if, int &index_else) {
             bool isBoostNode = false;
             int curIndex = l;
             int depth = 0;
@@ -288,7 +288,7 @@ namespace fb {
             return isBoostNode;
         }
 
-        bool getAddIndex(char *line, int l, int r, int &curIndex) {
+        bool getAddIndex(const char *line, int l, int r, int &curIndex) {
             curIndex = l;
             int depth = 0;
             while (curIndex < r) {

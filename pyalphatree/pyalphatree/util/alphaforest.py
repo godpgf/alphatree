@@ -8,18 +8,19 @@ import numpy as np
 import math
 import json
 
-class AlphaForest(object):
 
-    def __init__(self, cache_size = 4, max_stock_num = 4096, max_day_num = 4096):
+class AlphaForest(object):
+    def __init__(self, cache_size=4, max_stock_num=4096, max_day_num=4096, max_feature_size=2048):
         alphatree.initializeAlphaforest(cache_size)
 
-        #self.max_sample_size = 0
-        #self.max_stoct_size = 0
+        # self.max_sample_size = 0
+        # self.max_stoct_size = 0
         self.code_cache = (c_char * (max_stock_num * 64))()
         self.alpha_cache = (c_float * (max_stock_num * max_day_num))()
-        #self.max_alpha_tree_size = 0
-        #self.check_alpha_size(2500, 3600)
-        #self.check_tree_size(1024)
+        self.feature_cache = (c_char * (max_feature_size * 64))
+        # self.max_alpha_tree_size = 0
+        # self.check_alpha_size(2500, 3600)
+        # self.check_tree_size(1024)
 
         self.max_alpha_tree_str_len = 4096;
         self.sub_alphatree_str_cache = (c_char * (self.max_alpha_tree_str_len * 1024))()
@@ -66,7 +67,7 @@ class AlphaForest(object):
         str_list = [self.encode_cache[i] for i in xrange(str_len)]
         return "".join(str_list)
 
-    def decode_alphatree(self, alphatree_id, root_name, line, is_local = False):
+    def decode_alphatree(self, alphatree_id, root_name, line, is_local=False):
         alphatree.decodeAlphatree(alphatree_id, c_char_p(root_name), c_char_p(line), c_bool(is_local))
 
     def decode_process(self, alphatree_id, root_name, line):
@@ -75,7 +76,20 @@ class AlphaForest(object):
     def get_max_history_days(self, alphatree_id):
         return alphatree.getMaxHistoryDays(alphatree_id)
 
-    #读取数据
+    def learn_filter(self, alphatree_id, cache_id, feature_list, tree_size=20,
+                     iterator_num=2, gamma_=0.001, lambda_=1.0, max_depth=16,
+                     max_leaf_size=1024, max_adj_weight_time=4, adj_weight_rule=0.2,
+                     max_bar_size=16, merge_bar_percent=0.016, subsample=0.6,
+                     colsample_bytree=0.75, buy_sign="buy", sell_sign="sell",
+                     target_value="target"):
+        self._write_features(feature_list)
+        return alphatree.learnFilterForest(alphatree_id, cache_id, self.feature_cache, len(feature_list), tree_size,
+                                    iterator_num, c_float(gamma_), c_float(lambda_), max_depth,
+                                    max_leaf_size, max_adj_weight_time, c_float(adj_weight_rule), max_bar_size,
+                                    c_float(merge_bar_percent), c_float(subsample), c_float(colsample_bytree),
+                                    c_char_p(buy_sign), c_char_p(sell_sign), c_char_p(target_value))
+
+    # 读取数据
     def load_db(self, path):
         alphatree.loadDataBase(c_char_p(path))
 
@@ -161,14 +175,16 @@ class AlphaForest(object):
         stock_size = alphatree.getStockCodes(self.code_cache)
         return np.array(self._read_str_list(self.code_cache, stock_size))
 
-    def flag_alpha(self, alphatree_id, cache_id, daybefore, sample_size, codes, sample_flag = None, is_flag_stock = False, is_cal_all_node = False):
+    def flag_alpha(self, alphatree_id, cache_id, daybefore, sample_size, codes, sample_flag=None, is_flag_stock=False,
+                   is_cal_all_node=False):
         stock_size = len(codes)
-        #self.check_alpha_size(sample_size, stock_size)
+        # self.check_alpha_size(sample_size, stock_size)
         self._write_codes(codes)
         if sample_flag:
             for id, f in enumerate(sample_flag): self.sample_flag_cache[id] = f
-        alphatree.flagAlpha(alphatree_id, cache_id, daybefore, sample_size, self.code_cache, stock_size, self.sample_flag_cache if sample_flag else None, c_bool(is_flag_stock), c_bool(is_cal_all_node))
-
+        alphatree.flagAlpha(alphatree_id, cache_id, daybefore, sample_size, self.code_cache, stock_size,
+                            self.sample_flag_cache if sample_flag else None, c_bool(is_flag_stock),
+                            c_bool(is_cal_all_node))
 
     def cal_alpha(self, alphatree_id, cache_id):
         alphatree.calAlpha(alphatree_id, cache_id)
@@ -193,12 +209,12 @@ class AlphaForest(object):
         alphatree.getProcess(alphatree_id, c_char_p(process_name), cache_id, self.process_cache)
         return self._read_str(self.process_cache)
 
-
-    def summary_sub_alphatree(self, alphatree_list, min_depth = 3):
+    def summary_sub_alphatree(self, alphatree_list, min_depth=3):
         self._write_alphatree_ids(alphatree_list)
-        sub_alphatree_num = alphatree.summarySubAlphaTree(self.alphatree_id_cache, len(alphatree_list), min_depth, self.sub_alphatree_str_cache)
+        sub_alphatree_num = alphatree.summarySubAlphaTree(self.alphatree_id_cache, len(alphatree_list), min_depth,
+                                                          self.sub_alphatree_str_cache)
         sub_alphatree_list = self._read_str_list(self.sub_alphatree_str_cache, sub_alphatree_num)
-        #按照长度从大到小返回
+        # 按照长度从大到小返回
         sub_alphatree_list.sort(key=lambda x: -len(x))
         return sub_alphatree_list
 
@@ -236,7 +252,6 @@ class AlphaForest(object):
             str_list.append("".join(code))
         return str_list;
 
-
     @classmethod
     def _write_data(cls, open, high, low, close, volume, vwap, returns, bar, start_index):
         for id, v in enumerate(bar["open"]):
@@ -254,7 +269,6 @@ class AlphaForest(object):
         for id, v in enumerate(bar["rise"]):
             returns[start_index + id] = v
 
-
     @classmethod
     def _read_str(cls, str_cache):
         code = list()
@@ -263,8 +277,6 @@ class AlphaForest(object):
             code.append(str_cache[cur_index])
             cur_index += 1
         return "".join(code)
-
-
 
     @classmethod
     def _read_str(cls, str_cache):
@@ -287,6 +299,16 @@ class AlphaForest(object):
                 cur_code_index += 1
             self.code_cache[cur_code_index] = '\0'
             cur_code_index += 1
+
+    def _write_features(self, features):
+        cur_feature_index = 0
+        for feature in features:
+            f_list = list(feature)
+            for c in f_list:
+                self.code_cache[cur_feature_index] = c
+                cur_feature_index += 1
+            self.code_cache[cur_feature_index] = '\0'
+            cur_feature_index += 1
 
     def _write_alphatree_ids(self, alphatree_list):
         cur_index = 0
@@ -315,9 +337,7 @@ class AlphaForest(object):
             return True
         return False
 
-
-
-    #todo delete later
+    # todo delete later
     # 加载树的结构。如果sample_size==0表示不计算经过各个节点的均值和标准差
     def load_alphatree(self, alphatree_id, day_before=0, sample_size=0):
         if sample_size > 0:
@@ -335,7 +355,6 @@ class AlphaForest(object):
         else:
             root = self._load_alphatree_node(alphatree_id)
         return AlphaTree(root)
-
 
     def _load_alphatree_node(self, alphatree_id, node_id=None, sample_size=0, cache_id=None, stock_size=None):
         if node_id is None:

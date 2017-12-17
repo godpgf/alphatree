@@ -170,19 +170,31 @@ class AlphaDB{
             }
         }
 
-        size_t getFeature(size_t dayBefore, size_t sampleDays, size_t stockSize, const char* codes, const float* buy, const float* sell,
-                          float* feature, float* returns, float* risk, int* chooseIndex){
-            size_t signCount = getReturnsAndRisk(dayBefore, sampleDays, stockSize, codes, buy, sell, returns, risk, chooseIndex);
-            for(size_t j = 0; j < featureSize; ++j){
-                const char* name = featureIndex.toName(j);
-                int fIndex = featureIndex[name];
-                float* curFeature = feature + signCount * fIndex;
-                auto element = db->elements().find(name)->second;
-                for(size_t i = 0; i < signCount; ++i){
-                    curFeature[i] = element.data(chooseIndex[i]);
+        void getFeature(size_t dayBefore, size_t sampleDays, size_t stockSize, const char* codes, const float* buy, const float* sell,
+                          float* featureValue, size_t sampleSize, const char* features, size_t featureSize){
+            const char* curFeature = features;
+            size_t needDay = sampleDays + dayBefore;
+            for(size_t fId = 0; fId < featureSize; ++fId){
+                float* feature = featureValue + fId * sampleSize;
+                auto element = db->elements().find(curFeature)->second;
+                size_t sampleIndex = 0;
+                for(size_t i = 0; i < stockSize; ++i){
+                    const char* curCode = codes;
+                    int lastBuyDay = -1;
+                    int stockIndex = getStockIndex(curCode);
+                    for(size_t j = 0; j < sampleDays; ++j){
+                        size_t index = j * stockSize + i;
+                        if(lastBuyDay >= 0 && sell[index] > 0){
+                            feature[sampleIndex++] = element.data(db->days() * stockIndex + db->days() - needDay + j);
+                            lastBuyDay = -1;
+                        }
+                        if(lastBuyDay == -1 && buy[index] > 0)
+                            lastBuyDay = index;
+                    }
+                    curCode = curCode + strlen(curCode) + 1;
                 }
+                curFeature = curFeature + strlen(curFeature) + 1;
             }
-            return signCount;
         }
 
 
@@ -234,6 +246,7 @@ class AlphaDB{
             return stockIndex;
         }
 
+    //todo delete
         size_t getReturnsAndRisk(size_t dayBefore, size_t sampleDays, size_t stockSize, const char* codes, const float* buy, const float* sell, float* returns, float* risk, int* chooseIndex){
             const char* curCode = codes;
             int signCount = 0;
@@ -279,7 +292,7 @@ class AlphaDB{
             return signCount;
         }
 
-        void fillFeature(size_t dayBefore, size_t sampleNum, size_t stockSize, const char* codes, const float* buy, const float* sell, size_t signCount){
+        /*void fillFeature(size_t dayBefore, size_t sampleNum, size_t stockSize, const char* codes, const float* buy, const float* sell, size_t signCount){
             const char* curCode = codes;
             auto close = db->elements().find("close")->second;
             auto atr = db->elements().find("atr")->second;
@@ -314,7 +327,7 @@ class AlphaDB{
                 }
                 curCode = curCode + strlen(curCode) + 1;
             }
-        }
+        }*/
 
         HashMap<size_t> featureIndex;
         stp::StockDB* db = {nullptr};

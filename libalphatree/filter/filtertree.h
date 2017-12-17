@@ -6,14 +6,19 @@
 #define ALPHATREE_FILTERTREE_H
 
 #include <stddef.h>
+#include <stdlib.h>
+#include <algorithm>
+#include <iostream>
 #include "basefiltertree.h"
 #include "filterhistogram.h"
-#import "../base/pareto.h"
+#include "../base/pareto.h"
+#include "../base/normal.h"
+using namespace std;
 
 namespace fb {
     const size_t MAX_SAMPLE_SIZE = 1024 * 1024;
     const size_t MAX_FEATURE_SIZE = 512;
-    const size_t MAX_FEATURE_NAME_LEN = 128;
+    const size_t MAX_FEATURE_NAME_LEN = 64;
     const size_t MAX_TREE_SIZE = 64;
     const size_t MAX_LEAF_SIZE = 1024;
 
@@ -28,7 +33,7 @@ namespace fb {
         float s = 0;
         for (size_t i = 0; i < n; ++i)
             s += (v[i] - avg) * (v[i] - avg);
-        return fsqrt(s / n);
+        return sqrtf(s / n);
     }
 
     class BaseFilterCache {
@@ -45,7 +50,7 @@ namespace fb {
             delete[]featureName;
         }
 
-        virtual void initialize(size_t sampleSize, size_t featureSize) {
+        void initialize(size_t sampleSize, size_t featureSize) {
             this->featureSize = featureSize;
             this->sampleSize = sampleSize;
             if (featureSize > maxFeatureSize_ || sampleSize > maxSampleSize_) {
@@ -112,16 +117,16 @@ namespace fb {
 
     struct SplitRes {
     public:
-        bool isSplit() { return leftElementNum > 0 && rightElementNum > 0; }
+        bool isSplit() const { return leftElementNum > 0 && rightElementNum > 0; }
 
         float gain(float gamma, float lambda) {
             return 0.5f * ((gl * gl) / (hl + lambda) + (gr * gr) / (hr + lambda) -
                            (gl + gr) * (gl + gr) / (hl + hr + lambda)) - gamma;
         }
 
-        int featureId;
+        int featureIndex;
         float gl, gr, hl, hr;
-        float slpitValue;
+        float splitValue;
         int leftElementNum = {0};
         int rightElementNum = {0};
     };
@@ -130,6 +135,7 @@ namespace fb {
     class FilterCache : public BaseFilterCache {
     public:
         FilterCache() : BaseFilterCache() {
+
             featureFlag = new size_t[MAX_FEATURE_SIZE];
             g = new float[MAX_SAMPLE_SIZE * MAX_TREE_SIZE];
             h = new float[MAX_SAMPLE_SIZE * MAX_TREE_SIZE];
@@ -140,14 +146,13 @@ namespace fb {
         }
 
         virtual ~FilterCache() {
-            BaseFilterCache::~BaseFilterCache();
+            //BaseFilterCache::~BaseFilterCache();
             delete[]featureFlag;
             delete[]g;
             delete[]h;
             delete[]treeFlag;
             delete[]splitRes;
-            delete[]sample2nodeRes
-                    ;
+            delete[]sample2nodeRes;
             delete[]treeRes;
         }
 
@@ -163,20 +168,31 @@ namespace fb {
         //记录样本被哪棵树取样（可以同时属于多个树）
         size_t *treeFlag = {nullptr};
         //最大迭代次数（boosting用到的回归树数量），迭代次数多了的boosting会过拟合，但配合bagging又可以缓解它
-        size_t maxIteratorNum;
+        size_t iteratorNum;
         //随机森林中树的数量
         size_t treeSize;
-        //每一棵回归树最大深度
-        size_t maxDepth;
-        size_t maxLeafSize;
+        //每轮迭代产生回归树的最大深度
+        size_t maxDepth = {16};
+        //每轮迭代产生回归树的最大叶子节点数
+        size_t maxLeafSize = {1024};
         //叶节点最少样本权重和（所有节点的权重和等于样本数量）
-        float minChildWeight;
+        float minChildWeight = {1};
+        //xgboost中的gain公式：0.5*(Gl*Gl/(Hl+lambda)+Gr*Gr/(Hr+lambda)+(Gl+Gr)*(Gl+Gr)/(Hl+Hr+lambda))-gamma
         float gamma;
         float lambda;
+        //每一轮生成叶节点都需要调整权重，再生成，再调整权重。调整权重的次数
         size_t maxAdjWeightTime;
+        //调整权重的规则
         float adjWeightRule;
+        //分裂用的柱状图最多有多少
         size_t maxBarSize;
-        float maxBarPercent;
+        //分裂用的统计柱状图中，差别不大的柱子会合并，这里就是差异多少进行合并
+        float mergeBarPercent;
+
+        //随机森林中每棵树样本随机采样占比
+        float subsample = {0.6f};
+        //随机森林中每棵树特征随机抽取占比
+        float colsampleBytree = {0.75f};
 
         //监控分裂线程
         std::shared_future<SplitRes> *splitRes = {nullptr};
@@ -202,7 +218,7 @@ namespace fb {
                     h = new float[sampleSize * MAX_TREE_SIZE];
                     treeFlag = new size_t[sampleSize];
                     trainRaw.initialize(sampleSize);
-                    cvTrainRaw.initialize(sampleSize);
+                    //cvTrainRaw.initialize(sampleSize);
                 }
                 if (featureSize > maxFeatureSize_) {
                     delete[]featureFlag;
@@ -212,6 +228,20 @@ namespace fb {
                 maxFeatureSize_ = max(maxFeatureSize_, featureSize);
             }
             BaseFilterCache::initialize(sampleSize, featureSize);
+        }
+
+        void sample(){
+            memset(featureFlag, 0 , sizeof(size_t) * treeSize * featureSize);
+            memset(treeFlag, 0, sizeof(size_t) * treeSize * sampleSize);
+            for(size_t i = 0; i < treeSize; ++i){
+                size_t flag = (((size_t)1) << i);
+                for(size_t j = 0; j < featureSize; ++j)
+                    if(((double)rand())/RAND_MAX <= colsampleBytree)
+                        featureFlag[i * featureSize + j] +=  flag;
+                for(size_t j = 0; j < sampleSize; ++j)
+                    if(((double)rand())/RAND_MAX <= subsample)
+                        treeFlag[i * sampleSize + j] += flag;
+            }
         }
 
     protected:
@@ -227,13 +257,13 @@ namespace fb {
          * */
         void train(FilterCache *data, int treeIndex, ThreadPool *threadPool) {
             //标注此树取样的训练数据
-            size_t treeFlag = (((size_t) 1) << treeIndex);
+            //size_t treeFlag = (((size_t) 1) << treeIndex);
             initialize(data, treeIndex);
 
             int lastRootId = -1;
-            for (size_t i = 0; i < maxIteratorNum; ++i) {
+            for (size_t i = 0; i < data->iteratorNum; ++i) {
                 //计算上次迭代的预测
-                boostAdjustPred(data, treeIndex, treeFlag);
+                boostAdjustPred(data, treeIndex);
                 //计算梯度
                 calGradient(data, treeIndex);
                 //创建第t棵树
@@ -257,10 +287,6 @@ namespace fb {
             }
         }
 
-        float *pred(FilterCache *data, int treeId, ThreadPool *threadPool) {
-
-        }
-
 
     protected:
         static void initialize(FilterCache *data, int treeId) {
@@ -269,7 +295,7 @@ namespace fb {
             memset(data->trainRaw.pred + treeId * dataSize, 0, sizeof(float) * dataSize);
             float *curWeight = data->trainRaw.weight + treeId * dataSize;
             for (size_t i = 0; i < dataSize; ++i)
-                data->trainRaw.weight[i] = 1.f;
+                curWeight[i] = 1.f;
         }
 
         //用某个节点的预测值修正真实预测值
@@ -306,7 +332,7 @@ namespace fb {
             size_t dataSize = data->sampleSize;
             size_t treeFlag = (((size_t) 1) << treeId);
             int *curNodeId = data->trainRaw.nodeId + treeId * dataSize;
-            float *curPred = data->pred + treeId * dataSize;
+            float *curPred = data->trainRaw.pred + treeId * dataSize;
             float *curWeight = data->trainRaw.weight + treeId * dataSize;
             //先把所有样本分配到当前节点名下
             int rootId = createNode();
@@ -334,7 +360,7 @@ namespace fb {
                         for (size_t j = 0; j < dataSize; ++j)
                             curPred[j] += nodeList_[curNodeId[j]].getWeight();
                         //刷新样本权重
-                        refreshWeight(curPred, curWeight, dataSize);
+                        refreshWeight(curPred, curWeight, dataSize, data->adjWeightRule);
                         //恢复当前预测
                         for (size_t j = 0; j < dataSize; ++j)
                             curPred[j] -= nodeList_[curNodeId[j]].getWeight();
@@ -357,11 +383,11 @@ namespace fb {
 
                     //尝试创建节点
                     for (size_t j = 0; j < elementSize; ++j) {
-                        if (splitRes[j].get().isValid()) {
+                        if (splitRes[j].get().isSplit()) {
                             int preId = j + startIndex;
                             int leftId = createNode(-splitRes[j].get().gl / (splitRes[j].get().hl + data->lambda));
                             int rightId = createNode(-splitRes[j].get().gr / (splitRes[j].get().gl + data->lambda));
-                            nodeList_[preId].setup(splitRes[j].get().slpitValue, data->featureName +
+                            nodeList_[preId].setup(splitRes[j].get().splitValue, data->featureName +
                                                                                  splitRes[j].get().featureIndex *
                                                                                  MAX_FEATURE_NAME_LEN);
                             nodeList_[preId].leftId = leftId;
@@ -371,7 +397,7 @@ namespace fb {
                             if(nodeList_[preId].preId != -1)
                                 sample2NodeRes[nodeList_[preId].preId].get();
                             float* curFeature = data->feature + splitRes[j].get().featureIndex * data->sampleSize;
-                            float slpitValue = splitRes[j].get().slpitValue;
+                            float slpitValue = splitRes[j].get().splitValue;
                             sample2NodeRes[preId] = threadPool->enqueue([curFeature, slpitValue, preId, leftId, rightId, curNodeId, dataSize]{
                                 //重新划分样本归属的叶节点
                                 return refreshNodeId(curFeature, slpitValue, preId, leftId, rightId, curNodeId, dataSize);
@@ -405,7 +431,7 @@ namespace fb {
                 }
             }
         }
-        static void refreshWeight(const float *pred, float *weight, size_t sampleSize, size_t weightLevelNum = 128) {
+        static void refreshWeight(const float *pred, float *weight, size_t sampleSize, float ruleWeight, size_t weightLevelNum = 128) {
             float avgValue = mean(pred, sampleSize);
             float stdValue = std(pred, avgValue, sampleSize);
             float stdScale = normsinv(1.0 - 1.0 / weightLevelNum);
@@ -415,13 +441,13 @@ namespace fb {
             float *rankingWeight = new float[weightLevelNum];
 
             for (size_t i = 0; i < sampleSize; ++i) {
-                int index = pred[i] < startValue ? 0 : min((int) ((pred[i] - startValue) / deltaStd) + 1,
+                int index = pred[i] < startValue ? 0 : std::min((size_t) ((pred[i] - startValue) / deltaStd) + 1,
                                                            weightLevelNum - 1);
                 ++ranking[index];
             }
-            distributionWeightPr(ranking, weightLevelNum, rankingWeight);
+            distributionWeightPr(ranking, weightLevelNum, rankingWeight, ruleWeight);
             for (size_t i = 0; i < sampleSize; ++i) {
-                int index = pred[i] < startValue ? 0 : min((int) ((pred[i] - startValue) / deltaStd) + 1,
+                int index = pred[i] < startValue ? 0 : std::min((size_t) ((pred[i] - startValue) / deltaStd) + 1,
                                                            weightLevelNum - 1);
                 weight[i] = rankingWeight[index];
             }
@@ -446,12 +472,12 @@ namespace fb {
                                          data->trainRaw.weight + treeId * data->sampleSize,
                                          data->trainRaw.nodeId + treeId * data->sampleSize, cmpNodeId, data->sampleSize,
                                          data->gamma, data->lambda, data->maxBarSize, data->mergeBarPercent);
-                    if (res.isValid()) {
+                    if (res.isSplit()) {
                         float gain = res.gain(data->gamma, data->lambda);
                         if (gain > maxGain) {
                             maxGain = gain;
                             bestRes = res;
-                            bestRes.featureId = i;
+                            bestRes.featureIndex = i;
                         }
                     }
                 }

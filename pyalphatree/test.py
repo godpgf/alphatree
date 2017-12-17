@@ -621,7 +621,7 @@ def test_eraito_strategy(af, daybefore = 0, sample_size = 250):
                     af.release_cache(cache_id)
                     af.release_alphatree(alphatree_id)
 
-                    print process_res["eratio"]
+                    print process_res
 
 
 if __name__ == '__main__':

@@ -33,20 +33,18 @@ namespace fb {
         int filterTrees[MAX_TREE_SIZE];
     protected:
         template <class F>
-        void decode(char* line, int l, int r, F&& f){
+        void decode(const char* line, int l, int r, F&& f){
             int curIndex = l;
             if(line[curIndex] == '(' && line[r] == ')'){
-                int depth = 0;
                 ++l;
                 --r;
                 curIndex = l;
 
-                int nodeId = -1;
                 if(getAddIndex(line, l, r, curIndex)){
                     decode(line, l, curIndex-2, f);
                     decode(line, curIndex+2, r, f);
                 } else {
-                    addTree(f(lind, l-1, r+1));
+                    addTree(f(line, l-1, r+1));
                 }
             }
             else {
@@ -64,10 +62,10 @@ namespace fb {
                 curIndex += 3;
                 curIndex = encode(pout, curIndex, curTreeIndex+1, f);
                 pout[curIndex++] = ')';
-                return;curIndex;
+                return curIndex;
             }
         }
-        static bool getAddIndex(char* line, int l, int r, int& curIndex){
+        static bool getAddIndex(const char* line, int l, int r, int& curIndex){
             curIndex = l;
             int depth = 0;
             while(curIndex < r){
@@ -142,18 +140,20 @@ namespace fb {
         const char* encode(int forestId, char* pout){
             FilterMachine* fm = this;
             getFilterForest(forestId)->encode(pout, [fm](int treeId, char* pout, int curIndex){
-                fm->getFilterTree(treeId)->encode(pout, curIndex);
+                return fm->getFilterTree(treeId)->encode(pout, curIndex);
             });
+            return pout;
         }
 
         void train(int cacheId, int forestId, ThreadPool* forestThreadPoll) {
             FilterForest *forest = getFilterForest(forestId);
             FilterCache* cache = getCache(cacheId);
+            cache->sample();
             for(size_t i = 0; i < cache->treeSize; ++i){
                 forest->addTree(filterTreeCache_->useCacheMemory());
             }
             for(size_t i = 0; i < cache->treeSize; ++i) {
-                FilterTree* ftree = filterTreeCache_->getCacheMemory(forest->filterTrees[i]);
+                FilterTree* ftree = &filterTreeCache_->getCacheMemory(forest->filterTrees[i]);
                 int treeIndex = i;
                 ThreadPool* tpool = &threadPool_;
                 cache->treeRes[i] = forestThreadPoll->enqueue([ftree, cache, treeIndex, tpool]{

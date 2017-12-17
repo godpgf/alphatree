@@ -10,16 +10,16 @@
 float pr(float x, float xm, float alpha){
     if(x < xm)
         return 1;
-    return power(xm/x,alpha);
+    return powf(xm/x,alpha);
 }
 
 //ranking后ruleWeight比例的人拥有1-ruleWeight的权重，按照这个规则分配权重
 void distributionWeightPr(size_t* ranking, size_t size, float* outWeight, float ruleWeight = 0.2f){
     for(size_t i = 1; i < size; ++i)
 	ranking[i] += ranking[i-1];
-    float x = ranking[siize-1] * ruleWeight;
+    float x = ranking[size-1] * ruleWeight;
     //换底公式log(1/x,0.2)=ln(1/x)/ln(0.2)
-    float alpha = ln(1/x)/ln(0.2);
+    float alpha = logf(1/x)/logf(0.2);
     
     for(size_t i = size - 1; i > 0; --i)
         ranking[i] -= ranking[i-1];
