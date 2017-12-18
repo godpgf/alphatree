@@ -295,7 +295,7 @@ void _ranksort(float *index, const float *src, const bool* flag, size_t size){
 void _rankscale(float *dst,const float *index, size_t size){
     int elementSize = 0;
     for(size_t i = 0; i < size; ++i)
-        if(index[i] > 0)
+        if(index[i] >= 0)
             ++elementSize;
 
     int curSortId = 0;

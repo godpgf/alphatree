@@ -271,8 +271,8 @@ def test_base_calculate(af, dataProxy):
     print "(high * low)"
     alpha, codes = cal_alpha(af, "(high * low)", 2)
     for index,code in enumerate(codes):
-        float_equal((dataProxy.get_all_Data(code)[-1][2]*dataProxy.get_all_Data(code)[-1][3]),alpha[-1][index])
-        float_equal((dataProxy.get_all_Data(code)[-2][2]*dataProxy.get_all_Data(code)[-2][3]),alpha[-2][index])
+        float_equal((dataProxy.get_all_Data(code)[-1][2]*dataProxy.get_all_Data(code)[-1][3])/10,alpha[-1][index]/10)
+        float_equal((dataProxy.get_all_Data(code)[-2][2]*dataProxy.get_all_Data(code)[-2][3])/10,alpha[-2][index]/10)
 
     print "mul_from:(2 * low)"
     alpha, codes = cal_alpha(af, "(2 * low)", 2)
@@ -636,4 +636,17 @@ if __name__ == '__main__':
 
     #test_base_calculate(af, dataProxy)
     #test_alpha101(af)
+    alpha, codes = cal_alpha(af, "rank(correlation(returns, indneutralize(returns, IndClass.market), 25))", 1)
+    code_array = []
+    for i in xrange(len(alpha[-1])):
+        a = alpha[-1][i]
+        if a >= 0 and a < 0.001:
+            code_array.append(codes[i])
+    code_array = set(code_array)
+
+    alpha, codes = cal_alpha(af, "correlation(returns, indneutralize(returns, IndClass.market), 25)", 1)
+    for i in xrange(len(alpha[-1])):
+        if codes[i] in code_array:
+            print "%s %.4f"%(codes[i], alpha[-1][i])
+
     test_eraito_strategy(af)
