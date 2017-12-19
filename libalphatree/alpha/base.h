@@ -241,6 +241,12 @@ inline void _ifCond(float *dst, const float *a, float b, size_t size){
     }
 }
 
+inline void _negativeFlag(float*dst, const float*data,const float* flag, size_t size){
+    for(size_t i = 0; i < size; ++i){
+        dst[i] = (flag[i] < 0.00001) ? data[i] : -data[i];
+    }
+}
+
 
 //注意!计算数组src的各个元素排行
 void quickSort(const float* src, float* index, int left, int right){

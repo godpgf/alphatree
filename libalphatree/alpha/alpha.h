@@ -789,4 +789,29 @@ const float* crossTo(const float* pleft, const float* pright, float coff, size_t
     }
     return pout;
 }
+
+//给信号发生的数据打上负数标记
+const float* negativeFlag(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+
+    for(size_t i = 0; i < historySize; ++i){
+        if(pflag[i] == CacheFlag::NEED_CAL){
+            _negativeFlag(pout + i * stockSize, pleft + i * stockSize, pright + i * stockSize, stockSize);
+        }
+    }
+    return pout;
+}
+
+//传入收盘和最低价的负数标记，得到夏普率（这里是未来函数，名字必须加上ft）
+const float* ft_sharpe(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+    int curIndex = 0;
+    for(size_t j = 0; j < stockSize; ++j){
+        int buyIndex = -1;
+        for(size_t i = 0; i < historySize; ++i){
+            curIndex = i * stockSize + j;
+            if(buyIndex >= 0 && pright[curIndex] < 0){
+
+            }
+        }
+    }
+}
 #endif //ALPHATREE_ALPHA_H
