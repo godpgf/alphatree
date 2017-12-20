@@ -802,14 +802,26 @@ const float* negativeFlag(const float* pleft, const float* pright, float coff, s
 }
 
 //传入收盘和最低价的负数标记，得到夏普率（这里是未来函数，名字必须加上ft）
-const float* ft_sharpe(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+const float* ftSharpe(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
     int curIndex = 0;
     for(size_t j = 0; j < stockSize; ++j){
         int buyIndex = -1;
+        float maxPrice = 0;
+        float maxDropdown = 0;
         for(size_t i = 0; i < historySize; ++i){
             curIndex = i * stockSize + j;
+            maxPrice = max(abs(pleft[curIndex]),maxPrice);
+            maxDropdown = max((maxPrice - abs(pright[curIndex]))/maxPrice,maxDropdown);
+            pout[curIndex] = 0;
             if(buyIndex >= 0 && pright[curIndex] < 0){
-
+                pout[buyIndex] = (pleft[curIndex] + pleft[buyIndex]) / (-pleft[buyIndex]) / max(maxDropdown,0.001f);
+                maxPrice = 0;
+                maxDropdown = 0;
+            }
+            if(pleft[curIndex] < 0){
+                buyIndex = curIndex;
+                maxPrice = -pleft[curIndex];
+                maxDropdown = 0;
             }
         }
     }

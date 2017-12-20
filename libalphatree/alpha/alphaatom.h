@@ -152,6 +152,8 @@ AlphaAtom AlphaAtom::alphaAtomList[] = {
         AlphaAtom("cross", cross, 2, CoffUnit::COFF_NONE, DateRange::CUR_AND_BEFORE_DAY, 1),
         AlphaAtom("cross_from", crossFrom, 1, CoffUnit::COFF_NONE, DateRange::CUR_AND_BEFORE_DAY, 1),
         AlphaAtom("cross_to", crossTo, 1, CoffUnit::COFF_NONE, DateRange::CUR_AND_BEFORE_DAY, 1),
+        AlphaAtom("negative_flag", negativeFlag, 2),
+        AlphaAtom("ft_sharpe", ftSharpe, 2)
         //AlphaAtom("up_mean", upMean, 1, CoffUnit::COFF_DAY),
 };
 
