@@ -603,6 +603,7 @@ def test_eraito_strategy(af, daybefore = 0, sample_size = 250):
                             continue
                         tmp = line.split('=')
                         af.decode_alphatree(alphatree_id, tmp[0], tmp[1][:-1])
+                    af.decode_alphatree(alphatree_id, "target", "log((ft_sharpe(negative_flag(close, buy), negative_flag(low, sell)) + 1))")
 
                         #print af.encode_alphatree(alphatree_id, tmp[0])
 
