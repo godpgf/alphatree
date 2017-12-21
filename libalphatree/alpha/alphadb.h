@@ -111,7 +111,15 @@ class AlphaDB{
             if(needDay > getDays())
                 return nullptr;
 
-            string elementName = name;
+            string elementName;
+            if(strcmp(name,"cap") || strcmp(name,"pe")){
+                elementName = "close";
+                leafDataClass = nullptr;
+            }else{
+                elementName = name;
+            }
+
+
             auto element = db->elements().find(elementName)->second;
             for(size_t i = 0; i < stockNum; ++i){
                 int stockIndex = getStockIndex(curCode, leafDataClass);
@@ -120,6 +128,27 @@ class AlphaDB{
                 }
                 curCode = curCode + strlen(curCode) + 1;
             }
+
+            if(strcmp(name,"cap")){
+                for(size_t i = 0; i < stockNum; ++i){
+                    int stockIndex = getStockIndex(curCode, leafDataClass);
+                    for(size_t j = 0; j < dayNum; ++j){
+                        dst[j * stockNum + i] *= db->metas(stockIndex).totals();
+                    }
+                    curCode = curCode + strlen(curCode) + 1;
+                }
+            } else if(strcmp(name,"pe")){
+                for(size_t i = 0; i < stockNum; ++i){
+                    int stockIndex = getStockIndex(curCode, leafDataClass);
+                    for(size_t j = 0; j < dayNum; ++j){
+                        dst[j * stockNum + i] /= db->metas(stockIndex).earningratios();
+                    }
+                    curCode = curCode + strlen(curCode) + 1;
+                }
+            }
+
+
+
             return dst;
         }
 

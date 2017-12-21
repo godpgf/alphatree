@@ -168,6 +168,8 @@ const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_PROTOBUF_ATTRIBUT
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::stp::StockMeta, marketindex_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::stp::StockMeta, industryindex_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::stp::StockMeta, conceptindex_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::stp::StockMeta, totals_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::stp::StockMeta, earningratios_),
   ~0u,  // no _has_bits_
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::stp::StockElement, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -208,10 +210,10 @@ const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_PROTOBUF_ATTRIBUT
 };
 static const ::google::protobuf::internal::MigrationSchema schemas[] GOOGLE_PROTOBUF_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
   { 0, -1, sizeof(::stp::StockMeta)},
-  { 10, -1, sizeof(::stp::StockElement)},
-  { 19, 26, sizeof(::stp::StockDB_ElementsEntry_DoNotUse)},
-  { 28, 35, sizeof(::stp::StockDB_StockIndexEntry_DoNotUse)},
-  { 37, -1, sizeof(::stp::StockDB)},
+  { 12, -1, sizeof(::stp::StockElement)},
+  { 21, 28, sizeof(::stp::StockDB_ElementsEntry_DoNotUse)},
+  { 30, 37, sizeof(::stp::StockDB_StockIndexEntry_DoNotUse)},
+  { 39, -1, sizeof(::stp::StockDB)},
 };
 
 static ::google::protobuf::Message const * const file_default_instances[] = {
@@ -244,24 +246,25 @@ void protobuf_RegisterTypes(const ::std::string&) {
 void AddDescriptorsImpl() {
   InitDefaults();
   static const char descriptor[] GOOGLE_PROTOBUF_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
-      "\n\013stock.proto\022\003stp\"\307\001\n\tStockMeta\022\014\n\004code"
+      "\n\013stock.proto\022\003stp\"\356\001\n\tStockMeta\022\014\n\004code"
       "\030\001 \001(\t\022+\n\tstockType\030\002 \001(\0162\030.stp.StockMet"
       "a.StockType\022\023\n\013marketIndex\030\003 \001(\005\022\025\n\rindu"
-      "stryIndex\030\004 \001(\005\022\024\n\014conceptIndex\030\005 \001(\005\"=\n"
-      "\tStockType\022\n\n\006MARKET\020\000\022\014\n\010INDUSTRY\020\001\022\013\n\007"
-      "CONCEPT\020\002\022\t\n\005STOCK\020\003\"I\n\014StockElement\022\017\n\007"
-      "needDay\030\001 \001(\005\022\014\n\004data\030\002 \003(\002\022\014\n\004flag\030\003 \003("
-      "\010\022\014\n\004line\030\004 \001(\t\"\240\002\n\007StockDB\022\014\n\004days\030\001 \001("
-      "\005\022\021\n\tstockSize\030\002 \001(\005\022\035\n\005metas\030\003 \003(\0132\016.st"
-      "p.StockMeta\022,\n\010elements\030\004 \003(\0132\032.stp.Stoc"
-      "kDB.ElementsEntry\0220\n\nstockIndex\030\005 \003(\0132\034."
-      "stp.StockDB.StockIndexEntry\032B\n\rElementsE"
-      "ntry\022\013\n\003key\030\001 \001(\t\022 \n\005value\030\002 \001(\0132\021.stp.S"
-      "tockElement:\0028\001\0321\n\017StockIndexEntry\022\013\n\003ke"
-      "y\030\001 \001(\t\022\r\n\005value\030\002 \001(\005:\0028\001b\006proto3"
+      "stryIndex\030\004 \001(\005\022\024\n\014conceptIndex\030\005 \001(\005\022\016\n"
+      "\006totals\030\006 \001(\003\022\025\n\rearningRatios\030\007 \001(\002\"=\n\t"
+      "StockType\022\n\n\006MARKET\020\000\022\014\n\010INDUSTRY\020\001\022\013\n\007C"
+      "ONCEPT\020\002\022\t\n\005STOCK\020\003\"I\n\014StockElement\022\017\n\007n"
+      "eedDay\030\001 \001(\005\022\014\n\004data\030\002 \003(\002\022\014\n\004flag\030\003 \003(\010"
+      "\022\014\n\004line\030\004 \001(\t\"\240\002\n\007StockDB\022\014\n\004days\030\001 \001(\005"
+      "\022\021\n\tstockSize\030\002 \001(\005\022\035\n\005metas\030\003 \003(\0132\016.stp"
+      ".StockMeta\022,\n\010elements\030\004 \003(\0132\032.stp.Stock"
+      "DB.ElementsEntry\0220\n\nstockIndex\030\005 \003(\0132\034.s"
+      "tp.StockDB.StockIndexEntry\032B\n\rElementsEn"
+      "try\022\013\n\003key\030\001 \001(\t\022 \n\005value\030\002 \001(\0132\021.stp.St"
+      "ockElement:\0028\001\0321\n\017StockIndexEntry\022\013\n\003key"
+      "\030\001 \001(\t\022\r\n\005value\030\002 \001(\005:\0028\001b\006proto3"
   };
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
-      descriptor, 594);
+      descriptor, 633);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "stock.proto", &protobuf_RegisterTypes);
 }
@@ -314,6 +317,8 @@ const int StockMeta::kStockTypeFieldNumber;
 const int StockMeta::kMarketIndexFieldNumber;
 const int StockMeta::kIndustryIndexFieldNumber;
 const int StockMeta::kConceptIndexFieldNumber;
+const int StockMeta::kTotalsFieldNumber;
+const int StockMeta::kEarningRatiosFieldNumber;
 #endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
 
 StockMeta::StockMeta()
@@ -334,16 +339,16 @@ StockMeta::StockMeta(const StockMeta& from)
     code_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.code_);
   }
   ::memcpy(&stocktype_, &from.stocktype_,
-    static_cast<size_t>(reinterpret_cast<char*>(&conceptindex_) -
-    reinterpret_cast<char*>(&stocktype_)) + sizeof(conceptindex_));
+    static_cast<size_t>(reinterpret_cast<char*>(&earningratios_) -
+    reinterpret_cast<char*>(&stocktype_)) + sizeof(earningratios_));
   // @@protoc_insertion_point(copy_constructor:stp.StockMeta)
 }
 
 void StockMeta::SharedCtor() {
   code_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   ::memset(&stocktype_, 0, static_cast<size_t>(
-      reinterpret_cast<char*>(&conceptindex_) -
-      reinterpret_cast<char*>(&stocktype_)) + sizeof(conceptindex_));
+      reinterpret_cast<char*>(&earningratios_) -
+      reinterpret_cast<char*>(&stocktype_)) + sizeof(earningratios_));
   _cached_size_ = 0;
 }
 
@@ -371,13 +376,6 @@ const StockMeta& StockMeta::default_instance() {
   return *internal_default_instance();
 }
 
-StockMeta* StockMeta::New(::google::protobuf::Arena* arena) const {
-  StockMeta* n = new StockMeta;
-  if (arena != NULL) {
-    arena->Own(n);
-  }
-  return n;
-}
 
 void StockMeta::Clear() {
 // @@protoc_insertion_point(message_clear_start:stp.StockMeta)
@@ -387,8 +385,8 @@ void StockMeta::Clear() {
 
   code_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   ::memset(&stocktype_, 0, static_cast<size_t>(
-      reinterpret_cast<char*>(&conceptindex_) -
-      reinterpret_cast<char*>(&stocktype_)) + sizeof(conceptindex_));
+      reinterpret_cast<char*>(&earningratios_) -
+      reinterpret_cast<char*>(&stocktype_)) + sizeof(earningratios_));
   _internal_metadata_.Clear();
 }
 
@@ -475,6 +473,34 @@ bool StockMeta::MergePartialFromCodedStream(
         break;
       }
 
+      // int64 totals = 6;
+      case 6: {
+        if (static_cast< ::google::protobuf::uint8>(tag) ==
+            static_cast< ::google::protobuf::uint8>(48u /* 48 & 0xFF */)) {
+
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::int64, ::google::protobuf::internal::WireFormatLite::TYPE_INT64>(
+                 input, &totals_)));
+        } else {
+          goto handle_unusual;
+        }
+        break;
+      }
+
+      // float earningRatios = 7;
+      case 7: {
+        if (static_cast< ::google::protobuf::uint8>(tag) ==
+            static_cast< ::google::protobuf::uint8>(61u /* 61 & 0xFF */)) {
+
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   float, ::google::protobuf::internal::WireFormatLite::TYPE_FLOAT>(
+                 input, &earningratios_)));
+        } else {
+          goto handle_unusual;
+        }
+        break;
+      }
+
       default: {
       handle_unusual:
         if (tag == 0) {
@@ -532,6 +558,16 @@ void StockMeta::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteInt32(5, this->conceptindex(), output);
   }
 
+  // int64 totals = 6;
+  if (this->totals() != 0) {
+    ::google::protobuf::internal::WireFormatLite::WriteInt64(6, this->totals(), output);
+  }
+
+  // float earningRatios = 7;
+  if (this->earningratios() != 0) {
+    ::google::protobuf::internal::WireFormatLite::WriteFloat(7, this->earningratios(), output);
+  }
+
   if ((_internal_metadata_.have_unknown_fields() &&  ::google::protobuf::internal::GetProto3PreserveUnknownsDefault())) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         (::google::protobuf::internal::GetProto3PreserveUnknownsDefault()   ? _internal_metadata_.unknown_fields()   : _internal_metadata_.default_instance()), output);
@@ -576,6 +612,16 @@ void StockMeta::SerializeWithCachedSizes(
   // int32 conceptIndex = 5;
   if (this->conceptindex() != 0) {
     target = ::google::protobuf::internal::WireFormatLite::WriteInt32ToArray(5, this->conceptindex(), target);
+  }
+
+  // int64 totals = 6;
+  if (this->totals() != 0) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteInt64ToArray(6, this->totals(), target);
+  }
+
+  // float earningRatios = 7;
+  if (this->earningratios() != 0) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteFloatToArray(7, this->earningratios(), target);
   }
 
   if ((_internal_metadata_.have_unknown_fields() &&  ::google::protobuf::internal::GetProto3PreserveUnknownsDefault())) {
@@ -629,6 +675,18 @@ size_t StockMeta::ByteSizeLong() const {
         this->conceptindex());
   }
 
+  // int64 totals = 6;
+  if (this->totals() != 0) {
+    total_size += 1 +
+      ::google::protobuf::internal::WireFormatLite::Int64Size(
+        this->totals());
+  }
+
+  // float earningRatios = 7;
+  if (this->earningratios() != 0) {
+    total_size += 1 + 4;
+  }
+
   int cached_size = ::google::protobuf::internal::ToCachedSize(total_size);
   GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
   _cached_size_ = cached_size;
@@ -674,6 +732,12 @@ void StockMeta::MergeFrom(const StockMeta& from) {
   if (from.conceptindex() != 0) {
     set_conceptindex(from.conceptindex());
   }
+  if (from.totals() != 0) {
+    set_totals(from.totals());
+  }
+  if (from.earningratios() != 0) {
+    set_earningratios(from.earningratios());
+  }
 }
 
 void StockMeta::CopyFrom(const ::google::protobuf::Message& from) {
@@ -705,6 +769,8 @@ void StockMeta::InternalSwap(StockMeta* other) {
   swap(marketindex_, other->marketindex_);
   swap(industryindex_, other->industryindex_);
   swap(conceptindex_, other->conceptindex_);
+  swap(totals_, other->totals_);
+  swap(earningratios_, other->earningratios_);
   _internal_metadata_.Swap(&other->_internal_metadata_);
   swap(_cached_size_, other->_cached_size_);
 }
@@ -779,13 +845,6 @@ const StockElement& StockElement::default_instance() {
   return *internal_default_instance();
 }
 
-StockElement* StockElement::New(::google::protobuf::Arena* arena) const {
-  StockElement* n = new StockElement;
-  if (arena != NULL) {
-    arena->Own(n);
-  }
-  return n;
-}
 
 void StockElement::Clear() {
 // @@protoc_insertion_point(message_clear_start:stp.StockElement)
@@ -1232,13 +1291,6 @@ const StockDB& StockDB::default_instance() {
   return *internal_default_instance();
 }
 
-StockDB* StockDB::New(::google::protobuf::Arena* arena) const {
-  StockDB* n = new StockDB;
-  if (arena != NULL) {
-    arena->Own(n);
-  }
-  return n;
-}
 
 void StockDB::Clear() {
 // @@protoc_insertion_point(message_clear_start:stp.StockDB)
@@ -1297,7 +1349,8 @@ bool StockDB::MergePartialFromCodedStream(
       case 3: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(26u /* 26 & 0xFF */)) {
-          DO_(::google::protobuf::internal::WireFormatLite::ReadMessage(input, add_metas()));
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessage(
+                input, add_metas()));
         } else {
           goto handle_unusual;
         }
@@ -1390,7 +1443,9 @@ void StockDB::SerializeWithCachedSizes(
   for (unsigned int i = 0,
       n = static_cast<unsigned int>(this->metas_size()); i < n; i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      3, this->metas(static_cast<int>(i)), output);
+      3,
+      this->metas(static_cast<int>(i)),
+      output);
   }
 
   // map<string, .stp.StockElement> elements = 4;
@@ -1763,7 +1818,7 @@ void StockDB::Swap(StockDB* other) {
 }
 void StockDB::InternalSwap(StockDB* other) {
   using std::swap;
-  metas_.InternalSwap(&other->metas_);
+  CastToBase(&metas_)->InternalSwap(CastToBase(&other->metas_));
   elements_.Swap(&other->elements_);
   stockindex_.Swap(&other->stockindex_);
   swap(days_, other->days_);
@@ -1780,5 +1835,24 @@ void StockDB::InternalSwap(StockDB* other) {
 
 // @@protoc_insertion_point(namespace_scope)
 }  // namespace stp
+namespace google {
+namespace protobuf {
+template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::stp::StockMeta* Arena::Create< ::stp::StockMeta >(Arena* arena) {
+  return Arena::CreateInternal< ::stp::StockMeta >(arena);
+}
+template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::stp::StockElement* Arena::Create< ::stp::StockElement >(Arena* arena) {
+  return Arena::CreateInternal< ::stp::StockElement >(arena);
+}
+template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::stp::StockDB_ElementsEntry_DoNotUse* Arena::Create< ::stp::StockDB_ElementsEntry_DoNotUse >(Arena* arena) {
+  return Arena::CreateInternal< ::stp::StockDB_ElementsEntry_DoNotUse >(arena);
+}
+template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::stp::StockDB_StockIndexEntry_DoNotUse* Arena::Create< ::stp::StockDB_StockIndexEntry_DoNotUse >(Arena* arena) {
+  return Arena::CreateInternal< ::stp::StockDB_StockIndexEntry_DoNotUse >(arena);
+}
+template<> GOOGLE_PROTOBUF_ATTRIBUTE_NOINLINE ::stp::StockDB* Arena::Create< ::stp::StockDB >(Arena* arena) {
+  return Arena::CreateInternal< ::stp::StockDB >(arena);
+}
+}  // namespace protobuf
+}  // namespace google
 
 // @@protoc_insertion_point(global_scope)

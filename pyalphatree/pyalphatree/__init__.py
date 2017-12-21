@@ -72,7 +72,7 @@ def write_stock_data(path, codeProxy, dataProxy, classifiedProxy):
     sdb.days = data_size
     sdb.stockSize = stock_size
 
-    element_name = ["open","high","low","close","volume","vwap","returns"]
+    element_name = ["open","high","low","close","volume","vwap","returns","amount"]
     for name in element_name:
         #se = stock_pb2.StockElement()
         #se.needDay = 0
@@ -107,6 +107,8 @@ def write_stock_data(path, codeProxy, dataProxy, classifiedProxy):
         meta.marketIndex = sdb.stockIndex[value.market]
         meta.industryIndex = sdb.stockIndex[value.industry]
         meta.conceptIndex = sdb.stockIndex[value.concept]
+        meta.totals = value.totals
+        meta.earningRatios = value.earning_ratios
         fill_element(sdb.elements, element_name, value.bar)
         sdb.stockIndex[key] = stock_index
         stock_index += 1

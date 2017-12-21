@@ -13,6 +13,8 @@ message StockMeta{
     int32 marketIndex = 3;
     int32 industryIndex = 4;
     int32 conceptIndex = 5;
+    int64 totals = 6;
+    float earningRatios = 7;
 }
 
 message StockElement{

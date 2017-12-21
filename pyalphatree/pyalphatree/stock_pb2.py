@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='stock.proto',
   package='stp',
   syntax='proto3',
-  serialized_pb=_b('\n\x0bstock.proto\x12\x03stp\"\xc7\x01\n\tStockMeta\x12\x0c\n\x04\x63ode\x18\x01 \x01(\t\x12+\n\tstockType\x18\x02 \x01(\x0e\x32\x18.stp.StockMeta.StockType\x12\x13\n\x0bmarketIndex\x18\x03 \x01(\x05\x12\x15\n\rindustryIndex\x18\x04 \x01(\x05\x12\x14\n\x0c\x63onceptIndex\x18\x05 \x01(\x05\"=\n\tStockType\x12\n\n\x06MARKET\x10\x00\x12\x0c\n\x08INDUSTRY\x10\x01\x12\x0b\n\x07\x43ONCEPT\x10\x02\x12\t\n\x05STOCK\x10\x03\"I\n\x0cStockElement\x12\x0f\n\x07needDay\x18\x01 \x01(\x05\x12\x0c\n\x04\x64\x61ta\x18\x02 \x03(\x02\x12\x0c\n\x04\x66lag\x18\x03 \x03(\x08\x12\x0c\n\x04line\x18\x04 \x01(\t\"\xa0\x02\n\x07StockDB\x12\x0c\n\x04\x64\x61ys\x18\x01 \x01(\x05\x12\x11\n\tstockSize\x18\x02 \x01(\x05\x12\x1d\n\x05metas\x18\x03 \x03(\x0b\x32\x0e.stp.StockMeta\x12,\n\x08\x65lements\x18\x04 \x03(\x0b\x32\x1a.stp.StockDB.ElementsEntry\x12\x30\n\nstockIndex\x18\x05 \x03(\x0b\x32\x1c.stp.StockDB.StockIndexEntry\x1a\x42\n\rElementsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.stp.StockElement:\x02\x38\x01\x1a\x31\n\x0fStockIndexEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x05:\x02\x38\x01\x62\x06proto3')
+  serialized_pb=_b('\n\x0bstock.proto\x12\x03stp\"\xee\x01\n\tStockMeta\x12\x0c\n\x04\x63ode\x18\x01 \x01(\t\x12+\n\tstockType\x18\x02 \x01(\x0e\x32\x18.stp.StockMeta.StockType\x12\x13\n\x0bmarketIndex\x18\x03 \x01(\x05\x12\x15\n\rindustryIndex\x18\x04 \x01(\x05\x12\x14\n\x0c\x63onceptIndex\x18\x05 \x01(\x05\x12\x0e\n\x06totals\x18\x06 \x01(\x03\x12\x15\n\rearningRatios\x18\x07 \x01(\x02\"=\n\tStockType\x12\n\n\x06MARKET\x10\x00\x12\x0c\n\x08INDUSTRY\x10\x01\x12\x0b\n\x07\x43ONCEPT\x10\x02\x12\t\n\x05STOCK\x10\x03\"I\n\x0cStockElement\x12\x0f\n\x07needDay\x18\x01 \x01(\x05\x12\x0c\n\x04\x64\x61ta\x18\x02 \x03(\x02\x12\x0c\n\x04\x66lag\x18\x03 \x03(\x08\x12\x0c\n\x04line\x18\x04 \x01(\t\"\xa0\x02\n\x07StockDB\x12\x0c\n\x04\x64\x61ys\x18\x01 \x01(\x05\x12\x11\n\tstockSize\x18\x02 \x01(\x05\x12\x1d\n\x05metas\x18\x03 \x03(\x0b\x32\x0e.stp.StockMeta\x12,\n\x08\x65lements\x18\x04 \x03(\x0b\x32\x1a.stp.StockDB.ElementsEntry\x12\x30\n\nstockIndex\x18\x05 \x03(\x0b\x32\x1c.stp.StockDB.StockIndexEntry\x1a\x42\n\rElementsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12 \n\x05value\x18\x02 \x01(\x0b\x32\x11.stp.StockElement:\x02\x38\x01\x1a\x31\n\x0fStockIndexEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x05:\x02\x38\x01\x62\x06proto3')
 )
 
 
@@ -49,8 +49,8 @@ _STOCKMETA_STOCKTYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=159,
-  serialized_end=220,
+  serialized_start=198,
+  serialized_end=259,
 )
 _sym_db.RegisterEnumDescriptor(_STOCKMETA_STOCKTYPE)
 
@@ -97,6 +97,20 @@ _STOCKMETA = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='totals', full_name='stp.StockMeta.totals', index=5,
+      number=6, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='earningRatios', full_name='stp.StockMeta.earningRatios', index=6,
+      number=7, type=2, cpp_type=6, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -111,7 +125,7 @@ _STOCKMETA = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=21,
-  serialized_end=220,
+  serialized_end=259,
 )
 
 
@@ -162,8 +176,8 @@ _STOCKELEMENT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=222,
-  serialized_end=295,
+  serialized_start=261,
+  serialized_end=334,
 )
 
 
@@ -200,8 +214,8 @@ _STOCKDB_ELEMENTSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=469,
-  serialized_end=535,
+  serialized_start=508,
+  serialized_end=574,
 )
 
 _STOCKDB_STOCKINDEXENTRY = _descriptor.Descriptor(
@@ -237,8 +251,8 @@ _STOCKDB_STOCKINDEXENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=537,
-  serialized_end=586,
+  serialized_start=576,
+  serialized_end=625,
 )
 
 _STOCKDB = _descriptor.Descriptor(
@@ -295,8 +309,8 @@ _STOCKDB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=298,
-  serialized_end=586,
+  serialized_start=337,
+  serialized_end=625,
 )
 
 _STOCKMETA.fields_by_name['stockType'].enum_type = _STOCKMETA_STOCKTYPE

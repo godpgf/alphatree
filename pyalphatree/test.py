@@ -626,11 +626,11 @@ def test_eraito_strategy(af, daybefore = 0, sample_size = 250):
 
 
 if __name__ == '__main__':
-    codeProxy = LocalCodeProxy(cache_path = "data", is_offline = True)
+    codeProxy = LocalCodeProxy(cache_path = "data", is_offline = False)
     dataProxy = LocalDataProxy(cache_path = "data", is_offline = True)
     classifiedProxy = LocalClassifiedProxy(cache_path = "data", is_offline = True)
 
-    #write_stock_data("data/stockdb.byte",codeProxy, dataProxy, classifiedProxy)
+    write_stock_data("data/stockdb.byte",codeProxy, dataProxy, classifiedProxy)
 
     af = AlphaForest()
     af.load_db("data/stockdb.byte")
