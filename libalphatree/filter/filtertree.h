@@ -256,6 +256,7 @@ namespace fb {
          * treeId: 标注此树序号
          * */
         void train(FilterCache *data, int treeIndex, ThreadPool *threadPool) {
+            cout<<"train a tree\n";
             //标注此树取样的训练数据
             //size_t treeFlag = (((size_t) 1) << treeIndex);
             initialize(data, treeIndex);

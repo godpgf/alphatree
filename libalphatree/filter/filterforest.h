@@ -149,9 +149,11 @@ namespace fb {
             FilterForest *forest = getFilterForest(forestId);
             FilterCache* cache = getCache(cacheId);
             cache->sample();
+            cout<<"finish sample\n";
             for(size_t i = 0; i < cache->treeSize; ++i){
                 forest->addTree(filterTreeCache_->useCacheMemory());
             }
+            cout<<"finish add tree\n";
             for(size_t i = 0; i < cache->treeSize; ++i) {
                 FilterTree* ftree = &filterTreeCache_->getCacheMemory(forest->filterTrees[i]);
                 int treeIndex = i;

@@ -353,7 +353,6 @@ class AlphaTree : public BaseAlphaTree{
             //int dateSize = alphaDataBase->getDays();
             //重新标记所有节点
             flagAllNode(cache);
-
             flagAllStock(alphaDataBase, cache, threadPool, true);
             calAlpha(alphaDataBase, cache, threadPool);
             for(auto i = 0; i < subtreeList_.getSize(); ++i) {
@@ -365,7 +364,6 @@ class AlphaTree : public BaseAlphaTree{
 
                     char des[MAX_SUB_ALPHATREE_STR_NUM];
                     encode(subtreeList_[i].name, des);
-
                     alphaDataBase->setElement(name, des, needDay, alpha, flag, isFeature);
                 }
             }

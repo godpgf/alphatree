@@ -185,11 +185,12 @@ public:
                           size_t maxBarSize = 16, float mergeBarPercent = 0.016f, float subsample = 0.6f,
                           float colsampleBytree = 0.75f, const char *buySign = "buy", const char *sellSign = "sell",
                           const char *targetValue = "target") {
+        cout<<"learn filter forest\n";
         AlphaCache *cache = getCache(cacheId);
         const float *buy = getAlphaTree(alphatree)->getAlpha(buySign, cache);
         const float *sell = getAlphaTree(alphatree)->getAlpha(sellSign, cache);
         const float *target = getAlphaTree(alphatree)->getAlpha(targetValue, cache);
-
+        cout<<"start static\n";
         //计算最大取样数据量
         size_t sampleSize = 0;
         for (size_t i = 0; i < cache->stockSize; ++i) {
@@ -205,11 +206,11 @@ public:
             }
         }
 
-
+        cout<<"sample size "<<sampleSize<<endl;
         int filterCacheId = filterForest_.useCache();
         FilterCache *filterCache = filterForest_.getCache(filterCacheId);
         filterCache->initialize(sampleSize, featureSize, maxLeafSize);
-
+        cout<<"finish init fcache\n";
         //填写训练参数
         filterCache->treeSize = treeSize;
         filterCache->iteratorNum = iteratorNum;
@@ -228,12 +229,14 @@ public:
         const char *curFeature = features;
         alphaDataBase_.getFeature(cache->dayBefore, cache->sampleDays, cache->stockSize, cache->codes, buy, sell,
                                   filterCache->feature, sampleSize, features, featureSize);
+        cout<<"finish fill feature\n";
 
         //填写特征名字
         for (size_t fId = 0; fId < featureSize; ++fId) {
             strcpy(filterCache->featureName + fId * MAX_FEATURE_NAME_LEN, curFeature);
             curFeature += strlen(curFeature) + 1;
         }
+        cout<<"finish fill feature name\n";
 
         //填写目标
         size_t sampleIndex = 0;
@@ -249,9 +252,11 @@ public:
                     isBuy = true;
             }
         }
+        cout<<"finish fill target\n";
 
         int forestId = filterForest_.useFilterForest();
 
+        cout<<"train\n";
         filterForest_.train(filterCacheId, forestId, &threadPool_);
 
         filterForest_.releaseCache(filterCacheId);

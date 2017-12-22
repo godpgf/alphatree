@@ -112,7 +112,7 @@ class AlphaDB{
                 return nullptr;
 
             string elementName;
-            if(strcmp(name,"cap") || strcmp(name,"pe")){
+            if(strcmp(name,"cap") == 0 || strcmp(name,"pe") == 0){
                 elementName = "close";
                 leafDataClass = nullptr;
             }else{
@@ -129,7 +129,8 @@ class AlphaDB{
                 curCode = curCode + strlen(curCode) + 1;
             }
 
-            if(strcmp(name,"cap")){
+            curCode = codes;
+            if(strcmp(name,"cap") == 0){
                 for(size_t i = 0; i < stockNum; ++i){
                     int stockIndex = getStockIndex(curCode, leafDataClass);
                     for(size_t j = 0; j < dayNum; ++j){
@@ -137,7 +138,7 @@ class AlphaDB{
                     }
                     curCode = curCode + strlen(curCode) + 1;
                 }
-            } else if(strcmp(name,"pe")){
+            } else if(strcmp(name,"pe") == 0){
                 for(size_t i = 0; i < stockNum; ++i){
                     int stockIndex = getStockIndex(curCode, leafDataClass);
                     for(size_t j = 0; j < dayNum; ++j){
@@ -179,7 +180,6 @@ class AlphaDB{
                     curCode = curCode + strlen(curCode) + 1;
                 }
             }
-
             return dst;
         }
 
