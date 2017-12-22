@@ -605,7 +605,11 @@ def test_eraito_strategy(af, daybefore = 0, sample_size = 250):
                         af.decode_alphatree(alphatree_id, tmp[0], tmp[1][:-1])
                     af.decode_alphatree(alphatree_id, "target", "log((ft_sharpe(negative_flag(close, buy), negative_flag(low, sell)) + 1))")
 
-                        #print af.encode_alphatree(alphatree_id, tmp[0])
+                    feature_list = ["return5","return10","return20","amount0_5","amount_5_20",
+                                    "r_amount0_5", "r_amount5_10", "r_return", "r_return5", "r_return10",
+                                    "r_return0_5", "r_return5_10"                                    ]
+                    af.learn_filter(alphatree_id, cache_id, feature_list)
+                    #print af.encode_alphatree(alphatree_id, tmp[0])
 
                     af.decode_process(alphatree_id, "res", "eratio(buy, sell, high, low, close, atr)")
 
@@ -626,7 +630,7 @@ def test_eraito_strategy(af, daybefore = 0, sample_size = 250):
 
 
 if __name__ == '__main__':
-    codeProxy = LocalCodeProxy(cache_path = "data", is_offline = False)
+    codeProxy = LocalCodeProxy(cache_path = "data", is_offline = True)
     dataProxy = LocalDataProxy(cache_path = "data", is_offline = True)
     classifiedProxy = LocalClassifiedProxy(cache_path = "data", is_offline = True)
 
