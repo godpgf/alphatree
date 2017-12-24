@@ -320,6 +320,17 @@ class AlphaDB{
             if(needDay > getDays())
                 return nullptr;
 
+<<<<<<< HEAD
+=======
+            string elementName;
+            if(strcmp(name,"cap") == 0 || strcmp(name,"pe") == 0){
+                elementName = "close";
+                leafDataClass = nullptr;
+            }else{
+                elementName = name;
+            }
+
+>>>>>>> ba5baa0839b775dc4879255b665f514839efdf9d
 
             auto element = db->elements[name];
             for(size_t i = 0; i < stockNum; ++i){
@@ -330,6 +341,30 @@ class AlphaDB{
                 curCode = curCode + strlen(curCode) + 1;
             }
 
+<<<<<<< HEAD
+=======
+            curCode = codes;
+            if(strcmp(name,"cap") == 0){
+                for(size_t i = 0; i < stockNum; ++i){
+                    int stockIndex = getStockIndex(curCode, leafDataClass);
+                    for(size_t j = 0; j < dayNum; ++j){
+                        dst[j * stockNum + i] *= db->metas(stockIndex).totals();
+                    }
+                    curCode = curCode + strlen(curCode) + 1;
+                }
+            } else if(strcmp(name,"pe") == 0){
+                for(size_t i = 0; i < stockNum; ++i){
+                    int stockIndex = getStockIndex(curCode, leafDataClass);
+                    for(size_t j = 0; j < dayNum; ++j){
+                        dst[j * stockNum + i] /= db->metas(stockIndex).earningratios();
+                    }
+                    curCode = curCode + strlen(curCode) + 1;
+                }
+            }
+
+
+
+>>>>>>> ba5baa0839b775dc4879255b665f514839efdf9d
             return dst;
         }
 
@@ -349,7 +384,6 @@ class AlphaDB{
                 }
                 curCode = curCode + strlen(curCode) + 1;
             }
-
             return dst;
         }
 

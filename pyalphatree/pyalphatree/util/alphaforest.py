@@ -17,7 +17,7 @@ class AlphaForest(object):
         # self.max_stoct_size = 0
         self.code_cache = (c_char * (max_stock_num * 64))()
         self.alpha_cache = (c_float * (max_stock_num * max_day_num))()
-        self.feature_cache = (c_char * (max_feature_size * 64))
+        self.feature_cache = (c_char * (max_feature_size * 64))()
         # self.max_alpha_tree_size = 0
         # self.check_alpha_size(2500, 3600)
         # self.check_tree_size(1024)

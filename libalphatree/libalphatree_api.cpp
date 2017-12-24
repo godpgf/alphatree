@@ -61,12 +61,12 @@ void decodeProcess(int alphaTreeId, const char *processName, const char *line) {
     AlphaForest::getAlphaforest()->decodeProcess(alphaTreeId, processName, line);
 }
 
-void learnFilterForest(int alphatreeId, int cacheId, const char *features, int featureSize, int treeSize = 20,
-                       int iteratorNum = 2, float gamma = 0.001f, float lambda = 1.0f, int maxDepth = 16,
-                       int maxLeafSize = 1024, int maxAdjWeightTime = 4, float adjWeightRule = 0.2f,
-                       int maxBarSize = 16, float mergeBarPercent = 0.016f, float subsample = 0.6f,
-                       float colsampleBytree = 0.75f, const char *buySign = "buy", const char *sellSign = "sell",
-                       const char *targetValue = "target") {
+void learnFilterForest(int alphatreeId, int cacheId, const char *features, int featureSize, int treeSize,
+                       int iteratorNum, float gamma, float lambda, int maxDepth,
+                       int maxLeafSize, int maxAdjWeightTime, float adjWeightRule,
+                       int maxBarSize, float mergeBarPercent, float subsample,
+                       float colsampleBytree, const char *buySign, const char *sellSign,
+                       const char *targetValue) {
     AlphaForest::getAlphaforest()->learnFilterForest(alphatreeId, cacheId, features, featureSize, treeSize,
                                                      iteratorNum, gamma, lambda, maxDepth, maxLeafSize,
                                                      maxAdjWeightTime, adjWeightRule, maxBarSize, mergeBarPercent,

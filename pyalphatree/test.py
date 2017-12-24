@@ -574,7 +574,8 @@ def cache_path(af, path):
                 print line[1:-1]
                 continue
             tmp = line.split('=')
-            cache_alpha(af, tmp[0], tmp[1][:-1])
+            print tmp[0]
+            cache_alpha(af, tmp[0].replace(" ",""), tmp[1][:-1])
 
 
 def test_eraito_strategy(af, daybefore = 0, sample_size = 250):
@@ -605,7 +606,7 @@ def test_eraito_strategy(af, daybefore = 0, sample_size = 250):
                         af.decode_alphatree(alphatree_id, tmp[0], tmp[1][:-1])
                     af.decode_alphatree(alphatree_id, "target", "log((ft_sharpe(negative_flag(close, buy), negative_flag(low, sell)) + 1))")
 
-                        #print af.encode_alphatree(alphatree_id, tmp[0])
+                    #print af.encode_alphatree(alphatree_id, tmp[0])
 
                     af.decode_process(alphatree_id, "res", "eratio(buy, sell, high, low, close, atr)")
 
@@ -615,9 +616,15 @@ def test_eraito_strategy(af, daybefore = 0, sample_size = 250):
                     af.cal_alpha(alphatree_id, cache_id)
                     sell = np.array(af.get_root_alpha(alphatree_id, "sell", cache_id, sample_size))
                     buy = np.array(af.get_root_alpha(alphatree_id, "buy", cache_id, sample_size))
+                    target = np.array(af.get_root_alpha(alphatree_id, "target", cache_id, sample_size))
                     af.process_alpha(alphatree_id, cache_id)
 
                     process_res = json.loads(af.get_process(alphatree_id, "res", cache_id))
+                    feature_list = ["return5","return10","return20","amount0_5","amount_5_20",
+                                    "r_amount0_5", "r_amount5_10", "r_return", "r_return5", "r_return10",
+                                    "r_return0_5", "r_return5_10"                                    ]
+                    af.learn_filter(alphatree_id, cache_id, feature_list)
+
 
                     af.release_cache(cache_id)
                     af.release_alphatree(alphatree_id)
@@ -626,13 +633,19 @@ def test_eraito_strategy(af, daybefore = 0, sample_size = 250):
 
 
 if __name__ == '__main__':
+<<<<<<< HEAD
     download_stock_data()
     """
     codeProxy = LocalCodeProxy(cache_path = "data", is_offline = False)
     dataProxy = LocalDataProxy(cache_path = "data", is_offline = False)
     classifiedProxy = LocalClassifiedProxy(cache_path = "data", is_offline = False)
+=======
+    codeProxy = LocalCodeProxy(cache_path = "data", is_offline = True)
+    dataProxy = LocalDataProxy(cache_path = "data", is_offline = True)
+    classifiedProxy = LocalClassifiedProxy(cache_path = "data", is_offline = True)
+>>>>>>> ba5baa0839b775dc4879255b665f514839efdf9d
 
-    write_stock_data("data/stockdb.byte",codeProxy, dataProxy, classifiedProxy)
+    #write_stock_data("data/stockdb.byte",codeProxy, dataProxy, classifiedProxy)
 
     af = AlphaForest()
     af.load_db("data/stockdb.byte")
