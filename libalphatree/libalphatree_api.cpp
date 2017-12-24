@@ -98,10 +98,6 @@ int getIndustryCodes(const char *industryName, char *codes) {
     return AlphaForest::getAlphaforest()->getAlphaDataBase()->getIndustryCodes(industryName, codes);
 }
 
-int getConceptCodes(const char *conceptName, char *codes) {
-    return AlphaForest::getAlphaforest()->getAlphaDataBase()->getConceptCodes(conceptName, codes);
-}
-
 int getMaxHistoryDays(int alphaTreeId) { return AlphaForest::getAlphaforest()->getMaxHistoryDays(alphaTreeId); }
 
 void flagAlpha(int alphaTreeId, int cacheId, int dayBefore, int sampleSize, const char *codes, int stockSize,
@@ -114,8 +110,8 @@ void calAlpha(int alphaTreeId, int cacheId) {
     AlphaForest::getAlphaforest()->calAlpha(alphaTreeId, cacheId);
 }
 
-void cacheAlpha(int alphaTreeId, int cacheId, bool isFeature) {
-    AlphaForest::getAlphaforest()->cacheAlpha(alphaTreeId, cacheId, isFeature);
+void cacheAlpha(int alphaTreeId, int cacheId) {
+    AlphaForest::getAlphaforest()->cacheAlpha(alphaTreeId, cacheId);
 }
 
 void processAlpha(int alphaTreeId, int cacheId) {

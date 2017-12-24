@@ -8,7 +8,7 @@
 #include "../base/threadpool.h"
 
 #define MAX_PROCESS_STR_LEN 4096 * 64
-const size_t CODE_LEN = 64;
+
 
 class AlphaCache{
     public:
@@ -348,7 +348,7 @@ class AlphaTree : public BaseAlphaTree{
         }
 
     //保存alphatree到alphaDB,isFeature表示是否作为机器学习的特征
-        void cacheAlpha(AlphaDB *alphaDataBase, AlphaCache* cache, ThreadPool *threadPool, bool isFeature = false){
+        void cacheAlpha(AlphaDB *alphaDataBase, AlphaCache* cache, ThreadPool *threadPool){
             cache->initialize(nodeList_.getSize(), processList_.getSize(), getMaxHistoryDays(), alphaDataBase);
             //int dateSize = alphaDataBase->getDays();
             //重新标记所有节点
@@ -358,15 +358,14 @@ class AlphaTree : public BaseAlphaTree{
             calAlpha(alphaDataBase, cache, threadPool);
             for(auto i = 0; i < subtreeList_.getSize(); ++i) {
                 if (!subtreeList_[i].isLocal) {
-                    string name = subtreeList_[i].name;
                     float *alpha = cache->nodeRes[subtreeList_[i].rootId].get();
                     bool *flag = cache->flagRes[subtreeList_[i].rootId].get();
                     int needDay = getMaxHistoryDays() - 1;
 
-                    char des[MAX_SUB_ALPHATREE_STR_NUM];
-                    encode(subtreeList_[i].name, des);
+                    //char des[MAX_SUB_ALPHATREE_STR_NUM];
+                    //encode(subtreeList_[i].name, des);
 
-                    alphaDataBase->setElement(name, des, needDay, alpha, flag, isFeature);
+                    alphaDataBase->setElement(subtreeList_[i].name, needDay, alpha, flag);
                 }
             }
         }

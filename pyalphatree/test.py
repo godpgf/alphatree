@@ -626,9 +626,11 @@ def test_eraito_strategy(af, daybefore = 0, sample_size = 250):
 
 
 if __name__ == '__main__':
+    download_stock_data()
+    """
     codeProxy = LocalCodeProxy(cache_path = "data", is_offline = False)
-    dataProxy = LocalDataProxy(cache_path = "data", is_offline = True)
-    classifiedProxy = LocalClassifiedProxy(cache_path = "data", is_offline = True)
+    dataProxy = LocalDataProxy(cache_path = "data", is_offline = False)
+    classifiedProxy = LocalClassifiedProxy(cache_path = "data", is_offline = False)
 
     write_stock_data("data/stockdb.byte",codeProxy, dataProxy, classifiedProxy)
 
@@ -651,3 +653,4 @@ if __name__ == '__main__':
             print "%s %.4f"%(codes[i], alpha[-1][i])
 
     test_eraito_strategy(af)
+    """

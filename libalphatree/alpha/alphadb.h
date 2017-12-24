@@ -7,18 +7,238 @@
 
 #include <map>
 #include <stdlib.h>
-#include <string>
+#include <stdio.h>
+#include <string.h>
 #include <math.h>
+#include <set>
 #include <vector>
 #include "base.h"
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include "../base/hashmap.h"
-#include "db/stock.pb.h"
 using namespace std;
 
 //返回中间结果和取样数据所需要考虑的所有天数,比如delate(close,3)取样5天,就返回3+5-1天的数据,这些天以外的数据计算时不会涉及到的.
 #define GET_ELEMEMT_SIZE(historyDays, sampleDays) (historyDays + sampleDays - 1)
+const size_t CODE_LEN = 64;
+
+//定义股票的数据结构------------------------------
+class StockMeta{
+public:
+    enum class StockType{
+        MARKET = 0,
+        INDUSTRY = 1,
+        STOCK = 2,
+    };
+    char code[CODE_LEN];
+    int markerIndex;
+    int industryIndex;
+    StockType stockType;
+};
+
+class StockElement{
+public:
+    int needDay = {0};
+    float* data = {nullptr};
+    bool* flag = {nullptr};
+    StockElement(int day, int stockSize){
+        data = new float[day * stockSize];
+        flag = new bool[day * stockSize];
+    }
+    ~StockElement(){
+        delete []data;
+        delete []flag;
+    }
+};
+
+class StockDB{
+public:
+    size_t* calendar = nullptr;
+    int stockSize = {0};
+    int days = {0};
+    StockMeta* metas = nullptr;
+    HashMap<StockElement*> elements;
+    HashMap<int> stockIndex;
+//    StockDB(int stockSize){
+//        this->stockSize = stockSize;
+//    }
+    StockDB(const char* path, const char* flagFeature = "volume"){
+        auto filepath = [path] (string file) {
+            string filePath = path;
+            filePath += "/";
+            filePath += file;
+            filePath += ".csv";
+            return filePath;
+        };
+        //先读出股票数
+        ifstream inFile = ifstream(filepath("codes"), ios::in);
+        string lineStr;
+        getline(inFile, lineStr);
+        map<string, string> codes2market;
+        map<string, string> codes2industry;
+        set<string> markets;
+        set<string> industries;
+        while (getline(inFile, lineStr)){
+            stringstream ss(lineStr);
+            string code, market, industry;
+            getline(ss, code, ',');
+            getline(ss, market, ',');
+            getline(ss, industry, ',');
+            codes2market[code] = market;
+            codes2industry[code] = industry;
+            markets.insert(market);
+            industries.insert(industry);
+        }
+        stockSize = codes2market.size() + markets.size() + industries.size();
+
+        //读出天数
+        string maxMarket;
+        set<string>::iterator iter=markets.begin();
+        while(iter != markets.end()){
+            inFile = ifstream(filepath(*iter), ios::in);
+            getline(inFile, lineStr);
+            int curDays = 0;
+            while (getline(inFile, lineStr))
+                ++curDays;
+            if(curDays > days){
+                days = curDays;
+                maxMarket = *iter;
+            }
+            ++iter;
+        }
+
+        //初始化
+        calendar = new size_t[days];
+        metas = new StockMeta[stockSize];
+
+        //读出特征
+        inFile = ifstream(filepath(maxMarket), ios::in);
+        getline(inFile, lineStr);
+        stringstream ss(lineStr);
+        string feature;
+        getline(ss, feature, ',');
+        while(getline(ss, feature, ',')){
+            elements[feature.c_str()] = new StockElement(days, stockSize);
+        }
+        //读出日历
+        int cId = 0;
+        while (getline(inFile, lineStr)){
+            stringstream ss(lineStr);
+            string date;
+            getline(ss, date, ',');
+            calendar[cId++] = atol(date.c_str());
+        }
+
+        StockDB* db = this;
+        auto readstock = [filepath, db, flagFeature](string code, int stockIndex){
+            ifstream inFile = ifstream(filepath(code), ios::in);
+            string lineStr;
+            getline(inFile, lineStr);
+            stringstream ss(lineStr);
+            string feature;
+            vector<string> featureArray;
+            getline(ss, feature, ',');
+            while(getline(ss, feature, ','))
+                featureArray.push_back(feature);
+            int dayIndex = 0;
+            int featureIndex = 0;
+            while (getline(inFile, lineStr)){
+                ss = stringstream(lineStr);
+                getline(ss, feature, ',');
+                auto date = atol(feature.c_str());
+                //补之前的数据
+                bool hasFillTodayFeature = false;
+                while (db->calendar[dayIndex] <= date){
+                    int curIndex = db->days * stockIndex + dayIndex;
+                    if(dayIndex == 0){
+                        while(getline(ss, feature, ',')){
+                            db->elements[featureArray[featureIndex].c_str()]->data[curIndex] = atof(feature.c_str());
+                            db->elements[featureArray[featureIndex].c_str()]->flag[curIndex] = false;
+                            ++featureIndex;
+                        }
+                        hasFillTodayFeature = true;
+                    } else {
+                        for(featureIndex = 0; featureIndex < featureArray.size(); ++ featureIndex){
+                            db->elements[featureArray[featureIndex].c_str()]->data[curIndex] = db->elements[featureArray[featureIndex].c_str()]->data[curIndex-1];
+                            db->elements[featureArray[featureIndex].c_str()]->flag[curIndex] = false;
+                        }
+                    }
+                    ++dayIndex;
+                }
+                --dayIndex;
+                //补今天数据
+                if(hasFillTodayFeature){
+                    int curIndex = db->days * stockIndex + dayIndex;
+                    featureIndex = 0;
+                    while(getline(ss, feature, ',')){
+                        db->elements[featureArray[featureIndex].c_str()]->data[curIndex] = atof(feature.c_str());
+                        ++featureIndex;
+                    }
+                    for(featureIndex = 0; featureIndex < featureArray.size(); ++ featureIndex){
+                        db->elements[featureArray[featureIndex].c_str()]->flag[curIndex] = (db->elements[flagFeature]->data[curIndex] > 0);
+                    }
+                }
+                ++dayIndex;
+            }
+            //补未来数据
+            while (dayIndex < db->days){
+                int curIndex = db->days * stockIndex + dayIndex;
+                for(featureIndex = 0; featureIndex < featureArray.size(); ++ featureIndex){
+                    db->elements[featureArray[featureIndex].c_str()]->data[curIndex] = db->elements[featureArray[featureIndex].c_str()]->data[curIndex-1];
+                    db->elements[featureArray[featureIndex].c_str()]->flag[curIndex] = false;
+                }
+                ++dayIndex;
+            }
+        };
+        int stockIndex = 0;
+        iter=markets.begin();
+        //map<string,int> code2index;
+        iter = markets.begin();
+        while(iter != markets.end()){
+            readstock(*iter, stockIndex);
+            strcpy(db->metas[stockIndex].code, (*iter).c_str());
+            db->metas[stockIndex].markerIndex = stockIndex;
+            db->metas[stockIndex].industryIndex = stockIndex;
+            db->metas[stockIndex].stockType = StockMeta::StockType::MARKET;
+            db->stockIndex[(*iter).c_str()] = stockIndex;
+            ++stockIndex;
+            ++iter;
+        }
+        iter = industries.begin();
+        while(iter != industries.end()){
+            readstock(*iter, stockIndex);
+            strcpy(db->metas[stockIndex].code, (*iter).c_str());
+            db->metas[stockIndex].markerIndex = stockIndex;
+            db->metas[stockIndex].industryIndex = stockIndex;
+            db->metas[stockIndex].stockType = StockMeta::StockType::INDUSTRY;
+            db->stockIndex[(*iter).c_str()] = stockIndex;
+            ++stockIndex;
+            ++iter;
+        }
+        map<string,string>::iterator it;
+        it = codes2market.begin();
+        while(it != codes2market.end())
+        {
+            readstock(it->first, stockIndex);
+            strcpy(db->metas[stockIndex].code,it->first.c_str());
+            db->metas[stockIndex].markerIndex = db->stockIndex[it->second.c_str()];
+            db->metas[stockIndex].industryIndex = db->stockIndex[codes2industry[it->first].c_str()];
+            db->metas[stockIndex].stockType = StockMeta::StockType::STOCK;
+            db->stockIndex[it->first.c_str()] = stockIndex;
+            ++stockIndex;
+            it++;
+        }
+    }
+    ~StockDB(){
+        for(int i = 0; i < elements.getSize(); ++i){
+            delete elements[i];
+        }
+        delete []calendar;
+        delete []metas;
+    }
+};
+//----------------------------------------------
 
 class AlphaDB{
     public:
@@ -26,19 +246,23 @@ class AlphaDB{
             clean();
         }
 
-        bool loadDataBase(const char* path){
+        bool loadDataBase(const char* path, const char* flagFeature = "volume"){
             clean();
+
+            db = new StockDB(path, flagFeature);
+            /*
             db = new stp::StockDB();
             ifstream in(path, ios::in);
             db->ParseFromIstream(&in);
             in.close();
             return true;
+             */
         }
 
         size_t getAllCodes(char* codes){
             char* curCode = codes;
             for(size_t i = 0; i < getStockNum(); ++i){
-                strcpy(curCode, db->metas(i).code().data());
+                strcpy(curCode, db->metas[i].code);
                 curCode = curCode + strlen(curCode) + 1;
             }
             return getStockNum();
@@ -48,8 +272,8 @@ class AlphaDB{
             char* curCode = codes;
             size_t codeNum = 0;
             for(size_t i = 0; i < getStockNum(); ++i){
-                if(db->metas(i).stocktype() == stp::StockMeta::STOCK){
-                    strcpy(curCode, db->metas(i).code().data());
+                if(db->metas[i].stockType == StockMeta::StockType::STOCK){
+                    strcpy(curCode, db->metas[i].code);
                     curCode = curCode + strlen(curCode) + 1;
                     ++codeNum;
                 }
@@ -62,9 +286,9 @@ class AlphaDB{
             size_t codeNum = 0;
             for(size_t i = 0; i < getStockNum(); ++i){
                 if(
-                        (marketName != nullptr && db->metas(i).stocktype() == stp::StockMeta::STOCK && db->metas(db->metas(i).marketindex()).code().compare(marketName) == 0) ||
-                        (marketName == nullptr && db->metas(i).stocktype() == stp::StockMeta::MARKET)){
-                    strcpy(curCode, db->metas(i).code().data());
+                        (marketName != nullptr && db->metas[i].stockType == StockMeta::StockType::STOCK && strcmp(db->metas[db->metas[i].markerIndex].code, marketName) == 0) ||
+                        (marketName == nullptr && db->metas[i].stockType == StockMeta::StockType::MARKET)){
+                    strcpy(curCode, db->metas[i].code);
                     curCode = curCode + strlen(curCode) + 1;
                     ++codeNum;
                 }
@@ -77,24 +301,9 @@ class AlphaDB{
             size_t codeNum = 0;
             for(size_t i = 0; i < getStockNum(); ++i){
                 if(
-                        (industryName != nullptr && db->metas(i).stocktype() == stp::StockMeta::STOCK && db->metas(db->metas(i).industryindex()).code().compare(industryName) == 0) ||
-                        (industryName == nullptr && db->metas(i).stocktype() == stp::StockMeta::INDUSTRY)){
-                    strcpy(curCode, db->metas(i).code().data());
-                    curCode = curCode + strlen(curCode) + 1;
-                    ++codeNum;
-                }
-            }
-            return codeNum;
-        }
-
-        size_t getConceptCodes(const char* conceptName, char* codes){
-            char* curCode = codes;
-            size_t codeNum = 0;
-            for(size_t i = 0; i < getStockNum(); ++i){
-                if(
-                        (conceptName != nullptr && db->metas(i).stocktype() == stp::StockMeta::STOCK && db->metas(db->metas(i).conceptindex()).code().compare(conceptName) == 0) ||
-                        (conceptName == nullptr && db->metas(i).stocktype() == stp::StockMeta::CONCEPT)){
-                    strcpy(curCode, db->metas(i).code().data());
+                        (industryName != nullptr && db->metas[i].stockType == StockMeta::StockType::STOCK && strcmp(db->metas[db->metas[i].industryIndex].code, industryName) == 0) ||
+                        (industryName == nullptr && db->metas[i].stockType == StockMeta::StockType::INDUSTRY)){
+                    strcpy(curCode, db->metas[i].code);
                     curCode = curCode + strlen(curCode) + 1;
                     ++codeNum;
                 }
@@ -111,43 +320,15 @@ class AlphaDB{
             if(needDay > getDays())
                 return nullptr;
 
-            string elementName;
-            if(strcmp(name,"cap") || strcmp(name,"pe")){
-                elementName = "close";
-                leafDataClass = nullptr;
-            }else{
-                elementName = name;
-            }
 
-
-            auto element = db->elements().find(elementName)->second;
+            auto element = db->elements[name];
             for(size_t i = 0; i < stockNum; ++i){
                 int stockIndex = getStockIndex(curCode, leafDataClass);
                 for(size_t j = 0; j < dayNum; ++j){
-                    dst[j * stockNum + i] = element.data(db->days() * stockIndex + db->days() - needDay + j);
+                    dst[j * stockNum + i] = element->data[db->days * stockIndex + db->days - needDay + j];
                 }
                 curCode = curCode + strlen(curCode) + 1;
             }
-
-            if(strcmp(name,"cap")){
-                for(size_t i = 0; i < stockNum; ++i){
-                    int stockIndex = getStockIndex(curCode, leafDataClass);
-                    for(size_t j = 0; j < dayNum; ++j){
-                        dst[j * stockNum + i] *= db->metas(stockIndex).totals();
-                    }
-                    curCode = curCode + strlen(curCode) + 1;
-                }
-            } else if(strcmp(name,"pe")){
-                for(size_t i = 0; i < stockNum; ++i){
-                    int stockIndex = getStockIndex(curCode, leafDataClass);
-                    for(size_t j = 0; j < dayNum; ++j){
-                        dst[j * stockNum + i] /= db->metas(stockIndex).earningratios();
-                    }
-                    curCode = curCode + strlen(curCode) + 1;
-                }
-            }
-
-
 
             return dst;
         }
@@ -160,43 +341,38 @@ class AlphaDB{
             if(needDay > getDays())
                 return nullptr;
 
-            auto element = db->elements().find(name)->second;
-            if(element.flag_size() != element.data_size()) {
-                element = db->elements().find("volume")->second;
-                for(size_t i = 0; i < stockNum; ++i){
-                    int stockIndex = getStockIndex(curCode);
-                    for(size_t j = 0; j < dayNum; ++j){
-                        dst[j * stockNum + i] = (element.data(db->days() * stockIndex + db->days() - needDay + j) > 0);
-                    }
-                    curCode = curCode + strlen(curCode) + 1;
+            auto element = db->elements[name];
+            for(size_t i = 0; i < stockNum; ++i){
+                int stockIndex = getStockIndex(curCode);
+                for(size_t j = 0; j < dayNum; ++j){
+                    dst[j * stockNum + i] = element->flag[db->days * stockIndex + db->days - needDay + j];
                 }
-            } else {
-                for(size_t i = 0; i < stockNum; ++i){
-                    int stockIndex = getStockIndex(curCode);
-                    for(size_t j = 0; j < dayNum; ++j){
-                        dst[j * stockNum + i] = element.flag(db->days() * stockIndex + db->days() - needDay + j);
-                    }
-                    curCode = curCode + strlen(curCode) + 1;
-                }
+                curCode = curCode + strlen(curCode) + 1;
             }
 
             return dst;
         }
 
-        void setElement(string name, const char* line, int needDay, float* alpha, bool* flag, bool isFeature = false){
-            auto map = db->mutable_elements();
-            (*map)[name].set_needday(needDay);
-            (*map)[name].set_line(line);
-            for(size_t j = 0; j < db->stocksize(); ++j){
-                for(size_t i = 0; i < db->days(); ++i){
-                    (*map)[name].add_data(alpha[i * db->stocksize() + j]);
-                    (*map)[name].add_flag(flag[i * db->stocksize() + j]);
+        void setElement(const char* name, int needDay, float* alpha, bool* flag){
+//            auto map = db->mutable_elements();
+//            (*map)[name].set_needday(needDay);
+//            (*map)[name].set_line(line);
+//            for(size_t j = 0; j < db->stocksize(); ++j){
+//                for(size_t i = 0; i < db->days(); ++i){
+//                    (*map)[name].add_data(alpha[i * db->stocksize() + j]);
+//                    (*map)[name].add_flag(flag[i * db->stocksize() + j]);
+//                }
+//            }
+            StockElement* element = new StockElement(db->days, db->stockSize);
+            int index = 0;
+            for(size_t j = 0; j < db->stockSize; ++j){
+                for(size_t i = 0; i < db->days; ++i){
+                    element->data[index] = alpha[i * db->stockSize + j];
+                    element->flag[index] = flag[i * db->stockSize + j];
+                    ++index;
                 }
             }
-            if(isFeature){
-                featureIndex.add(name.data(), featureSize);
-                ++featureSize;
-            }
+            db->elements[name] = element;
         }
 
         void getFeature(size_t dayBefore, size_t sampleDays, size_t stockSize, const char* codes, const float* buy, const float* sell,
@@ -205,7 +381,7 @@ class AlphaDB{
             size_t needDay = sampleDays + dayBefore;
             for(size_t fId = 0; fId < featureSize; ++fId){
                 float* feature = featureValue + fId * sampleSize;
-                auto element = db->elements().find(curFeature)->second;
+                auto element = db->elements[curFeature];
                 size_t sampleIndex = 0;
                 for(size_t i = 0; i < stockSize; ++i){
                     const char* curCode = codes;
@@ -214,7 +390,7 @@ class AlphaDB{
                     for(size_t j = 0; j < sampleDays; ++j){
                         size_t index = j * stockSize + i;
                         if(lastBuyDay >= 0 && sell[index] > 0){
-                            feature[sampleIndex++] = element.data(db->days() * stockIndex + db->days() - needDay + j);
+                            feature[sampleIndex++] = element->data[db->days * stockIndex + db->days - needDay + j];
                             lastBuyDay = -1;
                         }
                         if(lastBuyDay == -1 && buy[index] > 0)
@@ -245,9 +421,9 @@ class AlphaDB{
 //            return dst;
 //        }
 
-        size_t getStockNum(){ return db->metas_size();}
-        size_t getDays(){ return db->days();}
-        size_t getFeatureSize(){ return featureSize;}
+        size_t getStockNum(){ return db->stockSize;}
+        size_t getDays(){ return db->days;}
+        //size_t getFeatureSize(){ return featureSize;}
     //stp::StockDB* testGet(){ return db;}
 //        int gi(const char *curCode){
 //        return getStockIndex(curCode);
@@ -260,23 +436,20 @@ class AlphaDB{
         }
 
         int getStockIndex(const char *curCode, const char *leafDataClass = nullptr){
-            string code = curCode;
-            int stockIndex = db->stockindex().find(code)->second;
-            if(db->metas(stockIndex).stocktype() != stp::StockMeta::STOCK || leafDataClass == nullptr){
+            int stockIndex = db->stockIndex[curCode];
+            if(db->metas[stockIndex].stockType != StockMeta::StockType ::STOCK || leafDataClass == nullptr){
                 return stockIndex;
             }
             if(strcmp(leafDataClass,"IndClass.market") == 0){
-                stockIndex = db->metas(stockIndex).marketindex();
+                stockIndex = db->metas[stockIndex].markerIndex;
             } else if(strcmp(leafDataClass,"IndClass.industry") == 0){
-                stockIndex = db->metas(stockIndex).industryindex();
-            } else if(strcmp(leafDataClass,"IndClass.concept") == 0){
-                stockIndex = db->metas(stockIndex).conceptindex();
+                stockIndex = db->metas[stockIndex].industryIndex;
             }
             return stockIndex;
         }
 
     //todo delete
-        size_t getReturnsAndRisk(size_t dayBefore, size_t sampleDays, size_t stockSize, const char* codes, const float* buy, const float* sell, float* returns, float* risk, int* chooseIndex){
+        /*size_t getReturnsAndRisk(size_t dayBefore, size_t sampleDays, size_t stockSize, const char* codes, const float* buy, const float* sell, float* returns, float* risk, int* chooseIndex){
             const char* curCode = codes;
             int signCount = 0;
 
@@ -319,7 +492,9 @@ class AlphaDB{
                 curCode = curCode + strlen(curCode) + 1;
             }
             return signCount;
-        }
+        }*/
+
+        StockDB* db = {nullptr};
 
         /*void fillFeature(size_t dayBefore, size_t sampleNum, size_t stockSize, const char* codes, const float* buy, const float* sell, size_t signCount){
             const char* curCode = codes;
@@ -358,9 +533,9 @@ class AlphaDB{
             }
         }*/
 
-        HashMap<size_t> featureIndex;
-        stp::StockDB* db = {nullptr};
-        size_t featureSize = {0};
+        //HashMap<size_t> featureIndex;
+        //stp::StockDB* db = {nullptr};
+        //size_t featureSize = {0};
 };
 
 /*const size_t CODE_LEN = 64;

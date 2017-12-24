@@ -98,9 +98,8 @@ public:
         getAlphaTree(alphaTreeId)->calAlpha(&alphaDataBase_, alphaCache_->getCacheMemory(cacheId), &threadPool_);
     }
 
-    const void cacheAlpha(int alphaTreeId, int cacheId, bool isFeature) {
-        getAlphaTree(alphaTreeId)->cacheAlpha(&alphaDataBase_, alphaCache_->getCacheMemory(cacheId), &threadPool_,
-                                              isFeature);
+    const void cacheAlpha(int alphaTreeId, int cacheId) {
+        getAlphaTree(alphaTreeId)->cacheAlpha(&alphaDataBase_, alphaCache_->getCacheMemory(cacheId), &threadPool_);
     }
 
     const void processAlpha(int alphaTreeId, int cacheId) {
