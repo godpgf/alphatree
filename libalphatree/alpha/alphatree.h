@@ -361,16 +361,10 @@ class AlphaTree : public BaseAlphaTree{
                     bool *flag = cache->flagRes[subtreeList_[i].rootId].get();
                     int needDay = getMaxHistoryDays() - 1;
 
-<<<<<<< HEAD
                     //char des[MAX_SUB_ALPHATREE_STR_NUM];
                     //encode(subtreeList_[i].name, des);
 
                     alphaDataBase->setElement(subtreeList_[i].name, needDay, alpha, flag);
-=======
-                    char des[MAX_SUB_ALPHATREE_STR_NUM];
-                    encode(subtreeList_[i].name, des);
-                    alphaDataBase->setElement(name, des, needDay, alpha, flag, isFeature);
->>>>>>> ba5baa0839b775dc4879255b665f514839efdf9d
                 }
             }
         }

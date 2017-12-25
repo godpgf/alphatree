@@ -128,6 +128,13 @@ def test_alphaforest(af, alphatree_list, subalphatree_dict, sample_size = 1):
 def test_base_calculate(af, dataProxy):
     print "start test base calculate .................."
 
+    print "returns"
+    alpha, codes = cal_alpha(af, "returns", 2)
+    print codes[0]
+    for index, code in enumerate(codes):
+        float_equal(dataProxy.get_all_Data(code)[-1][7], alpha[-1][index])
+        float_equal(dataProxy.get_all_Data(code)[-2][7], alpha[-2][index])
+
     print "cache alpha"
     cache_alpha(af, "atr15", "mean(max((high - low), max((high - delay(close, 1)), (delay(close, 1) - low))), 14)")
     alpha, codes = cal_alpha(af, "atr15", 1)
@@ -160,12 +167,7 @@ def test_base_calculate(af, dataProxy):
         #float_equal(dataProxy.get_all_Data(code)[-1][5],alpha[-1][index])
         #float_equal(dataProxy.get_all_Data(code)[-2][5],alpha[-2][index])
 
-    print "returns"
-    alpha, codes = cal_alpha(af, "returns", 2)
-    for index,code in enumerate(codes):
-        float_equal(dataProxy.get_all_Data(code)[-1][7],alpha[-1][index])
-        float_equal(dataProxy.get_all_Data(code)[-2][7],alpha[-2][index])
-        
+
     print "sum(high, 2)"
     alpha, codes = cal_alpha(af, "sum(high, 2)", 2)
     #今天、昨天、前天数据一共3天
@@ -633,25 +635,18 @@ def test_eraito_strategy(af, daybefore = 0, sample_size = 250):
 
 
 if __name__ == '__main__':
-<<<<<<< HEAD
-    download_stock_data()
-    """
-    codeProxy = LocalCodeProxy(cache_path = "data", is_offline = False)
-    dataProxy = LocalDataProxy(cache_path = "data", is_offline = False)
-    classifiedProxy = LocalClassifiedProxy(cache_path = "data", is_offline = False)
-=======
-    codeProxy = LocalCodeProxy(cache_path = "data", is_offline = True)
-    dataProxy = LocalDataProxy(cache_path = "data", is_offline = True)
-    classifiedProxy = LocalClassifiedProxy(cache_path = "data", is_offline = True)
->>>>>>> ba5baa0839b775dc4879255b665f514839efdf9d
-
-    #write_stock_data("data/stockdb.byte",codeProxy, dataProxy, classifiedProxy)
+    #download_stock_data()
 
     af = AlphaForest()
-    af.load_db("data/stockdb.byte")
+    af.load_db("data")
 
-    #test_base_calculate(af, dataProxy)
+    #codeProxy = LocalCodeProxy(cache_path = "data", is_offline = False)
+    dataProxy = LocalDataProxy(cache_path = "data", is_offline = True)
+    test_base_calculate(af, dataProxy)
+    #classifiedProxy = LocalClassifiedProxy(cache_path = "data", is_offline = False)
+
     #test_alpha101(af)
+    """
     alpha, codes = cal_alpha(af, "rank(correlation(returns, indneutralize(returns, IndClass.market), 25))", 1)
     code_array = []
     for i in xrange(len(alpha[-1])):

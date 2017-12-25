@@ -71,6 +71,7 @@ public:
             filePath += ".csv";
             return filePath;
         };
+
         //先读出股票数
         ifstream inFile = ifstream(filepath("codes"), ios::in);
         string lineStr;
@@ -143,12 +144,18 @@ public:
                 featureArray.push_back(feature);
             int dayIndex = 0;
             int featureIndex = 0;
+            long last_day = 0;
             while (getline(inFile, lineStr)){
                 ss = stringstream(lineStr);
                 getline(ss, feature, ',');
                 auto date = atol(feature.c_str());
                 //补之前的数据
                 bool hasFillTodayFeature = false;
+
+                if(db->calendar[dayIndex] > date)
+                    cout<<"error dayindex! "<<db->calendar[dayIndex]<< " "<<db->calendar[dayIndex-1]<<" "<<date<<" "<<last_day<<endl;
+                last_day = date;
+
                 while (db->calendar[dayIndex] <= date){
                     int curIndex = db->days * stockIndex + dayIndex;
                     if(dayIndex == 0){
@@ -166,10 +173,10 @@ public:
                     }
                     ++dayIndex;
                 }
-                --dayIndex;
+
                 //补今天数据
-                if(hasFillTodayFeature){
-                    int curIndex = db->days * stockIndex + dayIndex;
+                if(!hasFillTodayFeature){
+                    int curIndex = db->days * stockIndex + dayIndex - 1;
                     featureIndex = 0;
                     while(getline(ss, feature, ',')){
                         db->elements[featureArray[featureIndex].c_str()]->data[curIndex] = atof(feature.c_str());
@@ -179,7 +186,6 @@ public:
                         db->elements[featureArray[featureIndex].c_str()]->flag[curIndex] = (db->elements[flagFeature]->data[curIndex] > 0);
                     }
                 }
-                ++dayIndex;
             }
             //补未来数据
             while (dayIndex < db->days){
@@ -320,18 +326,6 @@ class AlphaDB{
             if(needDay > getDays())
                 return nullptr;
 
-<<<<<<< HEAD
-=======
-            string elementName;
-            if(strcmp(name,"cap") == 0 || strcmp(name,"pe") == 0){
-                elementName = "close";
-                leafDataClass = nullptr;
-            }else{
-                elementName = name;
-            }
-
->>>>>>> ba5baa0839b775dc4879255b665f514839efdf9d
-
             auto element = db->elements[name];
             for(size_t i = 0; i < stockNum; ++i){
                 int stockIndex = getStockIndex(curCode, leafDataClass);
@@ -341,30 +335,7 @@ class AlphaDB{
                 curCode = curCode + strlen(curCode) + 1;
             }
 
-<<<<<<< HEAD
-=======
-            curCode = codes;
-            if(strcmp(name,"cap") == 0){
-                for(size_t i = 0; i < stockNum; ++i){
-                    int stockIndex = getStockIndex(curCode, leafDataClass);
-                    for(size_t j = 0; j < dayNum; ++j){
-                        dst[j * stockNum + i] *= db->metas(stockIndex).totals();
-                    }
-                    curCode = curCode + strlen(curCode) + 1;
-                }
-            } else if(strcmp(name,"pe") == 0){
-                for(size_t i = 0; i < stockNum; ++i){
-                    int stockIndex = getStockIndex(curCode, leafDataClass);
-                    for(size_t j = 0; j < dayNum; ++j){
-                        dst[j * stockNum + i] /= db->metas(stockIndex).earningratios();
-                    }
-                    curCode = curCode + strlen(curCode) + 1;
-                }
-            }
 
-
-
->>>>>>> ba5baa0839b775dc4879255b665f514839efdf9d
             return dst;
         }
 
