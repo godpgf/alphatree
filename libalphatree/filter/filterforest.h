@@ -83,24 +83,19 @@ namespace fb {
 
     class FilterMachine {
     public:
-        FilterMachine(int cacheSize) : threadPool_(cacheSize) {
-            filterTreeCache_ = DCache<FilterTree>::create();
-            filterForestCache_ = DCache<FilterForest>::create();
-            filterCache_ = Cache<FilterCache>::create(cacheSize);
-            char *p = filterCache_->getBuff();
-            for (auto i = 0; i != filterCache_->getMaxCacheSize(); ++i) {
-                new(p)FilterCache();
-                p += sizeof(FilterCache);
-            }
+        static void initialize(int cacheSize) {
+            fm_ = new FilterMachine(cacheSize);
         }
 
-        ~FilterMachine() {
-            DCache<FilterTree>::release(filterTreeCache_);
-            DCache<FilterForest>::release(filterForestCache_);
-            for (auto i = 0; i != filterCache_->getMaxCacheSize(); ++i)
-                filterCache_->getCacheMemory(i)->~FilterCache();
-            Cache<FilterCache>::release(filterCache_);
+        static void release() {
+            if (fm_)
+                delete fm_;
+            fm_ = nullptr;
         }
+        static FilterMachine* getFM(){
+            return fm_;
+        }
+
 
         int useCache() {
             return filterCache_->useCacheMemory();
@@ -145,7 +140,7 @@ namespace fb {
             return pout;
         }
 
-        void train(int cacheId, int forestId, ThreadPool* forestThreadPoll) {
+        void train(int cacheId, int forestId) {
             FilterForest *forest = getFilterForest(forestId);
             FilterCache* cache = getCache(cacheId);
             cache->sample();
@@ -158,7 +153,7 @@ namespace fb {
                 FilterTree* ftree = &filterTreeCache_->getCacheMemory(forest->filterTrees[i]);
                 int treeIndex = i;
                 ThreadPool* tpool = &threadPool_;
-                cache->treeRes[i] = forestThreadPoll->enqueue([ftree, cache, treeIndex, tpool]{
+                cache->treeRes[i] = forestThreadPool_.enqueue([ftree, cache, treeIndex, tpool]{
                     return ftree->train(cache, treeIndex, tpool);
                 }).share();
             }
@@ -167,6 +162,25 @@ namespace fb {
         }
 
     protected:
+        FilterMachine(int cacheSize) : threadPool_(cacheSize),forestThreadPool_(cacheSize) {
+            filterTreeCache_ = DCache<FilterTree>::create();
+            filterForestCache_ = DCache<FilterForest>::create();
+            filterCache_ = Cache<FilterCache>::create(cacheSize);
+            char *p = filterCache_->getBuff();
+            for (auto i = 0; i != filterCache_->getMaxCacheSize(); ++i) {
+                new(p)FilterCache();
+                p += sizeof(FilterCache);
+            }
+        }
+
+        ~FilterMachine() {
+            DCache<FilterTree>::release(filterTreeCache_);
+            DCache<FilterForest>::release(filterForestCache_);
+            for (auto i = 0; i != filterCache_->getMaxCacheSize(); ++i)
+                filterCache_->getCacheMemory(i)->~FilterCache();
+            Cache<FilterCache>::release(filterCache_);
+        }
+
         FilterTree *getFilterTree(int id) {
             return &filterTreeCache_->getCacheMemory(id);
         }
@@ -182,7 +196,12 @@ namespace fb {
         Cache<FilterCache> *filterCache_ = {nullptr};
         //计算中间结果对应的线程
         ThreadPool threadPool_;
+        //计算随机森林对应的线程
+        ThreadPool forestThreadPool_;
+        static FilterMachine* fm_;
     };
+
+    FilterMachine* FilterMachine::fm_ = nullptr;
 }
 
 #endif //ALPHATREE_FILTERFOREST_H

@@ -184,86 +184,13 @@ public:
                           size_t maxBarSize = 16, float mergeBarPercent = 0.016f, float subsample = 0.6f,
                           float colsampleBytree = 0.75f, const char *buySign = "buy", const char *sellSign = "sell",
                           const char *targetValue = "target") {
-        cout<<"learn filter forest\n";
-        AlphaCache *cache = getCache(cacheId);
-        const float *buy = getAlphaTree(alphatree)->getAlpha(buySign, cache);
-        const float *sell = getAlphaTree(alphatree)->getAlpha(sellSign, cache);
-        const float *target = getAlphaTree(alphatree)->getAlpha(targetValue, cache);
-        cout<<"start static\n";
-        //计算最大取样数据量
-        size_t sampleSize = 0;
-        for (size_t i = 0; i < cache->stockSize; ++i) {
-            bool isBuy = false;
-            for (size_t j = 0; j < cache->sampleDays; ++j) {
-                size_t index = j * cache->stockSize + i;
-                if (isBuy && sell[index] > 0) {
-                    ++sampleSize;
-                    isBuy = false;
-                }
-                if (isBuy == false && buy[index] > 0)
-                    isBuy = true;
-            }
-        }
 
-        cout<<"sample size "<<sampleSize<<endl;
-        int filterCacheId = filterForest_.useCache();
-        FilterCache *filterCache = filterForest_.getCache(filterCacheId);
-        filterCache->initialize(sampleSize, featureSize, maxLeafSize);
-        cout<<"finish init fcache\n";
-        //填写训练参数
-        filterCache->treeSize = treeSize;
-        filterCache->iteratorNum = iteratorNum;
-        filterCache->maxDepth = maxDepth;
-        filterCache->maxLeafSize = maxLeafSize;
-        filterCache->gamma = gamma;
-        filterCache->lambda = lambda;
-        filterCache->maxAdjWeightTime = maxAdjWeightTime;
-        filterCache->adjWeightRule = adjWeightRule;
-        filterCache->maxBarSize = maxBarSize;
-        filterCache->mergeBarPercent = mergeBarPercent;
-        filterCache->subsample = subsample;
-        filterCache->colsampleBytree = colsampleBytree;
 
-        //填写特征
-        const char *curFeature = features;
-        alphaDataBase_.getFeature(cache->dayBefore, cache->sampleDays, cache->stockSize, cache->codes, buy, sell,
-                                  filterCache->feature, sampleSize, features, featureSize);
-        cout<<"finish fill feature\n";
 
-        //填写特征名字
-        for (size_t fId = 0; fId < featureSize; ++fId) {
-            strcpy(filterCache->featureName + fId * MAX_FEATURE_NAME_LEN, curFeature);
-            curFeature += strlen(curFeature) + 1;
-        }
-        cout<<"finish fill feature name\n";
-
-        //填写目标
-        size_t sampleIndex = 0;
-        for (size_t i = 0; i < cache->stockSize; ++i) {
-            bool isBuy = false;
-            for (size_t j = 0; j < cache->sampleDays; ++j) {
-                size_t index = j * cache->stockSize + i;
-                if (isBuy && sell[index] > 0) {
-                    filterCache->target[sampleIndex++] = target[index];
-                    isBuy = false;
-                }
-                if (isBuy == false && buy[index] > 0)
-                    isBuy = true;
-            }
-        }
-        cout<<"finish fill target\n";
-
-        int forestId = filterForest_.useFilterForest();
-
-        cout<<"train\n";
-        filterForest_.train(filterCacheId, forestId, &threadPool_);
-
-        filterForest_.releaseCache(filterCacheId);
-        return forestId;
     }
 
 protected:
-    AlphaForest(int cacheSize) : threadPool_(cacheSize), filterForest_(cacheSize) {
+    AlphaForest(int cacheSize) : threadPool_(cacheSize) {
         initAlphaElement();
 
         //申请alphatree的内存
@@ -316,9 +243,6 @@ protected:
 
     //计算中间结果对应的线程
     ThreadPool threadPool_;
-
-    //机器学习进一步过滤
-    FilterMachine filterForest_;
 
     AlphaDB alphaDataBase_;
     HashMap<IAlphaElement *> alphaElementMap_;

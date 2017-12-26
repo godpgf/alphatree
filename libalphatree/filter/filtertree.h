@@ -256,17 +256,20 @@ namespace fb {
          * treeId: 标注此树序号
          * */
         void train(FilterCache *data, int treeIndex, ThreadPool *threadPool) {
-            cout<<"train a tree\n";
+            cout<<"train a tree "<<treeIndex<<endl;
             //标注此树取样的训练数据
             //size_t treeFlag = (((size_t) 1) << treeIndex);
             initialize(data, treeIndex);
 
             int lastRootId = -1;
             for (size_t i = 0; i < data->iteratorNum; ++i) {
+                cout<<"boost adjust\n";
                 //计算上次迭代的预测
                 boostAdjustPred(data, treeIndex);
+                cout<<"cal gradient\n";
                 //计算梯度
                 calGradient(data, treeIndex);
+                cout<<"do boost\n";
                 //创建第t棵树
                 int rootId = doBoost(data, treeIndex, threadPool);
                 if (i == 0)
@@ -286,13 +289,14 @@ namespace fb {
                     nodeList_[i].setup(nodeList_[i].getWeight() / data->treeSize);
                 }
             }
+            cout<<"finish train a tree "<<treeIndex<<endl;
         }
 
 
     protected:
         static void initialize(FilterCache *data, int treeId) {
             //初始化
-            size_t dataSize = data->sampleSize * MAX_TREE_SIZE;
+            size_t dataSize = data->sampleSize;
             memset(data->trainRaw.pred + treeId * dataSize, 0, sizeof(float) * dataSize);
             float *curWeight = data->trainRaw.weight + treeId * dataSize;
             for (size_t i = 0; i < dataSize; ++i)
@@ -335,8 +339,10 @@ namespace fb {
             int *curNodeId = data->trainRaw.nodeId + treeId * dataSize;
             float *curPred = data->trainRaw.pred + treeId * dataSize;
             float *curWeight = data->trainRaw.weight + treeId * dataSize;
+
             //先把所有样本分配到当前节点名下
             int rootId = createNode();
+            cout<<treeId<<" create node "<<dataSize<<endl;
             for (size_t i = 0; i < data->sampleSize; ++i) {
                 if (data->treeFlag[i] & treeFlag) {
                     curNodeId[i] = rootId;
@@ -344,6 +350,7 @@ namespace fb {
                     curNodeId[i] = -1;
                 }
             }
+            cout<<"finish ini root node id\n";
 
             //尝试把从startIndex开始的elementSize个节点继续分割
             int startIndex = rootId;
@@ -357,14 +364,18 @@ namespace fb {
                 for (size_t wt = 0; wt < data->maxAdjWeightTime; ++wt) {
                     //如果有新节点加入
                     if (nodeList_.getSize() > startIndex + elementSize) {
+                        cout<<"adj cal\n";
                         //将叶节点的预测加到之前t-1棵树的结果上
                         for (size_t j = 0; j < dataSize; ++j)
                             curPred[j] += nodeList_[curNodeId[j]].getWeight();
+                        cout<<"refresh weight\n";
                         //刷新样本权重
                         refreshWeight(curPred, curWeight, dataSize, data->adjWeightRule);
+                        cout<<"back cal\n";
                         //恢复当前预测
                         for (size_t j = 0; j < dataSize; ++j)
                             curPred[j] -= nodeList_[curNodeId[j]].getWeight();
+                        cout<<"back tree\n";
                         //恢复节点所属于的叶节点
                         for (size_t j = 0; j < dataSize; ++j)
                             if (curNodeId[j] >= startIndex + elementSize) {

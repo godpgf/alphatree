@@ -305,9 +305,9 @@ class AlphaForest(object):
         for feature in features:
             f_list = list(feature)
             for c in f_list:
-                self.code_cache[cur_feature_index] = c
+                self.feature_cache[cur_feature_index] = c
                 cur_feature_index += 1
-            self.code_cache[cur_feature_index] = '\0'
+            self.feature_cache[cur_feature_index] = '\0'
             cur_feature_index += 1
 
     def _write_alphatree_ids(self, alphatree_list):

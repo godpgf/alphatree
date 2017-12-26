@@ -130,7 +130,7 @@ namespace fb {
             leftId = -1;
             rightId = -1;
             coff_ = weight;
-            if (name == nullptr){
+            if (name != nullptr){
                 int i = 0;
                 while (name[i] != 0 && name[i] != ' ' && name[i] != '(' && name[i] != ')' && name[i] != ','){
                     name_[i] = name[i];

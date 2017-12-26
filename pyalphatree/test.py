@@ -128,13 +128,6 @@ def test_alphaforest(af, alphatree_list, subalphatree_dict, sample_size = 1):
 def test_base_calculate(af, dataProxy):
     print "start test base calculate .................."
 
-    print "returns"
-    alpha, codes = cal_alpha(af, "returns", 2)
-    print codes[0]
-    for index, code in enumerate(codes):
-        float_equal(dataProxy.get_all_Data(code)[-1][7], alpha[-1][index])
-        float_equal(dataProxy.get_all_Data(code)[-2][7], alpha[-2][index])
-
     print "cache alpha"
     cache_alpha(af, "atr15", "mean(max((high - low), max((high - delay(close, 1)), (delay(close, 1) - low))), 14)")
     alpha, codes = cal_alpha(af, "atr15", 1)
@@ -151,7 +144,11 @@ def test_base_calculate(af, dataProxy):
             low = dataProxy.get_all_Data(code)[-15+i][3]
         float_equal(sum / 15, alpha[-1][index])
 
-
+    print "returns"
+    alpha, codes = cal_alpha(af, "returns", 2)
+    for index, code in enumerate(codes):
+        float_equal(dataProxy.get_all_Data(code)[-1][7], alpha[-1][index])
+        float_equal(dataProxy.get_all_Data(code)[-2][7], alpha[-2][index])
 
     print "valid(open)"
     alpha, codes = cal_alpha(af, "valid(open)", 2)
@@ -622,7 +619,7 @@ def test_eraito_strategy(af, daybefore = 0, sample_size = 250):
                     af.process_alpha(alphatree_id, cache_id)
 
                     process_res = json.loads(af.get_process(alphatree_id, "res", cache_id))
-                    feature_list = ["return5","return10","return20","amount0_5","amount_5_20",
+                    feature_list = ["return5","return10","return20","amount0_5","amount5_20",
                                     "r_amount0_5", "r_amount5_10", "r_return", "r_return5", "r_return10",
                                     "r_return0_5", "r_return5_10"                                    ]
                     af.learn_filter(alphatree_id, cache_id, feature_list)
@@ -642,11 +639,11 @@ if __name__ == '__main__':
 
     #codeProxy = LocalCodeProxy(cache_path = "data", is_offline = False)
     dataProxy = LocalDataProxy(cache_path = "data", is_offline = True)
-    test_base_calculate(af, dataProxy)
+    #test_base_calculate(af, dataProxy)
     #classifiedProxy = LocalClassifiedProxy(cache_path = "data", is_offline = False)
 
     #test_alpha101(af)
-    """
+
     alpha, codes = cal_alpha(af, "rank(correlation(returns, indneutralize(returns, IndClass.market), 25))", 1)
     code_array = []
     for i in xrange(len(alpha[-1])):
@@ -661,4 +658,4 @@ if __name__ == '__main__':
             print "%s %.4f"%(codes[i], alpha[-1][i])
 
     test_eraito_strategy(af)
-    """
+

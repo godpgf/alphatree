@@ -156,7 +156,7 @@ public:
                     cout<<"error dayindex! "<<db->calendar[dayIndex]<< " "<<db->calendar[dayIndex-1]<<" "<<date<<" "<<last_day<<endl;
                 last_day = date;
 
-                while (db->calendar[dayIndex] <= date){
+                while (db->calendar[dayIndex] <= date && dayIndex < db->days){
                     int curIndex = db->days * stockIndex + dayIndex;
                     if(dayIndex == 0){
                         while(getline(ss, feature, ',')){
@@ -368,6 +368,7 @@ class AlphaDB{
 //                    (*map)[name].add_flag(flag[i * db->stocksize() + j]);
 //                }
 //            }
+
             StockElement* element = new StockElement(db->days, db->stockSize);
             int index = 0;
             for(size_t j = 0; j < db->stockSize; ++j){
@@ -387,9 +388,10 @@ class AlphaDB{
             for(size_t fId = 0; fId < featureSize; ++fId){
                 float* feature = featureValue + fId * sampleSize;
                 auto element = db->elements[curFeature];
+                cout<<"finish get element "<<curFeature<<endl;
                 size_t sampleIndex = 0;
+                const char* curCode = codes;
                 for(size_t i = 0; i < stockSize; ++i){
-                    const char* curCode = codes;
                     int lastBuyDay = -1;
                     int stockIndex = getStockIndex(curCode);
                     for(size_t j = 0; j < sampleDays; ++j){

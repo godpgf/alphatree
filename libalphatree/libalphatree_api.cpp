@@ -21,6 +21,7 @@ extern "C"
 {
 void initializeAlphaforest(int cacheSize) {
     AlphaForest::initialize(cacheSize);
+    FilterMachine::initialize(cacheSize);
 }
 
 void releaseAlphaforest() {
@@ -61,17 +62,90 @@ void decodeProcess(int alphaTreeId, const char *processName, const char *line) {
     AlphaForest::getAlphaforest()->decodeProcess(alphaTreeId, processName, line);
 }
 
-void learnFilterForest(int alphatreeId, int cacheId, const char *features, int featureSize, int treeSize,
+int learnFilterForest(int alphatreeId, int cacheId, const char *features, int featureSize, int treeSize,
                        int iteratorNum, float gamma, float lambda, int maxDepth,
                        int maxLeafSize, int maxAdjWeightTime, float adjWeightRule,
                        int maxBarSize, float mergeBarPercent, float subsample,
                        float colsampleBytree, const char *buySign, const char *sellSign,
                        const char *targetValue) {
-    AlphaForest::getAlphaforest()->learnFilterForest(alphatreeId, cacheId, features, featureSize, treeSize,
-                                                     iteratorNum, gamma, lambda, maxDepth, maxLeafSize,
-                                                     maxAdjWeightTime, adjWeightRule, maxBarSize, mergeBarPercent,
-                                                     subsample, colsampleBytree, buySign, sellSign, targetValue);
+    cout<<"learn filter forest\n";
+    AlphaCache *cache = AlphaForest::getAlphaforest()->getCache(cacheId);
+    const float *buy = AlphaForest::getAlphaforest()->getAlpha(alphatreeId, buySign, cacheId);
+    const float *sell = AlphaForest::getAlphaforest()->getAlpha(alphatreeId, sellSign, cacheId);
+    const float *target = AlphaForest::getAlphaforest()->getAlpha(alphatreeId, targetValue, cacheId);
+    cout<<"start static\n";
 
+    //计算最大取样数据量
+    size_t sampleSize = 0;
+    for (size_t i = 0; i < cache->stockSize; ++i) {
+        bool isBuy = false;
+        for (size_t j = 0; j < cache->sampleDays; ++j) {
+            size_t index = j * cache->stockSize + i;
+            if (isBuy && sell[index] > 0) {
+                ++sampleSize;
+                isBuy = false;
+            }
+            if (isBuy == false && buy[index] > 0)
+                isBuy = true;
+        }
+    }
+
+    cout<<"sample size "<<sampleSize<<endl;
+    int filterCacheId = FilterMachine::getFM()->useCache();
+    FilterCache *filterCache = FilterMachine::getFM()->getCache(filterCacheId);
+    filterCache->initialize(sampleSize, featureSize, maxLeafSize);
+    cout<<"finish init fcache\n";
+
+    //填写训练参数
+    filterCache->treeSize = treeSize;
+    filterCache->iteratorNum = iteratorNum;
+    filterCache->maxDepth = maxDepth;
+    filterCache->maxLeafSize = maxLeafSize;
+    filterCache->gamma = gamma;
+    filterCache->lambda = lambda;
+    filterCache->maxAdjWeightTime = maxAdjWeightTime;
+    filterCache->adjWeightRule = adjWeightRule;
+    filterCache->maxBarSize = maxBarSize;
+    filterCache->mergeBarPercent = mergeBarPercent;
+    filterCache->subsample = subsample;
+    filterCache->colsampleBytree = colsampleBytree;
+
+    //填写特征
+    const char *curFeature = features;
+    AlphaForest::getAlphaforest()->getAlphaDataBase()->getFeature(cache->dayBefore, cache->sampleDays, cache->stockSize, cache->codes, buy, sell,
+                              filterCache->feature, sampleSize, features, featureSize);
+    cout<<"finish fill feature\n";
+
+    //填写特征名字
+    for (size_t fId = 0; fId < featureSize; ++fId) {
+        strcpy(filterCache->featureName + fId * MAX_FEATURE_NAME_LEN, curFeature);
+        curFeature += strlen(curFeature) + 1;
+    }
+    cout<<"finish fill feature name\n";
+
+    //填写目标
+    size_t sampleIndex = 0;
+    for (size_t i = 0; i < cache->stockSize; ++i) {
+        bool isBuy = false;
+        for (size_t j = 0; j < cache->sampleDays; ++j) {
+            size_t index = j * cache->stockSize + i;
+            if (isBuy && sell[index] > 0) {
+                filterCache->target[sampleIndex++] = target[index];
+                isBuy = false;
+            }
+            if (isBuy == false && buy[index] > 0)
+                isBuy = true;
+        }
+    }
+    cout<<"finish fill target\n";
+
+    int forestId = FilterMachine::getFM()->useFilterForest();
+
+    cout<<"train\n";
+    FilterMachine::getFM()->train(filterCacheId, forestId);
+
+    FilterMachine::getFM()->releaseCache(filterCacheId);
+    return forestId;
 }
 
 void loadDataBase(const char *path) {
