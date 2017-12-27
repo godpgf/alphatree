@@ -33,7 +33,7 @@ class IAlphaElement{
         //返回最小需要考虑的历史天数
         virtual int getMinHistoryDays(){ return 0;}
         //传入左右孩子的参数,系数,输出内存块   得到运算结果
-        virtual const float* cast(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout) = 0;
+        virtual const float* cast(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout, int* sign) = 0;
         //得到系数类型
         virtual CoffUnit getCoffUnit() { return CoffUnit::COFF_NONE;}
         //得到计算天数
@@ -45,7 +45,7 @@ class AlphaAtom: public IAlphaElement{
     public:
         AlphaAtom(
                 const char* name,
-                const float* (*opt) (const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout),
+                const float* (*opt) (const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout, int* sign),
                 int childNum = 0,
                 CoffUnit coffUnit = CoffUnit::COFF_NONE,
                 DateRange dateRange = DateRange::CUR_DAY,
@@ -59,8 +59,8 @@ class AlphaAtom: public IAlphaElement{
 
         virtual int getMinHistoryDays(){ return minHistoryDays_;}
 
-        virtual const float* cast(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
-            return opt_(pleft, pright, coff, historySize, stockSize, pflag, pStockFlag, pout);
+        virtual const float* cast(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout, int* psign){
+            return opt_(pleft, pright, coff, historySize, stockSize, pflag, pStockFlag, pout, psign);
         }
 
         virtual CoffUnit getCoffUnit() { return coffUnit_;}
@@ -73,7 +73,7 @@ class AlphaAtom: public IAlphaElement{
 
         const char*name_;
 
-        const float* (*opt_) (const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout);
+        const float* (*opt_) (const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout, int* sign);
         int childNum_;
         //参数单位
         CoffUnit coffUnit_;
@@ -152,8 +152,9 @@ AlphaAtom AlphaAtom::alphaAtomList[] = {
         AlphaAtom("cross", cross, 2, CoffUnit::COFF_NONE, DateRange::CUR_AND_BEFORE_DAY, 1),
         AlphaAtom("cross_from", crossFrom, 1, CoffUnit::COFF_NONE, DateRange::CUR_AND_BEFORE_DAY, 1),
         AlphaAtom("cross_to", crossTo, 1, CoffUnit::COFF_NONE, DateRange::CUR_AND_BEFORE_DAY, 1),
-        AlphaAtom("negative_flag", negativeFlag, 2),
-        AlphaAtom("ft_sharpe", ftSharpe, 2)
+        AlphaAtom("match", match, 2),
+        AlphaAtom("fill_sign", fillSign, 2),
+        AlphaAtom("ft_sharp", ftSharp, 2)
         //AlphaAtom("up_mean", upMean, 1, CoffUnit::COFF_DAY),
 };
 

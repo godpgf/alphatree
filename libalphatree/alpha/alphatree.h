@@ -18,6 +18,8 @@ class AlphaCache{
             sampleCacheSize = SAMPLE_DAYS;
             stockCacheSize = MAX_NODE_BLOCK * GET_ELEMEMT_SIZE(HISTORY_DAYS, SAMPLE_DAYS) *
                              STOCK_SIZE;
+            signCacheSize = GET_ELEMEMT_SIZE(HISTORY_DAYS, SAMPLE_DAYS) *
+                            STOCK_SIZE;
             nodeRes = new std::shared_future<float*>[nodeCacheSize];
             flagRes = new std::shared_future<bool*>[nodeCacheSize];
             processRes = new std::shared_future<const char*>[processCacheSize];
@@ -25,7 +27,7 @@ class AlphaCache{
             result = new float[stockCacheSize];
             resultFlag = new bool[stockCacheSize];
             process = new char[processCacheSize * MAX_PROCESS_STR_LEN];
-            //stockFlag = new CacheFlag[stockCacheSize];
+            sign = new int[signCacheSize];
             dayCacheSize = MAX_NODE_BLOCK * GET_ELEMEMT_SIZE(HISTORY_DAYS, SAMPLE_DAYS);
             dayFlag = new CacheFlag[dayCacheSize];
             nodeFlag = new bool[nodeCacheSize];
@@ -39,7 +41,7 @@ class AlphaCache{
             delete []sampleFlag;
             delete []result;
             delete []resultFlag;
-            //delete []stockFlag;
+            delete []sign;
             delete []dayFlag;
             delete []nodeFlag;
             delete []codes;
@@ -77,8 +79,8 @@ class AlphaCache{
         bool* resultFlag = {nullptr};
         //保存处理结果
         char* process = {nullptr};
-        //保存某只股票某日是否需要计算
-        //CacheFlag* stockFlag = {nullptr};
+        //保存信号-1是买入不卖，n是买入n日后卖出(n>0)
+        int* sign = {nullptr};
         //保存某日所有股票是否需要计算
         CacheFlag* dayFlag = {nullptr};
         //保存某个节点股票是否需要计算
@@ -90,6 +92,7 @@ class AlphaCache{
         size_t nodeCacheSize = {0};
         size_t processCacheSize = {0};
         size_t stockCacheSize = {0};
+        size_t signCacheSize = {0};
         size_t dayCacheSize = {0};
         size_t codeCacheSize = {0};
 
@@ -137,6 +140,13 @@ class AlphaCache{
                 result = new float[scs];
                 //stockFlag = new CacheFlag[scs];
                 stockCacheSize = scs;
+            }
+
+            scs = GET_ELEMEMT_SIZE(historyDays, sampleDays) * stockSize;
+            if(scs > signCacheSize){
+                delete []sign;
+                sign = new int[scs];
+                signCacheSize = scs;
             }
 
             size_t dcs = nodeSize * GET_ELEMEMT_SIZE(historyDays, sampleDays);
@@ -312,7 +322,7 @@ class AlphaTree : public BaseAlphaTree{
                 float* rightRes = (nodeList_[nodeId].getChildNum() == 1) ? nullptr : cache->nodeRes[nodeList_[nodeId].rightId].get();
 
                 nodeList_[nodeId].getElement()->cast(leftRes, rightRes, nodeList_[nodeId].getCoff(coffList_), dateSize, cache->stockSize,
-                                                    curDayFlagCache, curResultFlag, curResultCache);
+                                                    curDayFlagCache, curResultFlag, curResultCache, cache->sign);
 
 //                for(size_t i = 0; i < dateSize * cache->stockSize; ++i)
 //                    if(isnan(curResultCache[i])){
