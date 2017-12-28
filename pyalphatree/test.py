@@ -128,45 +128,6 @@ def test_alphaforest(af, alphatree_list, subalphatree_dict, sample_size = 1):
 def test_base_calculate(af, dataProxy):
     print "start test base calculate .................."
 
-    print "test target"
-    #ft_sharp(fill((((returns < 0) & (delay(returns, 1) < 0)) * 3),close), low)
-    #ft_sharp(ft_return((((returns < 0) & (delay(returns, 1) < 0)) * 3), close), ft_maxdropdown(ft_maxvalues((((returns < 0) & (delay(returns, 1) < 0)) * 3), close), low))
-    alpha, codes = cal_alpha(af, "ft_sharp(fill_sign((((returns < 0) & (delay(returns, 1) < 0)) * 3),close), low)", 5)
-    max_dropdown_list = []
-    for index, code in enumerate(codes):
-        if dataProxy.get_all_Data(code)[-6][7] < 0 and dataProxy.get_all_Data(code)[-5][7] < 0:
-            max_price = dataProxy.get_all_Data(code)[-5][4]
-            max_dropdown = 0
-            for i in xrange(3):
-                max_price = max(dataProxy.get_all_Data(code)[-4+i][4],max_price)
-                max_dropdown = max((max_price - dataProxy.get_all_Data(code)[-4+i][3]) / max_price,max_dropdown)
-            max_dropdown_list.append(max_dropdown)
-
-        if dataProxy.get_all_Data(code)[-5][7] < 0 and dataProxy.get_all_Data(code)[-4][7] < 0:
-            max_price = dataProxy.get_all_Data(code)[-4][4]
-            max_dropdown = 0
-            for i in xrange(3):
-                max_price = max(dataProxy.get_all_Data(code)[-3+i][4],max_price)
-                max_dropdown = max((max_price - dataProxy.get_all_Data(code)[-3+i][3]) / max_price,max_dropdown)
-            max_dropdown_list.append(max_dropdown)
-    std = np.array(max_dropdown_list).std()
-    print "std:%.4f"%std
-    did = 0
-    for index, code in enumerate(codes):
-        if dataProxy.get_all_Data(code)[-6][7] < 0 and dataProxy.get_all_Data(code)[-5][7] < 0:
-            t = (dataProxy.get_all_Data(code)[-5 + 3][4] - dataProxy.get_all_Data(code)[-5][4]) / dataProxy.get_all_Data(code)[-5][4] / (max_dropdown_list[did] + std)
-            float_equal(t, alpha[-5][index])
-            did += 1
-        else:
-            float_equal(0, alpha[-5][index])
-
-        if dataProxy.get_all_Data(code)[-5][7] < 0 and dataProxy.get_all_Data(code)[-4][7] < 0:
-            t = (dataProxy.get_all_Data(code)[-4 + 3][4] - dataProxy.get_all_Data(code)[-4][4]) / dataProxy.get_all_Data(code)[-4][4] / (max_dropdown + std)
-            float_equal(t, alpha[-4][index])
-            did += 1
-        else:
-            float_equal(0, alpha[-4][index])
-
     print "cache alpha"
     cache_alpha(af, "atr15", "mean(max((high - low), max((high - delay(close, 1)), (delay(close, 1) - low))), 14)")
     alpha, codes = cal_alpha(af, "atr15", 1)
@@ -578,6 +539,45 @@ def test_base_calculate(af, dataProxy):
         float_equal(dataProxy.get_all_Data(code)[-1][7] - dataProxy.get_all_Data(market)[-1][7],alpha[-1][index])
         float_equal(dataProxy.get_all_Data(code)[-2][7] - dataProxy.get_all_Data(market)[-2][7],alpha[-2][index])
 
+    print "test target"
+    #ft_sharp(fill((((returns < 0) & (delay(returns, 1) < 0)) * 3),close), low)
+    #ft_sharp(ft_return((((returns < 0) & (delay(returns, 1) < 0)) * 3), close), ft_maxdropdown(ft_maxvalues((((returns < 0) & (delay(returns, 1) < 0)) * 3), close), low))
+    alpha, codes = cal_alpha(af, "ft_sharp(fill_sign((((returns < 0) & (delay(returns, 1) < 0)) * 3),close), low)", 5)
+    max_dropdown_list = []
+    for index, code in enumerate(codes):
+        if dataProxy.get_all_Data(code)[-6][7] < 0 and dataProxy.get_all_Data(code)[-5][7] < 0:
+            max_price = dataProxy.get_all_Data(code)[-5][4]
+            max_dropdown = 0
+            for i in xrange(3):
+                max_price = max(dataProxy.get_all_Data(code)[-4+i][4],max_price)
+                max_dropdown = max((max_price - dataProxy.get_all_Data(code)[-4+i][3]) / max_price,max_dropdown)
+            max_dropdown_list.append(max_dropdown)
+
+        if dataProxy.get_all_Data(code)[-5][7] < 0 and dataProxy.get_all_Data(code)[-4][7] < 0:
+            max_price = dataProxy.get_all_Data(code)[-4][4]
+            max_dropdown = 0
+            for i in xrange(3):
+                max_price = max(dataProxy.get_all_Data(code)[-3+i][4],max_price)
+                max_dropdown = max((max_price - dataProxy.get_all_Data(code)[-3+i][3]) / max_price,max_dropdown)
+            max_dropdown_list.append(max_dropdown)
+    std = np.array(max_dropdown_list).std()
+    print "std:%.4f"%std
+    did = 0
+    for index, code in enumerate(codes):
+        if dataProxy.get_all_Data(code)[-6][7] < 0 and dataProxy.get_all_Data(code)[-5][7] < 0:
+            t = (dataProxy.get_all_Data(code)[-5 + 3][4] - dataProxy.get_all_Data(code)[-5][4]) / dataProxy.get_all_Data(code)[-5][4] / (max_dropdown_list[did] + std)
+            float_equal(t, alpha[-5][index])
+            did += 1
+        else:
+            float_equal(0, alpha[-5][index])
+
+        if dataProxy.get_all_Data(code)[-5][7] < 0 and dataProxy.get_all_Data(code)[-4][7] < 0:
+            t = (dataProxy.get_all_Data(code)[-4 + 3][4] - dataProxy.get_all_Data(code)[-4][4]) / dataProxy.get_all_Data(code)[-4][4] / (max_dropdown_list[did] + std)
+            float_equal(t, alpha[-4][index])
+            did += 1
+        else:
+            float_equal(0, alpha[-4][index])
+
     print "近期和指数关系密切的stock"
     alpha, codes = cal_alpha(af, "rank(correlation(returns, indneutralize(returns, IndClass.market), 25))", 1)
     code_array = []
@@ -654,18 +654,19 @@ def test_eraito_strategy(af, daybefore = 0, sample_size = 250):
                             print line[1:-1]
                             continue
                         tmp = line.split('=')
+                        print tmp
                         af.decode_alphatree(alphatree_id, tmp[0], tmp[1][:-1])
-                    af.decode_alphatree(alphatree_id, "target", "log((ft_sharpe(negative_flag(close, buy), negative_flag(low, sell)) + 1))")
+                    af.decode_alphatree(alphatree_id, "target", "ft_sharp(fill_sign(buy, close), low)")
 
                     #print af.encode_alphatree(alphatree_id, tmp[0])
 
-                    af.decode_process(alphatree_id, "res", "eratio(buy, sell, high, low, close, atr)")
+                    af.decode_process(alphatree_id, "res", "eratio(high, low, close, atr)")
 
                     history_days = af.get_max_history_days(alphatree_id)
                     codes = af.get_stock_codes()
                     af.flag_alpha(alphatree_id, cache_id, daybefore, sample_size, codes)
                     af.cal_alpha(alphatree_id, cache_id)
-                    sell = np.array(af.get_root_alpha(alphatree_id, "sell", cache_id, sample_size))
+                    #sell = np.array(af.get_root_alpha(alphatree_id, "sell", cache_id, sample_size))
                     buy = np.array(af.get_root_alpha(alphatree_id, "buy", cache_id, sample_size))
                     target = np.array(af.get_root_alpha(alphatree_id, "target", cache_id, sample_size))
                     af.process_alpha(alphatree_id, cache_id)
@@ -674,7 +675,7 @@ def test_eraito_strategy(af, daybefore = 0, sample_size = 250):
                     feature_list = ["return5","return10","return20","amount0_5","amount5_20",
                                     "r_amount0_5", "r_amount5_10", "r_return", "r_return5", "r_return10",
                                     "r_return0_5", "r_return5_10"                                    ]
-                    af.learn_filter(alphatree_id, cache_id, feature_list)
+                    #af.learn_filter(alphatree_id, cache_id, feature_list)
 
 
                     af.release_cache(cache_id)
@@ -690,13 +691,13 @@ if __name__ == '__main__':
     af.load_db("data")
 
     #codeProxy = LocalCodeProxy(cache_path = "data", is_offline = False)
-    dataProxy = LocalDataProxy(cache_path = "data", is_offline = True)
-    test_base_calculate(af, dataProxy)
+    #dataProxy = LocalDataProxy(cache_path = "data", is_offline = True)
+    #test_base_calculate(af, dataProxy)
     #classifiedProxy = LocalClassifiedProxy(cache_path = "data", is_offline = False)
 
     #test_alpha101(af)
 
 
 
-    #test_eraito_strategy(af)
+    test_eraito_strategy(af)
 

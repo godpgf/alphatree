@@ -80,14 +80,13 @@ class AlphaForest(object):
                      iterator_num=2, gamma_=0.001, lambda_=1.0, max_depth=16,
                      max_leaf_size=1024, max_adj_weight_time=4, adj_weight_rule=0.2,
                      max_bar_size=16, merge_bar_percent=0.016, subsample=0.6,
-                     colsample_bytree=0.75, buy_sign="buy", sell_sign="sell",
-                     target_value="target"):
+                     colsample_bytree=0.75, target_value="target"):
         self._write_features(feature_list)
         return alphatree.learnFilterForest(alphatree_id, cache_id, self.feature_cache, len(feature_list), tree_size,
                                     iterator_num, c_float(gamma_), c_float(lambda_), max_depth,
                                     max_leaf_size, max_adj_weight_time, c_float(adj_weight_rule), max_bar_size,
                                     c_float(merge_bar_percent), c_float(subsample), c_float(colsample_bytree),
-                                    c_char_p(buy_sign), c_char_p(sell_sign), c_char_p(target_value))
+                                    c_char_p(target_value))
 
     # 读取数据
     def load_db(self, path):

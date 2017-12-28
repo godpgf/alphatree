@@ -2,7 +2,6 @@ from .util import AlphaForest
 from .util import AlphaTree, AlphaNode
 import re
 from stdb import *
-import stock_pb2
 
 def read_alpha_tree_list(path):
     return read_alpha_list(path, lambda line: re.search(r"(?P<alpha>\w+): (?P<content>.*)", line).group('content'))
@@ -62,6 +61,7 @@ def get_sub_alphatree(alphatree_Str, subalphatree_dict):
             sub_alpha_dict[key] = value
     return sub_alpha_dict
 
+"""
 def write_stock_data(path, codeProxy, dataProxy, classifiedProxy):
     data_size = len(dataProxy.trading_calender_int)
     stock_dict, market_dict, industry_dict, concept_dict = load_all_stock_flat(codeProxy, dataProxy,
@@ -115,3 +115,4 @@ def write_stock_data(path, codeProxy, dataProxy, classifiedProxy):
 
     with open(path,'wb')as f:
         f.write(sdb.SerializeToString())
+        """

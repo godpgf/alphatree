@@ -381,7 +381,7 @@ class AlphaDB{
             db->elements[name] = element;
         }
 
-        void getFeature(size_t dayBefore, size_t sampleDays, size_t stockSize, const char* codes, const float* buy, const float* sell,
+        void getFeature(size_t dayBefore, size_t sampleDays, size_t stockSize, const char* codes, const int* psign,
                           float* featureValue, size_t sampleSize, const char* features, size_t featureSize){
             const char* curFeature = features;
             size_t needDay = sampleDays + dayBefore;
@@ -392,16 +392,12 @@ class AlphaDB{
                 size_t sampleIndex = 0;
                 const char* curCode = codes;
                 for(size_t i = 0; i < stockSize; ++i){
-                    int lastBuyDay = -1;
                     int stockIndex = getStockIndex(curCode);
                     for(size_t j = 0; j < sampleDays; ++j){
                         size_t index = j * stockSize + i;
-                        if(lastBuyDay >= 0 && sell[index] > 0){
+                        if(psign[index] > 0){
                             feature[sampleIndex++] = element->data[db->days * stockIndex + db->days - needDay + j];
-                            lastBuyDay = -1;
                         }
-                        if(lastBuyDay == -1 && buy[index] > 0)
-                            lastBuyDay = index;
                     }
                     curCode = curCode + strlen(curCode) + 1;
                 }

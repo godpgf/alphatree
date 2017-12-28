@@ -13,16 +13,15 @@
 const size_t MAX_PROCESS_BLOCK = 8;
 const size_t MAX_PROCESS_COFF_STR_LEN = 2048;
 
-const char* eratio(AlphaDB* alphaDataBase, DArray<const float*, MAX_PROCESS_BLOCK>& childRes, DArray<char[MAX_PROCESS_COFF_STR_LEN],MAX_PROCESS_BLOCK>& coff, size_t sampleSize, const char* codes, size_t stockSize, char* pout){
+const char* eratio(AlphaDB* alphaDataBase, DArray<const float*, MAX_PROCESS_BLOCK>& childRes, const int* psign, DArray<char[MAX_PROCESS_COFF_STR_LEN],MAX_PROCESS_BLOCK>& coff, size_t sampleSize, const char* codes, size_t stockSize, char* pout){
     float MAE = 0;
     float MFE = 0;
     float MRE = 0;
-    const float* buy = childRes[0];
-    const float* sell = childRes[1];
-    const float* high = childRes[2];
-    const float* low = childRes[3];
-    const float* close = childRes[4];
-    const float* atr = childRes[5];
+
+    const float* high = childRes[0];
+    const float* low = childRes[1];
+    const float* close = childRes[2];
+    const float* atr = childRes[3];
     int signCount = 0;
 
     float MAEs[5];
@@ -36,63 +35,52 @@ const char* eratio(AlphaDB* alphaDataBase, DArray<const float*, MAX_PROCESS_BLOC
     memset(year_returns,0, sizeof(float)*5);
     memset(signCounts,0, sizeof(int)*5);
 
+    for(int i = 0; i < 5; ++i)
+        MAEs[i] = 0.00000001f;
+
     float holdDay = 0;
     float yearReturn = 0;
 
     for(size_t j = 0; j < stockSize; ++j){
-        int buyIndex = -1;
+        //int buyIndex = -1;
         float maxPrice = 0;
         float minPrice = FLT_MAX;
         int curIndex = 0;
 
-
-
-        for(size_t i = 1; i < sampleSize; ++i){
+        for(size_t i = 0; i < sampleSize; ++i){
             curIndex = i * stockSize + j;
-            if(buyIndex == -1 && buy[curIndex] > 0 && sell[curIndex] == 0){
-                buyIndex = curIndex;
-                maxPrice = close[buyIndex];
-                minPrice = close[buyIndex];
-                continue;
-            }
-            if(buyIndex != -1){
-                //已经买入,等待卖出
-                maxPrice = max(maxPrice, close[curIndex]);
-                minPrice = min(minPrice, close[curIndex]);
-                int curHoldDay = (curIndex - buyIndex) / stockSize;
-                if(curHoldDay <= 5){
-                    ++signCounts[curHoldDay-1];
-                    MFEs[curHoldDay-1] += ((maxPrice - close[buyIndex]) / atr[buyIndex]);
-                    MAEs[curHoldDay-1] += ((close[buyIndex] - minPrice) / atr[buyIndex]);
-                    MREs[curHoldDay-1] += ((close[curIndex] - close[buyIndex]) / atr[buyIndex]);
-                    year_returns[curHoldDay-1] += (close[curIndex] - close[buyIndex]) / close[buyIndex] / curHoldDay;
-                }
-                if(sell[curIndex] > 0){
 
-                    if(curHoldDay < 5){
-                        for(size_t k = curHoldDay; k < 5; ++k){
-                            ++signCounts[k];
-                            MFEs[k] += ((maxPrice - close[buyIndex]) / atr[buyIndex]);
-                            MAEs[k] += ((close[buyIndex] - minPrice) / atr[buyIndex]);
-                            MREs[k] += ((close[curIndex] - close[buyIndex]) / atr[buyIndex]);
-                            year_returns[k] += (close[curIndex] - close[buyIndex]) / close[buyIndex] / curHoldDay;
-                        }
+            if(psign[curIndex] > 0){
+                holdDay += psign[curIndex];
+                maxPrice = close[curIndex];
+                minPrice = close[curIndex];
+                if(atr[curIndex] == 0){
+                    cout<<"atr:"<<atr[curIndex]<<" close:"<<maxPrice<<endl;
+                }
+
+                for(int k = 1; k <= psign[curIndex]; ++k){
+                    //已经买入,等待卖出
+                    maxPrice = max(maxPrice, close[curIndex + k * stockSize]);
+                    minPrice = min(minPrice, close[curIndex + k * stockSize]);
+
+                    if(k <= 5){
+                        ++signCounts[k-1];
+                        MFEs[k-1] += (maxPrice - close[curIndex]) / atr[curIndex];
+                        MAEs[k-1] += (close[curIndex] - minPrice) / atr[curIndex];
+                        MREs[k-1] += (close[curIndex + k * stockSize] - close[curIndex]) / atr[curIndex];
+                        year_returns[k-1] += (close[curIndex + k * stockSize] - close[curIndex]) / close[curIndex] / k;
                     }
-
-                    MFE += ((maxPrice - close[buyIndex]) / atr[buyIndex]);
-                    MAE += ((close[buyIndex] - minPrice) / atr[buyIndex]);
-                    MRE += ((close[curIndex] - close[buyIndex]) / atr[buyIndex]);
-                    yearReturn += (close[curIndex] - close[buyIndex]) / close[buyIndex] / curHoldDay;
-                    holdDay += curHoldDay;
-
-                    buyIndex = -1;
-                    maxPrice = 0;
-                    minPrice = FLT_MAX;
-                    ++signCount;
                 }
+
+                ++signCount;
+                MFE += (maxPrice - close[curIndex]) / atr[curIndex];
+                MAE += (close[curIndex] - minPrice) / atr[curIndex];
+                MRE += (close[curIndex + psign[curIndex] * stockSize] - close[curIndex]) /atr[curIndex];
+                yearReturn += (close[curIndex + psign[curIndex] * stockSize] - close[curIndex]) / close[curIndex] / psign[curIndex];
             }
         }
     }
+    holdDay /= signCount;
     yearReturn = powf(1 + (yearReturn / signCount), 250) - 1;
     for(size_t i = 0; i < 5; ++i)
         year_returns[i] = powf(1 + (year_returns[i] / signCount), 250) - 1;

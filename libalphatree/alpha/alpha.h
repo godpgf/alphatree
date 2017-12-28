@@ -814,15 +814,22 @@ const float* match(const float* pleft, const float* pright, float coff, size_t h
 const float* fillSign(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout, int* psign){
     size_t dataSize = historySize*stockSize;
     memcpy(pout,pright,sizeof(float)*dataSize);
+    memset(psign, 0, sizeof(int) * dataSize);
     int curIndex = 0;
+
     for(size_t j = 0; j < stockSize; ++j){
         for(size_t i = 0; i < historySize; ++i){
             if(pflag[i] == CacheFlag::NEED_CAL){
                 curIndex = i * stockSize + j;
-                if(i + (int)pleft[curIndex] < historySize){
+
+                if(pleft[curIndex] < 0)
                     psign[curIndex] = (int)pleft[curIndex];
-                }else{
-                    psign[curIndex] = -(int)pleft[curIndex];
+                if(pleft[curIndex] > 0){
+                    if(i + (int)pleft[curIndex] < historySize){
+                        psign[curIndex] = (int)pleft[curIndex];
+                    }
+                    else
+                        psign[curIndex] = -1;
                 }
             }
         }
@@ -871,7 +878,6 @@ const float* ftSharp(const float* pleft, const float* pright, float coff, size_t
     }
     //dropdown的不确定性
     float std = sqrtf(sumSqrDropdown / signCount);
-    cout<<"std:"<<std<<endl;
     for(size_t j = 0; j < stockSize; ++j){
         for(size_t i = 0; i < historySize; ++i){
             if(pflag[i] == CacheFlag::NEED_CAL){

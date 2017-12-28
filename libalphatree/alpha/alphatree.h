@@ -354,7 +354,7 @@ class AlphaTree : public BaseAlphaTree{
         const char* process(AlphaDB *alphaDataBase, int processId, AlphaCache* cache){
             for(auto i = 0; i < processList_[processId].chilIndex.getSize(); ++i)
                 processList_[processId].childRes[i] = getAlpha(subtreeList_[processList_[processId].chilIndex[i]].rootId, cache);
-            return processList_[processId].getProcess()->process(alphaDataBase, processList_[processId].childRes, processList_[processId].coff, cache->sampleDays, cache->codes, cache->stockSize, cache->process + (processId * MAX_PROCESS_STR_LEN));
+            return processList_[processId].getProcess()->process(alphaDataBase, processList_[processId].childRes, getSign(cache), processList_[processId].coff, cache->sampleDays, cache->codes, cache->stockSize, cache->process + (processId * MAX_PROCESS_STR_LEN));
         }
 
     //保存alphatree到alphaDB,isFeature表示是否作为机器学习的特征
@@ -400,6 +400,10 @@ class AlphaTree : public BaseAlphaTree{
             //CacheFlag* flag = AlphaTree::getNodeCacheMemory(nodeId, dateSize, cache->stockSize, cache->stockFlag);
             //flagResult(result, flag, dateSize * cache->stockSize);
             return result + (int)((getMaxHistoryDays() - 1) * cache->stockSize);
+        }
+
+        const int* getSign(AlphaCache* cache){
+            return cache->sign + (int)((getMaxHistoryDays() - 1) * cache->stockSize);
         }
 
         static const float* getAlpha(const float* res, size_t sampleIndex, size_t stockSize){ return res + (sampleIndex * stockSize);}

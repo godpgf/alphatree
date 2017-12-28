@@ -66,27 +66,20 @@ int learnFilterForest(int alphatreeId, int cacheId, const char *features, int fe
                        int iteratorNum, float gamma, float lambda, int maxDepth,
                        int maxLeafSize, int maxAdjWeightTime, float adjWeightRule,
                        int maxBarSize, float mergeBarPercent, float subsample,
-                       float colsampleBytree, const char *buySign, const char *sellSign,
-                       const char *targetValue) {
+                       float colsampleBytree, const char *targetValue) {
     cout<<"learn filter forest\n";
     AlphaCache *cache = AlphaForest::getAlphaforest()->getCache(cacheId);
-    const float *buy = AlphaForest::getAlphaforest()->getAlpha(alphatreeId, buySign, cacheId);
-    const float *sell = AlphaForest::getAlphaforest()->getAlpha(alphatreeId, sellSign, cacheId);
     const float *target = AlphaForest::getAlphaforest()->getAlpha(alphatreeId, targetValue, cacheId);
     cout<<"start static\n";
 
     //计算最大取样数据量
     size_t sampleSize = 0;
     for (size_t i = 0; i < cache->stockSize; ++i) {
-        bool isBuy = false;
         for (size_t j = 0; j < cache->sampleDays; ++j) {
             size_t index = j * cache->stockSize + i;
-            if (isBuy && sell[index] > 0) {
+            if (cache->sign[index] > 0) {
                 ++sampleSize;
-                isBuy = false;
             }
-            if (isBuy == false && buy[index] > 0)
-                isBuy = true;
         }
     }
 
@@ -112,7 +105,7 @@ int learnFilterForest(int alphatreeId, int cacheId, const char *features, int fe
 
     //填写特征
     const char *curFeature = features;
-    AlphaForest::getAlphaforest()->getAlphaDataBase()->getFeature(cache->dayBefore, cache->sampleDays, cache->stockSize, cache->codes, buy, sell,
+    AlphaForest::getAlphaforest()->getAlphaDataBase()->getFeature(cache->dayBefore, cache->sampleDays, cache->stockSize, cache->codes, cache->sign,
                               filterCache->feature, sampleSize, features, featureSize);
     cout<<"finish fill feature\n";
 
@@ -126,15 +119,11 @@ int learnFilterForest(int alphatreeId, int cacheId, const char *features, int fe
     //填写目标
     size_t sampleIndex = 0;
     for (size_t i = 0; i < cache->stockSize; ++i) {
-        bool isBuy = false;
         for (size_t j = 0; j < cache->sampleDays; ++j) {
             size_t index = j * cache->stockSize + i;
-            if (isBuy && sell[index] > 0) {
+            if (cache->sign[index] > 0) {
                 filterCache->target[sampleIndex++] = target[index];
-                isBuy = false;
             }
-            if (isBuy == false && buy[index] > 0)
-                isBuy = true;
         }
     }
     cout<<"finish fill target\n";
@@ -194,6 +183,7 @@ void processAlpha(int alphaTreeId, int cacheId) {
 
 int getRootAlpha(int alphaTreeId, const char *rootName, int cacheId, float *alpha) {
     const float *res = AlphaForest::getAlphaforest()->getAlpha(alphaTreeId, rootName, cacheId);
+    cout<<"get root "<<rootName<<endl;
     auto *cache = AlphaForest::getAlphaforest()->getCache(cacheId);
     int dataSize = cache->sampleDays * cache->stockSize;
     memcpy(alpha, res, dataSize * sizeof(float));

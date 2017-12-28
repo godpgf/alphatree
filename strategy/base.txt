@@ -1,6 +1,6 @@
 avg20 = mean(close, 20)
 atr = mean(max((high - low), max((high - delay(close, 1)), (delay(close, 1) - low))), 14)
-validflag = (((valid(atr) > 0) & (valid(delay(close, 1)))) & (returns < 0.09))
+validflag = ((valid(atr) & valid(delay(close, 1))) & ((returns < 0.09) & (atr > 0)))
 return5 = (close / delay(close, 5))
 return10 = (close / delay(close, 10))
 return20 = (close / delay(close, 20))
