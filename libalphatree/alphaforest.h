@@ -111,6 +111,11 @@ public:
         return getAlphaTree(alphaTreeId)->getAlpha(rootName, curCache);
     }
 
+    const int* getSign(int alphaTreeId, int cacheId){
+        auto curCache = alphaCache_->getCacheMemory(cacheId);
+        return getAlphaTree(alphaTreeId)->getSign(curCache);
+    }
+
     const char *getProcess(int alphaTree, const char *processName, int cacheId) {
         auto curCache = alphaCache_->getCacheMemory(cacheId);
         return getAlphaTree(alphaTree)->getProcess(processName, curCache);

@@ -65,29 +65,26 @@ void decodeProcess(int alphaTreeId, const char *processName, const char *line) {
 int learnFilterForest(int alphatreeId, int cacheId, const char *features, int featureSize, int treeSize,
                        int iteratorNum, float gamma, float lambda, int maxDepth,
                        int maxLeafSize, int maxAdjWeightTime, float adjWeightRule,
-                       int maxBarSize, float mergeBarPercent, float subsample,
+                       int maxBarSize, float subsample,
                        float colsampleBytree, const char *targetValue) {
-    cout<<"learn filter forest\n";
     AlphaCache *cache = AlphaForest::getAlphaforest()->getCache(cacheId);
     const float *target = AlphaForest::getAlphaforest()->getAlpha(alphatreeId, targetValue, cacheId);
-    cout<<"start static\n";
+    const int* sign = AlphaForest::getAlphaforest()->getSign(alphatreeId, cacheId);
 
     //计算最大取样数据量
     size_t sampleSize = 0;
     for (size_t i = 0; i < cache->stockSize; ++i) {
         for (size_t j = 0; j < cache->sampleDays; ++j) {
             size_t index = j * cache->stockSize + i;
-            if (cache->sign[index] > 0) {
+            if (sign[index] > 0) {
                 ++sampleSize;
             }
         }
     }
 
-    cout<<"sample size "<<sampleSize<<endl;
     int filterCacheId = FilterMachine::getFM()->useCache();
     FilterCache *filterCache = FilterMachine::getFM()->getCache(filterCacheId);
     filterCache->initialize(sampleSize, featureSize, maxLeafSize);
-    cout<<"finish init fcache\n";
 
     //填写训练参数
     filterCache->treeSize = treeSize;
@@ -99,38 +96,33 @@ int learnFilterForest(int alphatreeId, int cacheId, const char *features, int fe
     filterCache->maxAdjWeightTime = maxAdjWeightTime;
     filterCache->adjWeightRule = adjWeightRule;
     filterCache->maxBarSize = maxBarSize;
-    filterCache->mergeBarPercent = mergeBarPercent;
     filterCache->subsample = subsample;
     filterCache->colsampleBytree = colsampleBytree;
 
     //填写特征
     const char *curFeature = features;
-    AlphaForest::getAlphaforest()->getAlphaDataBase()->getFeature(cache->dayBefore, cache->sampleDays, cache->stockSize, cache->codes, cache->sign,
+    AlphaForest::getAlphaforest()->getAlphaDataBase()->getFeature(cache->dayBefore, cache->sampleDays, cache->stockSize, cache->codes, sign,
                               filterCache->feature, sampleSize, features, featureSize);
-    cout<<"finish fill feature\n";
 
     //填写特征名字
     for (size_t fId = 0; fId < featureSize; ++fId) {
         strcpy(filterCache->featureName + fId * MAX_FEATURE_NAME_LEN, curFeature);
         curFeature += strlen(curFeature) + 1;
     }
-    cout<<"finish fill feature name\n";
 
     //填写目标
     size_t sampleIndex = 0;
     for (size_t i = 0; i < cache->stockSize; ++i) {
         for (size_t j = 0; j < cache->sampleDays; ++j) {
             size_t index = j * cache->stockSize + i;
-            if (cache->sign[index] > 0) {
+            if (sign[index] > 0) {
                 filterCache->target[sampleIndex++] = target[index];
             }
         }
     }
-    cout<<"finish fill target\n";
 
     int forestId = FilterMachine::getFM()->useFilterForest();
 
-    cout<<"train\n";
     FilterMachine::getFM()->train(filterCacheId, forestId);
 
     FilterMachine::getFM()->releaseCache(filterCacheId);

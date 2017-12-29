@@ -675,7 +675,7 @@ def test_eraito_strategy(af, daybefore = 0, sample_size = 250):
                     feature_list = ["return5","return10","return20","amount0_5","amount5_20",
                                     "r_amount0_5", "r_amount5_10", "r_return", "r_return5", "r_return10",
                                     "r_return0_5", "r_return5_10"                                    ]
-                    #af.learn_filter(alphatree_id, cache_id, feature_list)
+                    af.learn_filter(alphatree_id, cache_id, feature_list, tree_size=1, max_depth=8)
 
 
                     af.release_cache(cache_id)

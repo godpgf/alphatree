@@ -144,21 +144,21 @@ namespace fb {
             FilterForest *forest = getFilterForest(forestId);
             FilterCache* cache = getCache(cacheId);
             cache->sample();
-            cout<<"finish sample\n";
+
             for(size_t i = 0; i < cache->treeSize; ++i){
                 forest->addTree(filterTreeCache_->useCacheMemory());
             }
-            cout<<"finish add tree\n";
+
             for(size_t i = 0; i < cache->treeSize; ++i) {
                 FilterTree* ftree = &filterTreeCache_->getCacheMemory(forest->filterTrees[i]);
                 int treeIndex = i;
                 ThreadPool* tpool = &threadPool_;
-                cache->treeRes[i] = forestThreadPool_.enqueue([ftree, cache, treeIndex, tpool]{
-                    return ftree->train(cache, treeIndex, tpool);
-                }).share();
+                //cache->treeRes[i] = forestThreadPool_.enqueue([ftree, cache, treeIndex, tpool]{
+                    /*return*/ ftree->train(cache, treeIndex, tpool);
+                //}).share();
             }
-            for(size_t i = 0; i < cache->treeSize; ++i)
-                cache->treeRes[i].get();
+            /*for(size_t i = 0; i < cache->treeSize; ++i)
+                cache->treeRes[i].get();*/
         }
 
     protected:

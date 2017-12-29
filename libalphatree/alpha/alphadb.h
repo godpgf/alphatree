@@ -388,7 +388,6 @@ class AlphaDB{
             for(size_t fId = 0; fId < featureSize; ++fId){
                 float* feature = featureValue + fId * sampleSize;
                 auto element = db->elements[curFeature];
-                cout<<"finish get element "<<curFeature<<endl;
                 size_t sampleIndex = 0;
                 const char* curCode = codes;
                 for(size_t i = 0; i < stockSize; ++i){
