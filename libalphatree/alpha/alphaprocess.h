@@ -41,7 +41,7 @@ class AlphaProcess : public IAlphaProcess{
 
 AlphaProcess AlphaProcess::alphaProcessList[] = {
         //参数:买入卖出信号,close,atr
-        AlphaProcess("eratio", eratio, 4),
+        AlphaProcess("eratio", eratio, 2),
 };
 
 #endif //ALPHATREE_ALPHAPROCESS_H

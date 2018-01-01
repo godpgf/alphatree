@@ -18,10 +18,10 @@ const char* eratio(AlphaDB* alphaDataBase, DArray<const float*, MAX_PROCESS_BLOC
     float MFE = 0;
     float MRE = 0;
 
-    const float* high = childRes[0];
-    const float* low = childRes[1];
-    const float* close = childRes[2];
-    const float* atr = childRes[3];
+    //const float* high = childRes[0];
+    //const float* low = childRes[1];
+    const float* close = childRes[0];
+    const float* atr = childRes[1];
     int signCount = 0;
 
     float MAEs[5];

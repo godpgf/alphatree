@@ -180,8 +180,6 @@ namespace fb {
         //xgboost中的gain公式：0.5*(Gl*Gl/(Hl+lambda)+Gr*Gr/(Hr+lambda)+(Gl+Gr)*(Gl+Gr)/(Hl+Hr+lambda))-gamma
         float gamma;
         float lambda;
-        //每一轮生成叶节点都需要调整权重，再生成，再调整权重。调整权重的次数
-        size_t maxAdjWeightTime;
         //调整权重的规则
         float adjWeightRule;
         //分裂用的柱状图最多有多少
@@ -373,89 +371,60 @@ namespace fb {
                 if (elementSize == 0)
                     break;
 
-                //不断的调整权重，分裂节点
-                for (size_t wt = 0; wt < data->maxAdjWeightTime; ++wt) {
-                    //如果有新节点加入
-                    if (nodeList_.getSize() > startIndex + elementSize) {
-
-                        //将叶节点的预测加到之前t-1棵树的结果上
-                        for (size_t j = 0; j < dataSize; ++j)
-                            curPred[j] += nodeList_[curNodeId[j]].getWeight();
-
-                        //刷新样本权重
-                        refreshWeight(curPred, curWeight, dataSize, data->adjWeightRule);
-
-                        //恢复当前预测
-                        for (size_t j = 0; j < dataSize; ++j)
-                            curPred[j] -= nodeList_[curNodeId[j]].getWeight();
-
-                        //恢复节点所属于的叶节点
-                        for (size_t j = 0; j < dataSize; ++j)
-                            if (curNodeId[j] >= startIndex + elementSize) {
-                                curNodeId[j] = nodeList_[curNodeId[j]].preId;
-                            }
-                        //删除新节点
-                        nodeList_.resize(startIndex + elementSize);
-                    }
-                    cout<<"split "<<elementSize<<" nodes\n";
-
-                    //得到划分
-                    for (size_t j = 0; j < elementSize; ++j) {
-                        int cmpNodeId = j + startIndex;
-                        splitRes[j] = threadPool->enqueue([data, treeId, cmpNodeId] {
-                            return split(data, treeId, cmpNodeId);
-                        }).share();
-                    }
-
-                    //尝试创建节点
-                    for (size_t j = 0; j < elementSize; ++j) {
-                        if (splitRes[j].get().isSplit()) {
-                            int preId = j + startIndex;
-                            int leftId = createNode(-splitRes[j].get().gl / (splitRes[j].get().hl + data->lambda));
-                            int rightId = createNode(-splitRes[j].get().gr / (splitRes[j].get().hr + data->lambda));
-                            nodeList_[preId].setup(splitRes[j].get().splitValue, data->featureName +
-                                                                                 splitRes[j].get().featureIndex *
-                                                                                 MAX_FEATURE_NAME_LEN);
-                            nodeList_[preId].leftId = leftId;
-                            nodeList_[preId].rightId = rightId;
-                            nodeList_[leftId].preId = preId;
-                            nodeList_[rightId].preId = preId;
-                            if(nodeList_[preId].preId != -1)
-                                sample2NodeRes[nodeList_[preId].preId].get();
-                            float* curFeature = data->feature + splitRes[j].get().featureIndex * data->sampleSize;
-                            float slpitValue = splitRes[j].get().splitValue;
-                            sample2NodeRes[preId] = threadPool->enqueue([curFeature, slpitValue, preId, leftId, rightId, curNodeId, dataSize]{
-                                //重新划分样本归属的叶节点
-                                return refreshNodeId(curFeature, slpitValue, preId, leftId, rightId, curNodeId, dataSize);
-                            }).share();
-
-                        }
-                    }
-
-                    for (size_t j = 0; j < elementSize; ++j) {
-                        if (splitRes[j].get().isSplit()) {
-                            int preId = j + startIndex;
-                            sample2NodeRes[preId].get();
-                        }
-                    }
-                    cout<<"treeID"<<treeId<<"在第"<<i<<"层得到新节点数量"<<elementSize<<endl;
-                    //todo 暂时不调整权重
-                    //test 测试损失
-                    {
-                        //将叶节点的预测加到之前t-1棵树的结果上
-                        for (size_t j = 0; j < dataSize; ++j)
-                            curPred[j] += nodeList_[curNodeId[j]].getWeight();
-
-                        //刷新样本权重
-                        cout<<"当前分裂后损失："<<l2Loss(data, treeId)<<endl;
-
-                        //恢复当前预测
-                        for (size_t j = 0; j < dataSize; ++j)
-                            curPred[j] -= nodeList_[curNodeId[j]].getWeight();
-                        break;
-                    }
-
+                //得到划分
+                for (size_t j = 0; j < elementSize; ++j) {
+                    int cmpNodeId = j + startIndex;
+                    splitRes[j] = threadPool->enqueue([data, treeId, cmpNodeId] {
+                        return split(data, treeId, cmpNodeId);
+                    }).share();
                 }
+
+                //尝试创建节点
+                for (size_t j = 0; j < elementSize; ++j) {
+                    if (splitRes[j].get().isSplit()) {
+                        int preId = j + startIndex;
+                        int leftId = createNode(-splitRes[j].get().gl / (splitRes[j].get().hl + data->lambda));
+                        int rightId = createNode(-splitRes[j].get().gr / (splitRes[j].get().hr + data->lambda));
+                        nodeList_[preId].setup(splitRes[j].get().splitValue, data->featureName +
+                                                                             splitRes[j].get().featureIndex *
+                                                                             MAX_FEATURE_NAME_LEN);
+                        nodeList_[preId].leftId = leftId;
+                        nodeList_[preId].rightId = rightId;
+                        nodeList_[leftId].preId = preId;
+                        nodeList_[rightId].preId = preId;
+                        if(nodeList_[preId].preId != -1)
+                            sample2NodeRes[nodeList_[preId].preId].get();
+                        float* curFeature = data->feature + splitRes[j].get().featureIndex * data->sampleSize;
+                        float slpitValue = splitRes[j].get().splitValue;
+                        sample2NodeRes[preId] = threadPool->enqueue([curFeature, slpitValue, preId, leftId, rightId, curNodeId, dataSize]{
+                            //重新划分样本归属的叶节点
+                            return refreshNodeId(curFeature, slpitValue, preId, leftId, rightId, curNodeId, dataSize);
+                        }).share();
+
+                    }
+                }
+
+                for (size_t j = 0; j < elementSize; ++j) {
+                    if (splitRes[j].get().isSplit()) {
+                        int preId = j + startIndex;
+                        sample2NodeRes[preId].get();
+                    }
+                }
+                /*cout<<"treeID"<<treeId<<"在第"<<i<<"层得到新节点数量"<<elementSize<<endl;
+                //test 测试损失
+                {
+                    //将叶节点的预测加到之前t-1棵树的结果上
+                    for (size_t j = 0; j < dataSize; ++j)
+                        curPred[j] += nodeList_[curNodeId[j]].getWeight();
+
+                    //刷新样本权重
+                    cout<<"当前分裂后损失："<<l2Loss(data, treeId)<<endl;
+
+                    //恢复当前预测
+                    for (size_t j = 0; j < dataSize; ++j)
+                        curPred[j] -= nodeList_[curNodeId[j]].getWeight();
+                    break;
+                }*/
                 //确定新加入的节点
                 startIndex = startIndex + elementSize;
                 elementSize = nodeList_.getSize() - startIndex;
@@ -464,6 +433,10 @@ namespace fb {
             //将叶节点的预测加到之前t-1棵树的结果上
             for (size_t j = 0; j < dataSize; ++j)
                 curPred[j] += nodeList_[curNodeId[j]].getWeight();
+
+            //刷新样本权重
+            if(data->adjWeightRule > 0)
+                refreshWeight(curPred, curWeight, dataSize, data->adjWeightRule);
             //返回子树
             return rootId;
         }
@@ -488,12 +461,20 @@ namespace fb {
             float deltaStd = stdValue * stdScale / (0.5f * (weightLevelNum - 2));
             size_t *ranking = new size_t[weightLevelNum];
             float *rankingWeight = new float[weightLevelNum];
+            memset(ranking, 0, sizeof(size_t) * weightLevelNum);
+            memset(rankingWeight, 0, sizeof(float) * weightLevelNum);
 
             for (size_t i = 0; i < sampleSize; ++i) {
                 int index = pred[i] < startValue ? 0 : std::min((size_t) ((pred[i] - startValue) / deltaStd) + 1,
                                                            weightLevelNum - 1);
                 ++ranking[index];
             }
+
+            for(size_t i = 0; i < weightLevelNum; ++i){
+                cout<< ranking[i]<<" ";
+            }
+            cout<<endl;
+
             distributionWeightPr(ranking, weightLevelNum, rankingWeight, ruleWeight);
             for (size_t i = 0; i < sampleSize; ++i) {
                 int index = pred[i] < startValue ? 0 : std::min((size_t) ((pred[i] - startValue) / deltaStd) + 1,
@@ -524,7 +505,7 @@ namespace fb {
                     if (res.isSplit()) {
                         float gain = res.gain(data->gamma, data->lambda);
                         if (gain > maxGain) {
-                            cout<<data->featureName + i * MAX_FEATURE_NAME_LEN<<" gain:"<<gain<<endl;
+                            //cout<<data->featureName + i * MAX_FEATURE_NAME_LEN<<" gain:"<<gain<<endl;
                             maxGain = gain;
                             bestRes = res;
                             bestRes.featureIndex = i;
@@ -532,7 +513,7 @@ namespace fb {
                     }
                 }
             }
-            cout<<data->featureName+bestRes.featureIndex * MAX_FEATURE_NAME_LEN<<" "<<bestRes.splitValue<<endl;
+            //cout<<data->featureName+bestRes.featureIndex * MAX_FEATURE_NAME_LEN<<" "<<bestRes.splitValue<<endl;
             return bestRes;
         }
 

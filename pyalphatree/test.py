@@ -8,9 +8,11 @@ import math
 import time
 import os
 import json
-
+import math
 
 def float_equal(a, b):
+    if math.isinf(b) or math.isnan(b) or math.isinf(a) or math.isnan(a):
+        return
     if abs(a - b) >= 0.001:
         print "%.4f %.4f"%(a, b)
     assert abs(a - b) < 0.01
@@ -133,15 +135,15 @@ def test_base_calculate(af, dataProxy):
     alpha, codes = cal_alpha(af, "atr15", 1)
     for index, code in enumerate(codes):
         close = dataProxy.get_all_Data(code)[-16][4]
-        high = dataProxy.get_all_Data(code)[-16][2]
-        low = dataProxy.get_all_Data(code)[-16][3]
+        #high = dataProxy.get_all_Data(code)[-16][2]
+        #low = dataProxy.get_all_Data(code)[-16][3]
         sum = 0
         for i in xrange(15):
             tr = max((dataProxy.get_all_Data(code)[-15 + i][2] - dataProxy.get_all_Data(code)[-15 + i][3]), (dataProxy.get_all_Data(code)[-15 + i][2] - close),(close - dataProxy.get_all_Data(code)[-15 + i][3]))
             sum += tr
             close = dataProxy.get_all_Data(code)[-15+i][4]
-            high = dataProxy.get_all_Data(code)[-15+i][2]
-            low = dataProxy.get_all_Data(code)[-15+i][3]
+            #high = dataProxy.get_all_Data(code)[-15+i][2]
+            #low = dataProxy.get_all_Data(code)[-15+i][3]
         float_equal(sum / 15, alpha[-1][index])
 
     print "returns"
@@ -374,6 +376,7 @@ def test_base_calculate(af, dataProxy):
     for index, code in enumerate(codes):
         returns = np.array([dataProxy.get_all_Data(code)[i - 11][7] for i in xrange(11)])
         d_returns = np.array([dataProxy.get_all_Data(code)[i - 14][7] for i in xrange(11)])
+        #print index
         v1 = pearson_def(d_returns, returns)
         v2 = alpha[-1][index]
         float_equal(v1*0.1, v2*0.1)
@@ -660,7 +663,7 @@ def test_eraito_strategy(af, daybefore = 0, sample_size = 250):
 
                     #print af.encode_alphatree(alphatree_id, tmp[0])
 
-                    af.decode_process(alphatree_id, "res", "eratio(high, low, close, atr)")
+                    af.decode_process(alphatree_id, "res", "eratio(close, atr)")
 
                     history_days = af.get_max_history_days(alphatree_id)
                     codes = af.get_stock_codes()
@@ -674,8 +677,8 @@ def test_eraito_strategy(af, daybefore = 0, sample_size = 250):
                     process_res = json.loads(af.get_process(alphatree_id, "res", cache_id))
                     feature_list = ["return5","return10","return20","amount0_5","amount5_20",
                                     "r_amount0_5", "r_amount5_10", "r_return", "r_return5", "r_return10",
-                                    "r_return0_5", "r_return5_10"                                    ]
-                    af.learn_filter(alphatree_id, cache_id, feature_list, tree_size=1, max_depth=8)
+                                    "r_return0_5", "r_return5_10"]
+                    af.learn_filter(alphatree_id, cache_id, feature_list, tree_size=2, max_depth=8, adj_weight_rule=0, iterator_num=4)
 
 
                     af.release_cache(cache_id)

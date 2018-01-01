@@ -64,7 +64,7 @@ void decodeProcess(int alphaTreeId, const char *processName, const char *line) {
 
 int learnFilterForest(int alphatreeId, int cacheId, const char *features, int featureSize, int treeSize,
                        int iteratorNum, float gamma, float lambda, int maxDepth,
-                       int maxLeafSize, int maxAdjWeightTime, float adjWeightRule,
+                       int maxLeafSize, float adjWeightRule,
                        int maxBarSize, float subsample,
                        float colsampleBytree, const char *targetValue) {
     AlphaCache *cache = AlphaForest::getAlphaforest()->getCache(cacheId);
@@ -93,7 +93,6 @@ int learnFilterForest(int alphatreeId, int cacheId, const char *features, int fe
     filterCache->maxLeafSize = maxLeafSize;
     filterCache->gamma = gamma;
     filterCache->lambda = lambda;
-    filterCache->maxAdjWeightTime = maxAdjWeightTime;
     filterCache->adjWeightRule = adjWeightRule;
     filterCache->maxBarSize = maxBarSize;
     filterCache->subsample = subsample;

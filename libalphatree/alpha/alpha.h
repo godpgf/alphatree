@@ -33,6 +33,7 @@ const float* valid(const float* pleft, const float* pright, float coff, size_t h
 const float* sum(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout, int* psign) {
     memcpy(pout, pleft, historySize * stockSize * sizeof(float));
     size_t d = (size_t)roundf(coff);
+
     for(size_t i = 1; i < historySize; ++i){
         _add((pout+i*stockSize),(pout + (i-1)*stockSize), stockSize);
         if(i > d){
@@ -405,7 +406,6 @@ const float* correlation(const float* pleft, const float* pright, float coff, si
                 for(size_t k = 0; k <= d; ++k){
                     int curBlock = (i - k) * stockSize;
                     meanLeft += pleft[curBlock + j];
-
                     sumSqrLeft += pleft[curBlock + j] * pleft[curBlock + j];
                     meanRight += pright[curBlock + j];
                     sumSqrRight += pright[curBlock + j] * pright[curBlock + j];
@@ -426,6 +426,13 @@ const float* correlation(const float* pleft, const float* pright, float coff, si
                     pout[i * stockSize + j] = 1;
                 else
                     pout[i * stockSize + j] = cov / sqrtf(xDiff2) / sqrtf(yDiff2);
+
+                /*float test_ydiff2 =0;
+                for(size_t k = 0; k <= d; ++k){
+                    int curBlock = (i - k) * stockSize;
+                    test_ydiff2 += (pright[curBlock + j] - meanRight) * (pright[curBlock + j] - meanRight);
+                }
+                cout<<j<<":"<<meanLeft<<" "<<meanRight<<" "<<xDiff2<<" "<<yDiff2<<" "<<test_ydiff2<<" "<<cov<<endl;*/
             }
         } else {
             memset(pout + i * stockSize, 0, stockSize * sizeof(float));

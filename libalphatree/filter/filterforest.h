@@ -153,12 +153,12 @@ namespace fb {
                 FilterTree* ftree = &filterTreeCache_->getCacheMemory(forest->filterTrees[i]);
                 int treeIndex = i;
                 ThreadPool* tpool = &threadPool_;
-                //cache->treeRes[i] = forestThreadPool_.enqueue([ftree, cache, treeIndex, tpool]{
-                    /*return*/ ftree->train(cache, treeIndex, tpool);
-                //}).share();
+                cache->treeRes[i] = forestThreadPool_.enqueue([ftree, cache, treeIndex, tpool]{
+                    return ftree->train(cache, treeIndex, tpool);
+                }).share();
             }
-            /*for(size_t i = 0; i < cache->treeSize; ++i)
-                cache->treeRes[i].get();*/
+            for(size_t i = 0; i < cache->treeSize; ++i)
+                cache->treeRes[i].get();
         }
 
     protected:

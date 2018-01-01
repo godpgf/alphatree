@@ -78,12 +78,12 @@ class AlphaForest(object):
 
     def learn_filter(self, alphatree_id, cache_id, feature_list, tree_size=20,
                      iterator_num=2, gamma_=0.001, lambda_=1.0, max_depth=16,
-                     max_leaf_size=1024, max_adj_weight_time=4, adj_weight_rule=0.2,
+                     max_leaf_size=1024, adj_weight_rule=0.382,
                      max_bar_size=16, subsample=0.6, colsample_bytree=0.75, target_value="target"):
         self._write_features(feature_list)
         return alphatree.learnFilterForest(alphatree_id, cache_id, self.feature_cache, len(feature_list), tree_size,
                                     iterator_num, c_float(gamma_), c_float(lambda_), max_depth,
-                                    max_leaf_size, max_adj_weight_time, c_float(adj_weight_rule), max_bar_size,
+                                    max_leaf_size, c_float(adj_weight_rule), max_bar_size,
                                     c_float(subsample), c_float(colsample_bytree),
                                     c_char_p(target_value))
 
