@@ -6,14 +6,14 @@
 #define ALPHATREE_DCACHE_H
 #include "darray.h"
 
-#define DCACHE_BLOCK_SIZE 512
+//#define DCACHE_BLOCK_SIZE 32
 
-template <class T>
+template <class T, int DCACHE_BLOCK_SIZE = 32>
 class DCache{
 
 public:
-    static DCache<T>* create(){ return new DCache<T>();}
-    static void release(DCache<T> * cache){delete cache;}
+    static DCache<T, DCACHE_BLOCK_SIZE>* create(){ return new DCache<T, DCACHE_BLOCK_SIZE>();}
+    static void release(DCache<T, DCACHE_BLOCK_SIZE> * cache){delete cache;}
 
     T& getCacheMemory(int cacheIndex){
         return cacheMemoryBuf_[cacheIndex];
@@ -27,6 +27,13 @@ public:
             freeCacheMemoryIds_.add(curFreeCacheMemoryId_);
         }
         return freeCacheMemoryIds_[curFreeCacheMemoryId_++];
+    }
+
+    void releaseAll(){
+        std::unique_lock<std::mutex> lock{mutex_};
+        cacheMemoryBuf_.resize(0);
+        freeCacheMemoryIds_.resize(0);
+        curFreeCacheMemoryId_ = 0;
     }
 
     void releaseCacheMemory(int id){

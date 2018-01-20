@@ -7,11 +7,11 @@
 
 #include <math.h>
 
-const double PI=3.1415926;
+const float PI=3.1415926;
 
-double normalFunction(double z)
+float normalFunction(float z)
 {
-    double temp;
+    float temp;
     temp=exp((-1)*z*z/2)/sqrt(2*PI);
     return temp;
 
@@ -19,21 +19,21 @@ double normalFunction(double z)
 /***************************************************************/
 /* 返回标准正态分布的累积函数，该分布的平均值为 0，标准偏差为 1。      */
 /***************************************************************/
-double normSDist(const double z)
+float normSDist(const float z)
 {
     // this guards against overflow
     if(z > 6) return 1;
     if(z < -6) return 0;
 
-    static const double gamma =  0.231641900,
+    static const float gamma =  0.231641900,
             a1  =  0.319381530,
             a2  = -0.356563782,
             a3  =  1.781477973,
             a4  = -1.821255978,
             a5  =  1.330274429;
 
-    double k = 1.0 / (1 + fabs(z) * gamma);
-    double n = k * (a1 + k * (a2 + k * (a3 + k * (a4 + k * a5))));
+    float k = 1.0 / (1 + fabs(z) * gamma);
+    float n = k * (a1 + k * (a2 + k * (a3 + k * (a4 + k * a5))));
     n = 1 - normalFunction(z) * n;
     if(z < 0)
         return 1.0 - n;
@@ -45,13 +45,13 @@ double normSDist(const double z)
 /***************************************************************/
 /* 返回标准正态分布累积函数的逆函数。该分布的平均值为 0，标准偏差为 1。 */
 /***************************************************************/
-double normsinv(const double p)
+float normsinv(const float p)
 {
-    static const double LOW  = 0.02425;
-    static const double HIGH = 0.97575;
+    static const float LOW  = 0.02425;
+    static const float HIGH = 0.97575;
 
     /* Coefficients in rational approximations. */
-    static const double a[] =
+    static const float a[] =
             {
                     -3.969683028665376e+01,
                     2.209460984245205e+02,
@@ -61,7 +61,7 @@ double normsinv(const double p)
                     2.506628277459239e+00
             };
 
-    static const double b[] =
+    static const float b[] =
             {
                     -5.447609879822406e+01,
                     1.615858368580409e+02,
@@ -70,7 +70,7 @@ double normsinv(const double p)
                     -1.328068155288572e+01
             };
 
-    static const double c[] =
+    static const float c[] =
             {
                     -7.784894002430293e-03,
                     -3.223964580411365e-01,
@@ -80,7 +80,7 @@ double normsinv(const double p)
                     2.938163982698783e+00
             };
 
-    static const double d[] =
+    static const float d[] =
             {
                     7.784695709041462e-03,
                     3.224671290700398e-01,
@@ -88,7 +88,7 @@ double normsinv(const double p)
                     3.754408661907416e+00
             };
 
-    double q, r;
+    float q, r;
 
     //errno = 0;
 

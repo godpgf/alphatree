@@ -6,13 +6,12 @@
 #define ALPHATREE_BASEALPHATREE_H
 
 #include "alphaatom.h"
-#include "alphaprocess.h"
 #include "converter.h"
 #include "alphadb.h"
 
 const size_t MAX_NODE_STR_LEN = 512;
 const size_t MAX_SUB_ALPHATREE_STR_NUM = 512;
-const size_t MAX_DECODE_RANGE_LEN = 10;
+//const size_t MAX_DECODE_RANGE_LEN = 10;
 const size_t MAX_OPT_STR_LEN = 64;
 
 const size_t MAX_LEAF_DATA_STR_LEN = 64;
@@ -20,10 +19,16 @@ const size_t MAX_NODE_NAME_LEN = 64;
 
 const size_t MAX_SUB_TREE_BLOCK = 16;
 const size_t MAX_NODE_BLOCK = 64;
+const size_t MAX_CHILD_NUM = 16;
 
-#define STOCK_SIZE 3600
+#define STOCK_SIZE 6000
 #define HISTORY_DAYS 512
 #define SAMPLE_DAYS 2500
+
+struct AlphaCoff{
+    float coffValue;
+    int srcNodeIndex;
+};
 
 class AlphaNode{
 public:
@@ -32,29 +37,27 @@ public:
     //得到名字
     const char* getName(){ return element_ ?  element_->getName() : dataName_;}
     //得到系数
-    double getCoff(DArray<double, MAX_NODE_BLOCK>& coffList){
-        if(isLocalCoff())
-            return coff_;
-        else
-            return coffList[externalCoffIndex_];
+    float getCoff(DArray<AlphaCoff, MAX_NODE_BLOCK>& coffList){
+        if(getCoffUnit() != CoffUnit::COFF_NONE
+           && getCoffUnit() != CoffUnit::COFF_INDCLASS
+           && getCoffUnit()!=CoffUnit::COFF_CONST)
+            return coffList[externalCoffIndex_].coffValue;
+        return startCoff_;
     }
 
-    double getCoff(){
-        return coff_;
-    }
+    float getStartCoff(){ return startCoff_;}
 
-    //系数是否是内部的
-    bool isLocalCoff(){ return externalCoffIndex_ < 0;}
     //得到分类
     const char* getWatchLeafDataClass(){return dataClass_[0] == 0 ? nullptr : dataClass_;}
     //得到系数
-    int getCoffStr(char* coffStr, DArray<double, MAX_NODE_BLOCK>& coffList){
+    int getCoffStr(char* coffStr, DArray<AlphaCoff, MAX_NODE_BLOCK>& coffList){
         //写系数
         switch(getCoffUnit()){
             case CoffUnit::COFF_NONE:
                 coffStr[0] = 0;
                 return 0;
             case CoffUnit::COFF_DAY:
+            case CoffUnit::COFF_VAR:
             case CoffUnit::COFF_CONST:
             {
                 sprintf(coffStr,"%.8f", getCoff(coffList));
@@ -77,13 +80,22 @@ public:
     }
 
 
-    void setup(IAlphaElement* element, double coff = 0, const char* watchLeafDataClass = nullptr, int externalCoffIndex = -1){
+    void setup(IAlphaElement* element, int elementId, DArray<AlphaCoff, MAX_NODE_BLOCK>& coffList, float coff = 0, const char* watchLeafDataClass = nullptr){
         CHECK(element != nullptr, "err");
+        externalCoffIndex_ = -1;
         setup(nullptr, watchLeafDataClass);
         element_ = element;
-        externalCoffIndex_ = externalCoffIndex;
-        coff_ = coff;
+        if(element->getCoffUnit() != CoffUnit::COFF_INDCLASS
+           && element->getCoffUnit() != CoffUnit::COFF_NONE
+           && element->getCoffUnit() != CoffUnit::COFF_CONST){
+            externalCoffIndex_ = coffList.getSize();
+            coffList[externalCoffIndex_].coffValue = coff;
+            coffList[externalCoffIndex_].srcNodeIndex = elementId;
+
+        }
+        startCoff_ = coff;
         preId = -1;
+        childNum = 0;
     }
 
     void setup(const char* name = nullptr, const char* watchLeafDataClass = nullptr){
@@ -96,41 +108,34 @@ public:
         else
             dataName_[0] = 0;
         element_ = nullptr;
+        childNum = 0;
     }
 
-    int getChildNum(){return element_ == nullptr ? 0 : element_->getChildNum();}
+    int getChildNum(){return childNum;}
+    void addChild(int id){childIds[childNum++] = id;}
 
     CoffUnit getCoffUnit(){return element_->getCoffUnit();}
 
-    float getNeedBeforeDays(){
+    float getNeedBeforeDays(DArray<AlphaCoff, MAX_NODE_BLOCK>& coffList){
         if(getCoffUnit() == CoffUnit::COFF_DAY)
-            return fmaxf(roundf(coff_), element_->getMinHistoryDays());
-        return element_->getMinHistoryDays();
-    }
-
-    double getNeedBeforeDays(DArray<double, MAX_NODE_BLOCK>& coffList){
-        double day = 0;
-        if(getCoffUnit() == CoffUnit::COFF_DAY){
-            if(isLocalCoff())
-                day = coff_;
-            else
-                day = coffList[externalCoffIndex_];
-        }
-        return fmaxf(day, element_->getMinHistoryDays());
+            return coffList[externalCoffIndex_].coffValue;
+        return 0;
+        //float day = coffList[externalCoffIndex_];
+        //return fmaxf(day, element_->getMinHistoryDays());
     }
 
     IAlphaElement* getElement(){ return element_;}
 
     int getExternalCoffId(){ return externalCoffIndex_;};
-    int leftId = {-1};
-    int rightId = {-1};
+    int childIds[MAX_CHILD_NUM];
+    int childNum = {0};
     int preId = {-1};
 protected:
     int externalCoffIndex_ = {-1};
-    double coff_ = {0};
     char dataClass_[MAX_LEAF_DATA_STR_LEN] = {0};
     char dataName_[MAX_LEAF_DATA_STR_LEN] = {0};
     IAlphaElement* element_ = {nullptr};
+    float startCoff_ = {0};
 };
 
 
@@ -140,11 +145,11 @@ public:
     char name[MAX_NODE_NAME_LEN];
     int rootId;
     //是否是局部的(不需要输出只作为中间结果)
-    bool isLocal;
+    //bool isLocal;
 };
 
 //后处理,在树计算完成后的结果上再做处理
-class AlphaProcessNode{
+/*class AlphaProcessNode{
     public:
         void setup(const char* name, IAlphaProcess* process){
             strcpy(this->name, name);
@@ -171,7 +176,7 @@ class AlphaProcessNode{
         DArray<char[MAX_PROCESS_COFF_STR_LEN],MAX_PROCESS_BLOCK> coff;
     protected:
         IAlphaProcess* process_ = {nullptr};
-};
+};*/
 
 
 //仅仅负责树的构造,不负责运算
@@ -186,42 +191,44 @@ public:
         coffList_.clear();
         nodeList_.clear();
         subtreeList_.clear();
-        processList_.clear();
+        //processList_.clear();
     }
 
     virtual void clean(){
         coffList_.resize(0);
         nodeList_.resize(0);
         subtreeList_.resize(0);
-        processList_.resize(0);
+        //processList_.resize(0);
     }
 
     int getSubtreeSize(){ return subtreeList_.getSize();}
     const char* getSubtreeName(int index){ return subtreeList_[index].name;}
 
-    void setCoff(int index, double coff){
-        coffList_[index] = coff;
+    void setCoff(int index, float coff){
+        coffList_[index].coffValue = coff;
     }
 
-    double getCoff(int index){
-        return coffList_[index];
+    float getCoff(int index){
+        return coffList_[index].coffValue;
     }
 
 
     //必须先解码子树再解码主树
-    void decode(const char* rootName, const char* line, HashMap<IAlphaElement*>& alphaElementMap, bool isLocal){
-        int outCache[MAX_DECODE_RANGE_LEN];
+    void decode(const char* rootName, const char* line, HashMap<IAlphaElement*>& alphaElementMap){
+        int outCache[(MAX_CHILD_NUM+1) * 2];
         char optCache[MAX_OPT_STR_LEN];
         char normalizeLine[MAX_NODE_STR_LEN];
         converter_.operator2function(line, normalizeLine);
+        //cout<<normalizeLine<<endl;
         int subtreeLen = subtreeList_.getSize();
         strcpy(subtreeList_[subtreeLen].name, rootName);
         int rootId = decode(normalizeLine, alphaElementMap, 0, strlen(normalizeLine)-1, outCache, optCache);
         subtreeList_[subtreeLen].rootId = rootId;
-        subtreeList_[subtreeLen].isLocal = isLocal;
+        //subtreeList_[subtreeLen].isLocal = isLocal;
         //恢复被写坏的preId
         for(auto i = 0; i < subtreeLen; ++i)
             nodeList_[subtreeList_[i].rootId].preId = -1;
+        //cout<<"finish decode\n";
     }
 
 
@@ -235,90 +242,6 @@ public:
         return pout;
     }
 
-    //编码后处理
-    void decodeProcess(const char* processName, const char* line, HashMap<IAlphaProcess*>& alphaProcessMap, HashMap<IAlphaElement*>& alphaElementMap){
-        int processLen = processList_.getSize();
-        char normalizeLine[MAX_NODE_STR_LEN];
-        strcpy(normalizeLine, line);
-
-        //把最后一个')'变成0
-        CHECK(normalizeLine[strlen(normalizeLine)-1] == ')', "格式错误");
-        normalizeLine[strlen(normalizeLine)-1] = 0;
-
-        int nameLen = 0;
-        while(normalizeLine[nameLen] != '(')
-            ++nameLen;
-        normalizeLine[nameLen] = 0;
-        const char* optName = normalizeLine;
-        IAlphaProcess* opt = alphaProcessMap[optName];
-        processList_[processLen].setup(processName, opt);
-
-        int startIndex = nameLen+1;
-        int endIndex = startIndex;
-        int curChildNum = 0;
-        int curCoffNum = 0;
-        int depth = 0;
-        char processSubtreeName[MAX_NODE_NAME_LEN];
-        //解码孩子和系数
-        while(true){
-            if((normalizeLine[endIndex] == ',' || normalizeLine[endIndex] == 0) && depth == 0){
-                bool isFinish = (normalizeLine[endIndex] == 0);
-                normalizeLine[endIndex] = 0;
-                if(curChildNum < opt->getChildNum()){
-                    int subtreeIndex = getSubtreeIndex(normalizeLine + startIndex);
-                    if(subtreeIndex == -1){
-                        //如果找不到子树就解码出一个来
-                        subtreeIndex = subtreeList_.getSize();
-                        sprintf(processSubtreeName, "process:%d",curChildNum);
-                        decode(processSubtreeName, normalizeLine + startIndex, alphaElementMap, false);
-                    }
-                    processList_[processLen].chilIndex[curChildNum++] = subtreeIndex;
-                }
-                else
-                    strcpy(processList_[processLen].coff[curCoffNum++],normalizeLine + startIndex);
-                startIndex = endIndex+1;
-                if(isFinish){
-                    break;
-                }
-            } else if(normalizeLine[endIndex] == '('){
-                ++depth;
-            } else if(normalizeLine[endIndex] == ')'){
-                --depth;
-            }
-            if(normalizeLine[startIndex] == ' ')
-                ++startIndex;
-            ++endIndex;
-        }
-    }
-    //解码后处理
-    const char* encodeProcess(const char* processName, char* pout){
-        for(auto i = 0; i < processList_.getSize(); ++i){
-            if(strcmp(processList_[i].name, processName) == 0){
-                strcpy(pout, processList_[i].getProcess()->getName());
-                char* curStr = pout + strlen(pout);
-                curStr[0] = '(';
-                curStr += 1;
-                for(int j = 0; j < processList_[i].chilIndex.getSize() + processList_[i].coff.getSize(); ++j){
-                    if(j < processList_[i].chilIndex.getSize())
-                        strcpy(curStr, subtreeList_[processList_[i].chilIndex[j]].name);
-                    else
-                        strcpy(curStr, processList_[i].coff[j - processList_[i].chilIndex.getSize()]);
-                    curStr += strlen(curStr);
-                    if(j != processList_[i].chilIndex.getSize() + processList_[i].coff.getSize() - 1){
-                        curStr[0] = ',';
-                        curStr[1] = ' ';
-                        curStr += 2;
-                    }
-                }
-
-                curStr[0] = ')';
-                curStr[1] = 0;
-                return pout;
-            }
-        }
-        return nullptr;
-    }
-
 
     int searchPublicSubstring(const char* rootName, const char* line, char* pout, int minTime = 1, int minDepth = 3){
         int curIndex = 0;
@@ -330,17 +253,18 @@ protected:
     int decode(const char* line, HashMap<IAlphaElement*>& alphaElementMap, int l, int r, int* outCache, char* optCache, const char* parDataClass = nullptr){
         converter_.decode(line, l, r, outCache);
         const char* opt = converter_.readOpt(line, outCache, optCache);
+        //cout<<"Start "<<opt<<endl;
         //读出系数
-        double coff = 0;
-        int externalCoffIndex = -1;
+        float coff = 0;
+
         //读出操作符
         IAlphaElement* alphaElement  = nullptr;
         //创建节点
         int nodeId = NONE;
         //读出左右孩子
-        int ll = outCache[2], lr = outCache[3], rl = outCache[4], rr = outCache[5];
+        //int ll = outCache[2], lr = outCache[3], rl = outCache[4], rr = outCache[5];
 
-        int leftId = -1, rightId = -1;
+        //int leftId = -1, rightId = -1;
 
         char curDataClass[MAX_LEAF_DATA_STR_LEN];
         if(parDataClass != nullptr)
@@ -351,12 +275,7 @@ protected:
         if(converter_.isSymbolFun(opt)){
             //如果第一个孩子是数字,变成opt_from
             if(converter_.getOptSize(outCache, 1) < MAX_OPT_STR_LEN && converter_.isNum(converter_.readOpt(line, outCache, optCache,1))){
-                if(optCache[0] == 'c'){
-                    externalCoffIndex = (int)atof(optCache + 1);
-                    coff = coffList_[externalCoffIndex];
-                } else{
-                    coff = atof(optCache);
-                }
+                coff = atof(optCache);
 
                 //重新得到刚才的操作数
                 opt = converter_.readOpt(line, outCache, optCache);
@@ -364,10 +283,11 @@ protected:
                 char* p = optCache + strlen(opt);
                 strcpy(p, "_from");
                 alphaElement = alphaElementMap[optCache];
-                leftId = decode(line, alphaElementMap, rl, rr, outCache, optCache, dataClass);
-                nodeId = createNode(alphaElement, coff, dataClass, externalCoffIndex);
+
+                int childId = decode(line, alphaElementMap, outCache[4], outCache[5], outCache, optCache, dataClass);
+                nodeId = createNode(alphaElement, coff, dataClass);
                 //字符串的第一部分是系数,第二部分才是子孩子,添加第二部分
-                addLeftChild(nodeId, leftId);
+                addChild(nodeId, childId);
                 //将这种系数在左边的特殊情况直接返回
                 return nodeId;
             } else if(converter_.getOptSize(outCache, 2) < MAX_OPT_STR_LEN && converter_.isNum(converter_.readOpt(line, outCache, optCache, 2))){
@@ -389,17 +309,6 @@ protected:
             }
         }
 
-        //特殊处理rank,拆分成两个节点---------------------------------------------------------------
-        if(strcmp(opt,"rank") == 0){
-            leftId = decode(line, alphaElementMap, ll, lr, outCache, optCache, dataClass);
-            int nextNodeId = createNode(alphaElementMap["rank_sort"], 0, dataClass);
-            addLeftChild(nextNodeId, leftId);
-            nodeId = createNode(alphaElementMap["rank_scale"], 0, dataClass);
-            addLeftChild(nodeId, nextNodeId);
-            return nodeId;
-        }
-        //-----------------------------------------------------------------------------------------
-
         //特殊处理叶节点
         auto iter = *alphaElementMap.find(opt);
         if(iter == nullptr){
@@ -408,17 +317,18 @@ protected:
         }
 
         alphaElement = alphaElementMap[opt];
+        int childNum = converter_.getElementNum(outCache) - 1;
+
         if(alphaElement->getCoffUnit() != CoffUnit::COFF_NONE){
-            converter_.readOpt(line, outCache, optCache, alphaElement->getChildNum() + 1);
+            //最后一个孩子是系数;
+            converter_.readOpt(line, outCache, optCache, childNum);
+            --childNum;
+
             switch (alphaElement->getCoffUnit()){
                 case CoffUnit::COFF_DAY:
+                case CoffUnit::COFF_VAR:
                 case CoffUnit::COFF_CONST:
-                    if(optCache[0] == 'c'){
-                        externalCoffIndex = (int)atof(optCache + 1);
-                        coff = coffList_[externalCoffIndex];
-                    }else{
-                        coff = atof(optCache);
-                    }
+                    coff = atof(optCache);
                     break;
                 case CoffUnit::COFF_INDCLASS:
                     strcpy(curDataClass, optCache);
@@ -430,18 +340,21 @@ protected:
         }
 
         //保证自底向上的方式创建节点,根节点一定排在数组最后面
-        if(alphaElement->getChildNum() > 0){
-            leftId = decode(line, alphaElementMap, ll, lr, outCache, optCache, dataClass);
+        int childL[MAX_CHILD_NUM];
+        int childR[MAX_CHILD_NUM];
+        for(int i = 0; i < childNum; ++i){
+            childL[i] = outCache[2 + i * 2];
+            childR[i] = outCache[3 + i * 2];
         }
-        if(alphaElement->getChildNum() > 1){
-            rightId = decode(line, alphaElementMap, rl, rr, outCache, optCache, dataClass);
+        int chidIds[MAX_CHILD_NUM];
+        for(int i = 0; i < childNum; ++i){
+            chidIds[i] = decode(line, alphaElementMap, childL[i], childR[i], outCache, optCache, dataClass);
         }
 
-        nodeId = createNode(alphaElement, coff, dataClass, externalCoffIndex);
-        if(leftId != -1)
-            addLeftChild(nodeId, leftId);
-        if(rightId != -1)
-            addRightChild(nodeId, rightId);
+        nodeId = createNode(alphaElement, coff, dataClass);
+        for(int i = 0; i < childNum; ++i)
+            addChild(nodeId, chidIds[i]);
+        //cout<<"finish "<<opt<<endl;
         return nodeId;
     }
 
@@ -471,19 +384,10 @@ protected:
             //写左孩子
             pout[curIndex++] = ',';
             pout[curIndex++] = ' ';
-            encode(pout, node->leftId, curIndex, subtreeSize);
+            encode(pout, node->childIds[0], curIndex, subtreeSize);
 
             pout[curIndex++] = ')';
         } else {
-            //特殊处理rank(因为rank被拆分成两个节点)------------------------------------
-            if(strcmp(name,"rank_scale") == 0){
-                encode(pout, node->leftId, curIndex, subtreeSize);
-                return;
-            }
-            if(strcmp(name,"rank_sort") == 0){
-                nameLen -= 5;
-            }
-            //-----------------------------------------------------------------------
 
             //特殊处理一些符号
             if(nameLen > 3 and strcmp(name + (nameLen-3),"_to") == 0)
@@ -494,15 +398,14 @@ protected:
             curIndex += nameLen;
 
             if(node->getChildNum() > 0) {
-                //写左孩子
                 pout[curIndex++] = '(';
-                encode(pout, node->leftId, curIndex, subtreeSize);
+                encode(pout, node->childIds[0], curIndex, subtreeSize);
 
-                //写右孩子
-                if(node->getChildNum() > 1){
+
+                for(int i = 1; i < node->getChildNum(); ++i){
                     pout[curIndex++] = ',';
                     pout[curIndex++] = ' ';
-                    encode(pout, node->rightId, curIndex, subtreeSize);
+                    encode(pout, node->childIds[i], curIndex, subtreeSize);
                 }
 
                 //写系数
@@ -546,19 +449,15 @@ protected:
         return -1;
     }
 
-    inline void addLeftChild(int nodeId, int childId){
-        nodeList_[nodeId].leftId = childId;
+
+    inline void addChild(int nodeId, int childId){
+        nodeList_[nodeId].addChild(childId);
         nodeList_[childId].preId = nodeId;
     }
 
-    inline void addRightChild(int nodeId, int childId){
-        nodeList_[nodeId].rightId = childId;
-        nodeList_[childId].preId = nodeId;
-    }
-
-    inline int createNode(IAlphaElement* element, double coff = 0, const char* watchLeafDataClass = nullptr,  int externalCoffIndex = -1){
+    inline int createNode(IAlphaElement* element, float coff = 0, const char* watchLeafDataClass = nullptr){
         int nodeLen = nodeList_.getSize();
-        nodeList_[nodeLen].setup(element, coff, watchLeafDataClass, externalCoffIndex);
+        nodeList_[nodeLen].setup(element, nodeLen, coffList_, coff, watchLeafDataClass);
         return nodeLen;
     }
 
@@ -594,10 +493,12 @@ protected:
         }
 
         count = 0;
-        if(nodeList_[nodeId].getChildNum() > 0)
-            count += searchPublicSubstring(nodeList_[nodeId].leftId, subtreeSize, line, encodeCache, curIndex, pout, minTime, minDepth);
-        if(nodeList_[nodeId].getChildNum() > 1)
-            count += searchPublicSubstring(nodeList_[nodeId].rightId, subtreeSize, line, encodeCache, curIndex, pout, minTime, minDepth);
+        for(int i = 0;i < nodeList_[nodeId].getChildNum(); ++i)
+            count += searchPublicSubstring(nodeList_[nodeId].childIds[i], subtreeSize, line, encodeCache, curIndex, pout, minTime, minDepth);
+        //if(nodeList_[nodeId].getChildNum() > 0)
+        //    count += searchPublicSubstring(nodeList_[nodeId].leftId, subtreeSize, line, encodeCache, curIndex, pout, minTime, minDepth);
+        //if(nodeList_[nodeId].getChildNum() > 1)
+        //    count += searchPublicSubstring(nodeList_[nodeId].rightId, subtreeSize, line, encodeCache, curIndex, pout, minTime, minDepth);
         return count;
     }
 
@@ -606,22 +507,20 @@ protected:
             return 1;
 
         int myDepth = 1;
-        if(strcmp(nodeList_[nodeId].getName(),"rank_scale") == 0){
-            myDepth = 0;
-        }
 
-        int leftDepth = getDepth(nodeList_[nodeId].leftId, false);
-        if(nodeList_[nodeId].getChildNum() == 1)
-            return leftDepth + myDepth;
-        int rightDepth = getDepth(nodeList_[nodeId].rightId, false);
-        return (leftDepth > rightDepth ? leftDepth : rightDepth) + myDepth;
+        int childDepth = 0;
+        for(int i = 0; i < nodeList_[nodeId].getChildNum(); ++i){
+            childDepth = max(childDepth,getDepth(nodeList_[nodeId].childIds[i], false));
+        }
+        return childDepth + myDepth;
     }
 protected:
     //某个节点的参数可以从coffList_中读取,方便最优化
-    DArray<double, MAX_NODE_BLOCK> coffList_;
+
+    DArray<AlphaCoff, MAX_NODE_BLOCK> coffList_;
     DArray<AlphaNode, MAX_NODE_BLOCK> nodeList_;
     DArray<SubTreeDes, MAX_SUB_TREE_BLOCK> subtreeList_;
-    DArray<AlphaProcessNode, MAX_PROCESS_BLOCK> processList_;
+    //DArray<AlphaProcessNode, MAX_PROCESS_BLOCK> processList_;
     static AlphaTreeConverter converter_;
 };
 

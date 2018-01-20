@@ -21,7 +21,7 @@ extern "C"
 {
 void initializeAlphaforest(int cacheSize) {
     AlphaForest::initialize(cacheSize);
-    FilterMachine::initialize(cacheSize);
+    //FilterMachine::initialize(cacheSize);
 }
 
 void releaseAlphaforest() {
@@ -49,19 +49,11 @@ int encodeAlphatree(int alphatreeId, const char *rootName, char *out) {
     return strlen(res);
 }
 
-void decodeAlphatree(int alphaTreeId, const char *rootName, const char *line, bool isLocal) {
-    AlphaForest::getAlphaforest()->decode(alphaTreeId, rootName, line, isLocal);
+void decodeAlphatree(int alphaTreeId, const char *rootName, const char *line) {
+    AlphaForest::getAlphaforest()->decode(alphaTreeId, rootName, line);
 }
 
-int encodeProcess(int alphatreeId, const char *processName, char *out) {
-    const char *res = AlphaForest::getAlphaforest()->encodeProcess(alphatreeId, processName, out);
-    return strlen(res);
-}
-
-void decodeProcess(int alphaTreeId, const char *processName, const char *line) {
-    AlphaForest::getAlphaforest()->decodeProcess(alphaTreeId, processName, line);
-}
-
+/*
 int learnFilterForest(int alphatreeId, int cacheId, const char *features, int featureSize, int treeSize,
                        int iteratorNum, float gamma, float lambda, int maxDepth,
                        int maxLeafSize, float adjWeightRule,
@@ -126,7 +118,7 @@ int learnFilterForest(int alphatreeId, int cacheId, const char *features, int fe
 
     FilterMachine::getFM()->releaseCache(filterCacheId);
     return forestId;
-}
+}*/
 
 void loadDataBase(const char *path) {
     AlphaForest::getAlphaforest()->getAlphaDataBase()->loadDataBase(path);
@@ -154,46 +146,41 @@ int getIndustryCodes(const char *industryName, char *codes) {
 
 int getMaxHistoryDays(int alphaTreeId) { return AlphaForest::getAlphaforest()->getMaxHistoryDays(alphaTreeId); }
 
-void flagAlpha(int alphaTreeId, int cacheId, int dayBefore, int sampleSize, const char *codes, int stockSize,
-               bool *sampleFlag = nullptr, bool isCalAllNode = false) {
-    AlphaForest::getAlphaforest()->flagAlpha(alphaTreeId, cacheId, dayBefore, sampleSize, codes, stockSize, sampleFlag,
-                                             isCalAllNode);
+
+void calAlpha(int alphaTreeId, int cacheId, int dayBefore, int sampleSize, const char *codes, int stockSize) {
+    AlphaForest::getAlphaforest()->calAlpha(alphaTreeId, cacheId, dayBefore, sampleSize, codes, stockSize);
 }
 
-void calAlpha(int alphaTreeId, int cacheId) {
-    AlphaForest::getAlphaforest()->calAlpha(alphaTreeId, cacheId);
+void cacheAlpha(int alphaTreeId, int cacheId, bool isToFile) {
+    AlphaForest::getAlphaforest()->cacheAlpha(alphaTreeId, cacheId, isToFile);
 }
 
-void cacheAlpha(int alphaTreeId, int cacheId) {
-    AlphaForest::getAlphaforest()->cacheAlpha(alphaTreeId, cacheId);
-}
-
-void processAlpha(int alphaTreeId, int cacheId) {
-    AlphaForest::getAlphaforest()->processAlpha(alphaTreeId, cacheId);
+float optimizeAlpha(int alphaTreeId, int cacheId, const char *rootName, int dayBefore, int sampleSize, const char *codes, size_t stockSize, float exploteRatio, int errTryTime){
+    return AlphaForest::getAlphaforest()->optimizeAlpha(alphaTreeId, cacheId, rootName, dayBefore, sampleSize, codes, stockSize, exploteRatio, errTryTime);
 }
 
 int getRootAlpha(int alphaTreeId, const char *rootName, int cacheId, float *alpha) {
     const float *res = AlphaForest::getAlphaforest()->getAlpha(alphaTreeId, rootName, cacheId);
-    cout<<"get root "<<rootName<<endl;
     auto *cache = AlphaForest::getAlphaforest()->getCache(cacheId);
     int dataSize = cache->sampleDays * cache->stockSize;
     memcpy(alpha, res, dataSize * sizeof(float));
     return dataSize;
 }
 
+void getRootProcess(int alphatreeId, const char *rootName, int cacheId, char* process){
+    const char* rootProcess = AlphaForest::getAlphaforest()->getProcess(alphatreeId, rootName, cacheId);
+    strcpy(process,rootProcess);
+}
+
+/*
 int getNodeAlpha(int alphaTreeId, int nodeId, int cacheId, float *alpha) {
     const float *res = AlphaForest::getAlphaforest()->getAlpha(alphaTreeId, nodeId, cacheId);
     auto *cache = AlphaForest::getAlphaforest()->getCache(cacheId);
     int dataSize = cache->sampleDays * cache->stockSize;
     memcpy(alpha, res, dataSize * sizeof(float));
     return dataSize;
-}
+}*/
 
-int getProcess(int alphaTreeId, const char *processName, int cacheId, char *result) {
-    const char *res = AlphaForest::getAlphaforest()->getProcess(alphaTreeId, processName, cacheId);
-    strcpy(result, res);
-    return strlen(result);
-}
 
 //总结子公式
 int summarySubAlphaTree(const int *alphatreeIds, int len, int minDepth, char *subAlphatreeStr) {

@@ -19,7 +19,7 @@ public:
         optMap['/'] = "div";
         optMap['&'] = "and";
         optMap['|'] = "or";
-        optMap['~'] = "cross";
+        //optMap['~'] = "cross";
         optMap['^'] = "signed_power";
         optMap['<'] = "less";
         optMap['>'] = "more";
@@ -32,7 +32,7 @@ public:
         invOptMap["div"] = '/';
         invOptMap["and"] = '&';
         invOptMap["or"] = '|';
-        invOptMap["cross"] = '~';
+        //invOptMap["cross"] = '~';
         invOptMap["signed_power"] = '^';
         invOptMap["less"] = '<';
         invOptMap["more"] = '>';
@@ -123,6 +123,13 @@ public:
         return optCache;
     }
 
+    int getElementNum(const int* pout){
+        int i = 0;
+        while(pout[i] != NONE)
+            ++i;
+        return i/2;
+    }
+
     size_t getOptSize(const int* pout, int elementNum = 0){
         return pout[1 + elementNum * 2] - pout[0 + elementNum * 2] + 1;
     }
@@ -134,7 +141,7 @@ public:
                 strcmp(str, "div") == 0 ||
                 strcmp(str, "and") == 0 ||
                 strcmp(str, "or") == 0 ||
-                strcmp(str, "cross") == 0 ||
+                //strcmp(str, "cross") == 0 ||
                 strcmp(str, "signed_power") == 0 ||
                 strcmp(str, "less") == 0 ||
                 strcmp(str, "more") == 0 ||
@@ -148,7 +155,7 @@ public:
         int curIndex = 0;
         int len = strlen(str);
         //判断符号
-        if(str[curIndex] != '+' && str[curIndex] != '-' && str[curIndex] != 'c' && (str[curIndex] < '0' || str[curIndex] > '9')){
+        if(str[curIndex] != '+' && str[curIndex] != '-' && (str[curIndex] < '0' || str[curIndex] > '9')){
             return false;
         }
         if(str[curIndex] < '0' || str[curIndex] > '9')

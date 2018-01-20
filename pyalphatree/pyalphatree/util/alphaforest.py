@@ -70,22 +70,12 @@ class AlphaForest(object):
     def decode_alphatree(self, alphatree_id, root_name, line, is_local=False):
         alphatree.decodeAlphatree(alphatree_id, c_char_p(root_name), c_char_p(line), c_bool(is_local))
 
-    def decode_process(self, alphatree_id, root_name, line):
-        alphatree.decodeProcess(alphatree_id, c_char_p(root_name), c_char_p(line))
-
     def get_max_history_days(self, alphatree_id):
         return alphatree.getMaxHistoryDays(alphatree_id)
 
-    def learn_filter(self, alphatree_id, cache_id, feature_list, tree_size=20,
-                     iterator_num=2, gamma_=0.001, lambda_=1.0, max_depth=16,
-                     max_leaf_size=1024, adj_weight_rule=0.382,
-                     max_bar_size=16, subsample=0.6, colsample_bytree=0.75, target_value="target"):
-        self._write_features(feature_list)
-        return alphatree.learnFilterForest(alphatree_id, cache_id, self.feature_cache, len(feature_list), tree_size,
-                                    iterator_num, c_float(gamma_), c_float(lambda_), max_depth,
-                                    max_leaf_size, c_float(adj_weight_rule), max_bar_size,
-                                    c_float(subsample), c_float(colsample_bytree),
-                                    c_char_p(target_value))
+    def optimize_alphatree(self):
+        pass
+
 
     # 读取数据
     def load_db(self, path):
@@ -173,22 +163,20 @@ class AlphaForest(object):
         stock_size = alphatree.getStockCodes(self.code_cache)
         return np.array(self._read_str_list(self.code_cache, stock_size))
 
-    def flag_alpha(self, alphatree_id, cache_id, daybefore, sample_size, codes, sample_flag=None, is_flag_stock=False,
-                   is_cal_all_node=False):
+
+    def cal_alpha(self, alphatree_id, cache_id, daybefore, sample_size, codes):
         stock_size = len(codes)
         # self.check_alpha_size(sample_size, stock_size)
         self._write_codes(codes)
-        if sample_flag:
-            for id, f in enumerate(sample_flag): self.sample_flag_cache[id] = f
-        alphatree.flagAlpha(alphatree_id, cache_id, daybefore, sample_size, self.code_cache, stock_size,
-                            self.sample_flag_cache if sample_flag else None, c_bool(is_flag_stock),
-                            c_bool(is_cal_all_node))
+        alphatree.calAlpha(alphatree_id, cache_id, daybefore, sample_size, self.code_cache, stock_size)
 
-    def cal_alpha(self, alphatree_id, cache_id):
-        alphatree.calAlpha(alphatree_id, cache_id)
+    def cache_alpha(self, alphatree_id, cache_id, is_to_file):
+        alphatree.cacheAlpha(alphatree_id, cache_id, c_bool(is_to_file))
 
-    def cache_alpha(self, alphatree_id, cache_id):
-        alphatree.cacheAlpha(alphatree_id, cache_id)
+    def optimize_alpha(self, alphatree_id, cache_id, root_name, daybefore, sample_size, codes, exploteRatio = 0.1, errTryTime = 64):
+        stock_size = len(codes)
+        self._write_codes(codes)
+        return alphatree.optimizeAlpha(alphatree_id, cache_id, c_char_p(root_name), daybefore, sample_size, self.code_cache, stock_size, c_float(exploteRatio), errTryTime)
 
     def get_root_alpha(self, alphatree_id, root_name, cache_id, sample_size):
         data_size = alphatree.getRootAlpha(alphatree_id, c_char_p(root_name), cache_id, self.alpha_cache)
@@ -200,11 +188,11 @@ class AlphaForest(object):
         stock_size = data_size / sample_size
         return self._read_alpha(sample_size, stock_size)
 
-    def process_alpha(self, alphatree_id, cache_id):
-        alphatree.processAlpha(alphatree_id, cache_id)
+    #def process_alpha(self, alphatree_id, cache_id):
+    #    alphatree.processAlpha(alphatree_id, cache_id)
 
     def get_process(self, alphatree_id, process_name, cache_id):
-        alphatree.getProcess(alphatree_id, c_char_p(process_name), cache_id, self.process_cache)
+        alphatree.getRootProcess(alphatree_id, c_char_p(process_name), cache_id, self.process_cache)
         return self._read_str(self.process_cache)
 
     def summary_sub_alphatree(self, alphatree_list, min_depth=3):

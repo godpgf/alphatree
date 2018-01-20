@@ -286,16 +286,15 @@ void quickSort(const float* src, float* index, int left, int right){
     quickSort(src, index, low+1, right);
 }
 
-void _ranksort(float *index, const float *src, const bool* flag, size_t size){
+void _ranksort(float *index, const float *src, size_t size){
     for(size_t i = 0; i < size; ++i)
         index[i] = i;
     quickSort(src, index, 0, size-1);
-    for(size_t i = 0; i < size; ++i){
-        if(flag[(int)index[i]] == false){
-            index[i] = -index[i]-1;
-        }
-
-    }
+    //for(size_t i = 0; i < size; ++i){
+    //    if(flag[(int)index[i]] == false){
+    //        index[i] = -index[i]-1;
+    //    }
+    //}
 }
 
 void _rankscale(float *dst,const float *index, size_t size){
@@ -346,10 +345,10 @@ void _tsRank(float *dst,const float *curData, const float *beforeData, size_t si
 //    }
 //}
 
-inline void _scale(float *dst, bool* flag, size_t size){
+inline void _scale(float *dst, size_t size){
     float sum = 0;
     for(size_t i = 0; i < size; ++i)
-        if(flag[i])
+        //if(flag[i])
             sum += dst[i] >= 0 ? dst[i] : -dst[i];
     if(sum < 0.0001)
         memset(dst,0,sizeof(float) * size);

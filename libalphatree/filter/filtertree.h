@@ -233,13 +233,13 @@ namespace fb {
             for(size_t i = 0; i < treeSize; ++i){
                 size_t flag = (((size_t)1) << i);
                 for(size_t j = 0; j < featureSize; ++j)
-                    if(((double)rand())/RAND_MAX <= colsampleBytree){
+                    if(((float)rand())/RAND_MAX <= colsampleBytree){
                         featureFlag[i * featureSize + j] +=  flag;
                         //++featureFlagNum;
                     }
 
                 for(size_t j = 0; j < sampleSize; ++j)
-                    if(((double)rand())/RAND_MAX <= subsample){
+                    if(((float)rand())/RAND_MAX <= subsample){
                         treeFlag[i * sampleSize + j] += flag;
                         //++treeFlagNum;
                     }

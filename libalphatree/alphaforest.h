@@ -42,13 +42,10 @@ public:
         return alphaTreeCache_->useCacheMemory();
     }
 
-    void decode(int treeId, const char *name, const char *line, bool isLocal = false) {
-        getAlphaTree(treeId)->decode(name, line, alphaElementMap_, isLocal);
+    void decode(int treeId, const char *name, const char *line) {
+        getAlphaTree(treeId)->decode(name, line, alphaElementMap_);
     }
 
-    void decodeProcess(int treeId, const char *name, const char *line) {
-        getAlphaTree(treeId)->decodeProcess(name, line, alphaProcessMap_, alphaElementMap_);
-    }
 
     //归还一个alphatree
     void releaseAlphaTree(int id) {
@@ -69,10 +66,6 @@ public:
         return getAlphaTree(id)->encode(rootName, pout);
     }
 
-    const char *encodeProcess(int id, const char *processName, char *pout) {
-        return getAlphaTree(id)->encodeProcess(processName, pout);
-    }
-
 
     int useCache() {
         return alphaCache_->useCacheMemory();
@@ -86,24 +79,16 @@ public:
         alphaCache_->releaseCacheMemory(cacheId);
     }
 
-    const void
-    flagAlpha(int alphaTreeId, int cacheId, size_t dayBefore, size_t sampleSize, const char *codes, size_t stockSize,
-              bool *sampleFlag = nullptr, bool isFlagStock = false, bool isCalAllNode = false) {
-        getAlphaTree(alphaTreeId)->flagAlpha(&alphaDataBase_, dayBefore, sampleSize, codes, stockSize,
-                                             alphaCache_->getCacheMemory(cacheId), &threadPool_, sampleFlag,
-                                             isFlagStock, isCalAllNode);
+    const void calAlpha(int alphaTreeId, int cacheId, size_t dayBefore, size_t sampleSize, const char *codes, size_t stockSize) {
+        getAlphaTree(alphaTreeId)->calAlpha(&alphaDataBase_, dayBefore, sampleSize, codes, stockSize, alphaCache_->getCacheMemory(cacheId), &threadPool_);
     }
 
-    const void calAlpha(int alphaTreeId, int cacheId) {
-        getAlphaTree(alphaTreeId)->calAlpha(&alphaDataBase_, alphaCache_->getCacheMemory(cacheId), &threadPool_);
+    const void cacheAlpha(int alphaTreeId, int cacheId, bool isToFile) {
+        getAlphaTree(alphaTreeId)->cacheAlpha(&alphaDataBase_, alphaCache_->getCacheMemory(cacheId), &threadPool_, isToFile);
     }
 
-    const void cacheAlpha(int alphaTreeId, int cacheId) {
-        getAlphaTree(alphaTreeId)->cacheAlpha(&alphaDataBase_, alphaCache_->getCacheMemory(cacheId), &threadPool_);
-    }
-
-    const void processAlpha(int alphaTreeId, int cacheId) {
-        getAlphaTree(alphaTreeId)->processAlpha(&alphaDataBase_, alphaCache_->getCacheMemory(cacheId), &threadPool_);
+    float optimizeAlpha(int alphaTreeId, int cacheId, const char *rootName, size_t dayBefore, size_t sampleSize, const char *codes, size_t stockSize, float exploteRatio, int errTryTime){
+        return getAlphaTree(alphaTreeId)->optimizeAlpha(rootName, &alphaDataBase_, dayBefore, sampleSize, codes, stockSize, alphaCache_->getCacheMemory(cacheId), &threadPool_, exploteRatio, errTryTime);
     }
 
     const float *getAlpha(int alphaTreeId, const char *rootName, int cacheId) {
@@ -111,14 +96,9 @@ public:
         return getAlphaTree(alphaTreeId)->getAlpha(rootName, curCache);
     }
 
-    const int* getSign(int alphaTreeId, int cacheId){
+    const char* getProcess(int alphaTreeId, const char *rootName, int cacheId){
         auto curCache = alphaCache_->getCacheMemory(cacheId);
-        return getAlphaTree(alphaTreeId)->getSign(curCache);
-    }
-
-    const char *getProcess(int alphaTree, const char *processName, int cacheId) {
-        auto curCache = alphaCache_->getCacheMemory(cacheId);
-        return getAlphaTree(alphaTree)->getProcess(processName, curCache);
+        return getAlphaTree(alphaTreeId)->getProcess(rootName, curCache);
     }
 
     const float *getAlpha(int alphaTreeId, int nodeId, int cacheId) {
@@ -197,10 +177,8 @@ public:
 protected:
     AlphaForest(int cacheSize) : threadPool_(cacheSize) {
         initAlphaElement();
-
         //申请alphatree的内存
         alphaTreeCache_ = DCache<AlphaTree>::create();
-
         //申请中间结果的内存,有多少个cacheSize就可以同时计算几个alphatree
         alphaCache_ = Cache<AlphaCache>::create(cacheSize);
         char *p = alphaCache_->getBuff();
@@ -228,11 +206,6 @@ protected:
         for (auto i = 0; i < alphaAtomNum; i++) {
             alphaElementMap_[AlphaAtom::alphaAtomList[i].getName()] = &AlphaAtom::alphaAtomList[i];
         }
-
-        int alphaProcessNum = sizeof(AlphaProcess::alphaProcessList) / sizeof(AlphaProcess);
-        for (auto i = 0; i < alphaProcessNum; ++i) {
-            alphaProcessMap_[AlphaProcess::alphaProcessList[i].getName()] = &AlphaProcess::alphaProcessList[i];
-        }
     }
 
     AlphaTree *getAlphaTree(int id) {
@@ -251,7 +224,6 @@ protected:
 
     AlphaDB alphaDataBase_;
     HashMap<IAlphaElement *> alphaElementMap_;
-    HashMap<IAlphaProcess *> alphaProcessMap_;
 
     static AlphaForest *alphaForest_;
 };

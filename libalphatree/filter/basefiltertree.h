@@ -13,11 +13,11 @@ namespace fb {
     const size_t MAX_FILTER_NODE_BLOCK = 64;
     const size_t MAX_FILTER_NODE_STR_LEN = 1024;
 
-    double atof(const char *str)
+    float atof(const char *str)
     {
-        double s=0.0;
+        float s=0.0;
 
-        double d=10.0;
+        float d=10.0;
         int jishu=0;
 
         bool falg=false;
@@ -100,7 +100,7 @@ namespace fb {
         const char *getName() { return name_; }
 
         //得到系数
-        double getWeight() {
+        float getWeight() {
             return coff_;
         }
 
@@ -126,7 +126,7 @@ namespace fb {
             return FilterNodeType::LEAF;
         }
 
-        void setup(double weight = 0, const char *name = nullptr) {
+        void setup(float weight = 0, const char *name = nullptr) {
             leftId = -1;
             rightId = -1;
             coff_ = weight;
@@ -148,7 +148,7 @@ namespace fb {
         int rightId = {-1};
     protected:
         //过滤的系数
-        double coff_ = {0};
+        float coff_ = {0};
         char name_[MAX_FILTER_NODE_NAME_LEN] = {0};
     };
 
@@ -189,7 +189,7 @@ namespace fb {
                     CHECK(line[curIndex] == '<', "format error!");
 
                     //读出系数
-                    double coff = atof(line + (curIndex + 2));
+                    float coff = atof(line + (curIndex + 2));
 
                     //读出名字
                     nodeId = createNode(coff, line + (l + 1));
@@ -254,7 +254,7 @@ namespace fb {
             }
         }
 
-        int createNode(double coff = 0, const char *name = nullptr) {
+        int createNode(float coff = 0, const char *name = nullptr) {
             int index = nodeList_.getSize();
             nodeList_[index].setup(coff, name);
             return index;

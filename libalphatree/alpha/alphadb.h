@@ -41,29 +41,33 @@ class StockElement{
 public:
     int needDay = {0};
     float* data = {nullptr};
-    bool* flag = {nullptr};
+    //bool* flag = {nullptr};
+    StockElement(){
+        data = nullptr;
+    }
     StockElement(int day, int stockSize){
         data = new float[day * stockSize];
-        flag = new bool[day * stockSize];
     }
     ~StockElement(){
-        delete []data;
-        delete []flag;
+        if(data != nullptr)
+            delete []data;
+        //delete []flag;
     }
 };
 
 class StockDB{
 public:
     size_t* calendar = nullptr;
-    int stockSize = {0};
-    int days = {0};
+    size_t stockSize = {0};
+    size_t days = {0};
     StockMeta* metas = nullptr;
     HashMap<StockElement*> elements;
     HashMap<int> stockIndex;
+
 //    StockDB(int stockSize){
 //        this->stockSize = stockSize;
 //    }
-    StockDB(const char* path, const char* flagFeature = "volume"){
+    StockDB(const char* path){
         auto filepath = [path] (string file) {
             string filePath = path;
             filePath += "/";
@@ -99,7 +103,7 @@ public:
         while(iter != markets.end()){
             inFile = ifstream(filepath(*iter), ios::in);
             getline(inFile, lineStr);
-            int curDays = 0;
+            size_t curDays = 0;
             while (getline(inFile, lineStr))
                 ++curDays;
             if(curDays > days){
@@ -132,7 +136,7 @@ public:
         }
 
         StockDB* db = this;
-        auto readstock = [filepath, db, flagFeature](string code, int stockIndex){
+        auto readstock = [filepath, db](string code, int stockIndex){
             ifstream inFile = ifstream(filepath(code), ios::in);
             string lineStr;
             getline(inFile, lineStr);
@@ -148,7 +152,7 @@ public:
             while (getline(inFile, lineStr)){
                 ss = stringstream(lineStr);
                 getline(ss, feature, ',');
-                auto date = atol(feature.c_str());
+                size_t date = atol(feature.c_str());
                 //补之前的数据
                 bool hasFillTodayFeature = false;
 
@@ -161,14 +165,14 @@ public:
                     if(dayIndex == 0){
                         while(getline(ss, feature, ',')){
                             db->elements[featureArray[featureIndex].c_str()]->data[curIndex] = atof(feature.c_str());
-                            db->elements[featureArray[featureIndex].c_str()]->flag[curIndex] = false;
+                            //db->elements[featureArray[featureIndex].c_str()]->flag[curIndex] = false;
                             ++featureIndex;
                         }
                         hasFillTodayFeature = true;
                     } else {
                         for(featureIndex = 0; featureIndex < featureArray.size(); ++ featureIndex){
                             db->elements[featureArray[featureIndex].c_str()]->data[curIndex] = db->elements[featureArray[featureIndex].c_str()]->data[curIndex-1];
-                            db->elements[featureArray[featureIndex].c_str()]->flag[curIndex] = false;
+                            //db->elements[featureArray[featureIndex].c_str()]->flag[curIndex] = false;
                         }
                     }
                     ++dayIndex;
@@ -182,9 +186,9 @@ public:
                         db->elements[featureArray[featureIndex].c_str()]->data[curIndex] = atof(feature.c_str());
                         ++featureIndex;
                     }
-                    for(featureIndex = 0; featureIndex < featureArray.size(); ++ featureIndex){
-                        db->elements[featureArray[featureIndex].c_str()]->flag[curIndex] = (db->elements[flagFeature]->data[curIndex] > 0);
-                    }
+                    //for(featureIndex = 0; featureIndex < featureArray.size(); ++ featureIndex){
+                    //    db->elements[featureArray[featureIndex].c_str()]->flag[curIndex] = (db->elements[flagFeature]->data[curIndex] > 0);
+                    //}
                 }
             }
             //补未来数据
@@ -192,7 +196,7 @@ public:
                 int curIndex = db->days * stockIndex + dayIndex;
                 for(featureIndex = 0; featureIndex < featureArray.size(); ++ featureIndex){
                     db->elements[featureArray[featureIndex].c_str()]->data[curIndex] = db->elements[featureArray[featureIndex].c_str()]->data[curIndex-1];
-                    db->elements[featureArray[featureIndex].c_str()]->flag[curIndex] = false;
+                    //db->elements[featureArray[featureIndex].c_str()]->flag[curIndex] = false;
                 }
                 ++dayIndex;
             }
@@ -252,10 +256,11 @@ class AlphaDB{
             clean();
         }
 
-        bool loadDataBase(const char* path, const char* flagFeature = "volume"){
+        bool loadDataBase(const char* path){
+            this->path_ = path;
             clean();
 
-            db = new StockDB(path, flagFeature);
+            db = new StockDB(path);
             /*
             db = new stp::StockDB();
             ifstream in(path, ios::in);
@@ -320,26 +325,55 @@ class AlphaDB{
         float* getStock(size_t dayBefore, size_t historyNum, size_t sampleNum, size_t stockNum, const char* name, const char* leafDataClass,
                         float* dst, const char* codes){
             const char* curCode = codes;
-
             size_t dayNum = GET_ELEMEMT_SIZE(historyNum, sampleNum);
             size_t needDay = dayBefore + dayNum;
             if(needDay > getDays())
                 return nullptr;
 
             auto element = db->elements[name];
-            for(size_t i = 0; i < stockNum; ++i){
-                int stockIndex = getStockIndex(curCode, leafDataClass);
-                for(size_t j = 0; j < dayNum; ++j){
-                    dst[j * stockNum + i] = element->data[db->days * stockIndex + db->days - needDay + j];
+            if(element->data != nullptr){
+                for(size_t i = 0; i < stockNum; ++i){
+                    int stockIndex = getStockIndex(curCode, leafDataClass);
+                    for(size_t j = 0; j < dayNum; ++j){
+                        dst[j * stockNum + i] = element->data[db->days * stockIndex + db->days - needDay + j];
+                    }
+                    curCode = curCode + strlen(curCode) + 1;
+
                 }
-                curCode = curCode + strlen(curCode) + 1;
+            } else {
+                string filePath = path_;
+                filePath += "/";
+                filePath += name;
+                filePath += ".elm";
+                ifstream ifile;
+                ifile.open(filePath);
+
+                map<int, size_t > indexMap;
+                for(size_t i = 0; i < stockNum; ++i){
+                    int stockIndex = getStockIndex(curCode, leafDataClass);
+                    indexMap[stockIndex] = i;
+                    curCode = curCode + strlen(curCode) + 1;
+                }
+                for(int stockIndex = 0; stockIndex < db->stockSize; ++stockIndex){
+                    auto it = indexMap.find(stockIndex);
+                    if(it != indexMap.end()){
+                        ifile.seekg((db->days - needDay) * sizeof(float));
+                        size_t i = it->second;
+                        for(size_t j = 0; j < dayNum; ++j){
+                            ifile>>dst[j * stockNum + i];
+                        }
+                    } else{
+                        ifile.seekg(db->days * sizeof(float));
+                    }
+                }
+                ifile.close();
             }
 
 
             return dst;
         }
 
-        bool* getFlag(size_t dayBefore, size_t historyNum, size_t sampleNum, size_t stockNum, const char* name, bool* dst, const char* codes){
+        /*bool* getFlag(size_t dayBefore, size_t historyNum, size_t sampleNum, size_t stockNum, const char* name, bool* dst, const char* codes){
             const char* curCode = codes;
 
             size_t dayNum = GET_ELEMEMT_SIZE(historyNum, sampleNum);
@@ -356,29 +390,45 @@ class AlphaDB{
                 curCode = curCode + strlen(curCode) + 1;
             }
             return dst;
-        }
+        }*/
 
-        void setElement(const char* name, int needDay, float* alpha, bool* flag){
-//            auto map = db->mutable_elements();
-//            (*map)[name].set_needday(needDay);
-//            (*map)[name].set_line(line);
-//            for(size_t j = 0; j < db->stocksize(); ++j){
-//                for(size_t i = 0; i < db->days(); ++i){
-//                    (*map)[name].add_data(alpha[i * db->stocksize() + j]);
-//                    (*map)[name].add_flag(flag[i * db->stocksize() + j]);
-//                }
-//            }
+        void setElement(const char* name, int needDay, float* alpha, bool isToFile){
+            StockElement* element = nullptr;
+            if(isToFile){
+                element = new StockElement();//
 
-            StockElement* element = new StockElement(db->days, db->stockSize);
-            int index = 0;
-            for(size_t j = 0; j < db->stockSize; ++j){
-                for(size_t i = 0; i < db->days; ++i){
-                    element->data[index] = alpha[i * db->stockSize + j];
-                    element->flag[index] = flag[i * db->stockSize + j];
-                    ++index;
+                string filePath = path_;
+                filePath += "/";
+                filePath += name;
+                filePath += ".elm";
+                ofstream ofile;
+                ofile.open(filePath);
+
+                //int index = 0;
+                for(size_t j = 0; j < db->stockSize; ++j){
+                    for(size_t i = 0; i < db->days; ++i){
+                        ofile<<alpha[i * db->stockSize + j];
+                        //element->data[index] = alpha[i * db->stockSize + j];
+                        //element->flag[index] = flag[i * db->stockSize + j];
+                        //++index;
+                    }
+                }
+                ofile.close();
+            }else{
+                element = new StockElement(db->days, db->stockSize);
+                int index = 0;
+                for(size_t j = 0; j < db->stockSize; ++j){
+                    for(size_t i = 0; i < db->days; ++i){
+                        //ofile<<alpha[i * db->stockSize + j];
+                        element->data[index] = alpha[i * db->stockSize + j];
+                        //element->flag[index] = flag[i * db->stockSize + j];
+                        ++index;
+                    }
                 }
             }
+
             db->elements[name] = element;
+
         }
 
         void getFeature(size_t dayBefore, size_t sampleDays, size_t stockSize, const char* codes, const int* psign,
@@ -497,6 +547,7 @@ class AlphaDB{
         }*/
 
         StockDB* db = {nullptr};
+        const char* path_ = {nullptr};
 
         /*void fillFeature(size_t dayBefore, size_t sampleNum, size_t stockSize, const char* codes, const float* buy, const float* sell, size_t signCount){
             const char* curCode = codes;
