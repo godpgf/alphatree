@@ -1064,8 +1064,7 @@ void* ftSharp(void** pars, float coff, size_t historySize, size_t stockSize, Cac
 }
 
 
-
-void* eratio(void** pars, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag){
+void* resEratio(void** pars, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag){
     float* buy = (float*)pars[0];
     float* close = (float*)pars[1];
     float* atr = (float*)pars[2];
@@ -1132,5 +1131,52 @@ void* eratio(void** pars, float coff, size_t historySize, size_t stockSize, Cach
     );
     return pout;
 }
+
+void* optShape(void** pars, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag){
+    float* buy = (float*)pars[0];
+    float* close = (float*)pars[1];
+    float* pout = (float*)pars[0];
+
+
+    int signCounts = 0;
+    float returns = 0;
+    float returnsSqr = 0;
+
+    float maxPrice = 0;
+    float minPrice = FLT_MAX;
+
+    for(size_t i = 0; i < historySize; ++i){
+        if(pflag[i] == CacheFlag::NEED_CAL){
+            for(size_t j = 0; j < stockSize; ++j){
+                auto curIndex = i * stockSize + j;
+                if(buy[curIndex] > 0){
+                    int buyDay = (int)buy[curIndex];
+                    maxPrice = close[curIndex];
+                    minPrice = close[curIndex];
+                    for(int k = 1; k <= buyDay; ++k){
+                        //已经买入,等待卖出
+                        maxPrice = max(maxPrice, close[curIndex + k * stockSize]);
+                        minPrice = min(minPrice, close[curIndex + k * stockSize]);
+                    }
+                    ++signCounts;
+                    returns += (close[curIndex + buyDay * stockSize] - close[curIndex]) / max(close[curIndex],0.001f);
+                    returnsSqr += powf((close[curIndex + buyDay * stockSize] - close[curIndex]) / max(close[curIndex],0.001f), 2);
+                }
+            }
+        }
+    }
+
+    float s = (returns / signCounts) / sqrtf(returnsSqr / signCounts - powf(returns / signCounts, 2));
+
+    for(size_t i = 0; i < historySize; ++i){
+        if(pflag[i] == CacheFlag::NEED_CAL){
+            size_t curIndex = i * stockSize;
+            pout[curIndex] = s;
+        }
+    }
+
+    return pout;
+}
+
 
 #endif //ALPHATREE_ALPHA_H

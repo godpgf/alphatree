@@ -155,21 +155,9 @@ public:
         maxHistoryDay_ = NONE;
         //如果缓存空间不够,就重新申请内存
         cache->initialize(nodeList_.getSize(), getMaxHistoryDays(), dayBefore, sampleSize, codes, stockSize);
-
         //重新标记所有节点
         flagAllNode(cache);
-
-        //int rootId = getSubtreeRootId(rootName);
-        /*for (auto i = 0; i < nodeList_.getSize(); ++i) {
-            int nodeId = i;
-            AlphaTree *alphaTree = this;
-            //cout<<i<<endl;
-            cache->nodeRes[i] = threadPool->enqueue([alphaTree, alphaDataBase, nodeId, cache] {
-                return alphaTree->cast(alphaDataBase, nodeId, cache);
-            }).share();
-        }*/
         calAlpha(alphaDataBase, cache, threadPool);
-
     }
 
 
@@ -201,10 +189,9 @@ public:
         for(int i = 0; i < coffList_.getSize(); ++i){
             bestCoffList[i] = coffList_[i].coffValue;
         }
-
         calAlpha(alphaDataBase, dayBefore, sampleSize, codes, stockSize, cache, threadPool);
         float bestRes = getAlpha(rootName, cache)[0];
-
+        //cout<<"start "<<bestRes<<endl;
         RandomChoose rc = RandomChoose(2 * coffList_.getSize());
 
         auto curErrTryTime = errTryTime;
@@ -213,7 +200,7 @@ public:
             float lastCoffValue = NAN;
             int curIndex = 0;
             bool isAdd = false;
-            while(lastCoffValue == NAN){
+            while(isnanf(lastCoffValue)){
                 curIndex = rc.choose();
                 isAdd = curIndex < coffList_.getSize();
                 curIndex = curIndex % coffList_.getSize();
@@ -236,11 +223,17 @@ public:
                     }
                     coffList_[curIndex].coffValue = max(coffList_[curIndex].coffValue, nodeList_[srcIndex].getElement()->getMinCoff());
                 }
+                if(isnanf(lastCoffValue)){
+                    curIndex = isAdd ? curIndex : coffList_.getSize() + curIndex;
+                    rc.reduce(curIndex);
+                }
+
             }
 
             calAlpha(alphaDataBase, dayBefore, sampleSize, codes, stockSize, cache, threadPool);
             float res = getAlpha(rootName, cache)[0];
             if(res > bestRes){
+                cout<<"best res "<<res<<endl;
                 curErrTryTime = errTryTime;
                 bestRes = res;
                 for(int i = 0; i < coffList_.getSize(); ++i){
@@ -265,6 +258,7 @@ public:
             coffList_[i].coffValue = bestCoffList[i];
         }
         delete []bestCoffList;
+        //cout<<"finish opt"<<bestRes<<endl;
         return bestRes;
     }
 
@@ -286,6 +280,7 @@ public:
         float *result = (float *) cache->result->getCacheMemory(memid).cache;
         //CacheFlag* flag = AlphaTree::getNodeCacheMemory(nodeId, dateSize, cache->stockSize, cache->stockFlag);
         //flagResult(result, flag, dateSize * cache->stockSize);
+        //cout<<"get "<<memid<<" "<<(int) ((getMaxHistoryDays() - 1) * cache->stockSize)<<endl;
         return result + (int) ((getMaxHistoryDays() - 1) * cache->stockSize);
     }
 
@@ -405,7 +400,7 @@ protected:
             maxDays = max(getMaxHistoryDays(nodeList_[nodeId].childIds[i]), maxDays);
         }
         //cout<<nodeList_[nodeId].getName()<<" "<<nodeList_[nodeId].getNeedBeforeDays(coffList_)<<" "<<maxDays<<endl;
-        return nodeList_[nodeId].getNeedBeforeDays(coffList_) + maxDays;
+        return roundf(nodeList_[nodeId].getNeedBeforeDays(coffList_)) + maxDays;
     }
 
 
@@ -424,14 +419,11 @@ protected:
     }
 
     void flagNodeDay(int nodeId, int dayIndex, int dateSize, AlphaCache *cache) {
-
         CacheFlag *curFlag = getNodeFlag(nodeId, dateSize, cache->dayFlag);
-
         //bool* curStockFlag = getNodeCacheMemory(nodeId, dateSize, cache->stockSize, cache->resultFlag) + dayIndex * cache->stockSize;
         if (curFlag[dayIndex] == CacheFlag::NO_FLAG) {
             //填写数据
             curFlag[dayIndex] = CacheFlag::NEED_CAL;
-
             if (nodeList_[nodeId].getChildNum() > 0) {
                 //for(size_t i = 0; i < cache->stockSize; ++i)
                 //    curStockFlag[i] = true;
@@ -469,77 +461,6 @@ protected:
 
     }
 
-    /*void flagNodeStock(int nodeId, int dayIndex, int stockIndex, AlphaDB *alphaDataBase, size_t dayBefore,
-                       size_t sampleSize, bool *flagCache,
-                       const char *curCode, size_t stockSize, bool isCalAllNode = false){
-        int dateSize = GET_ELEMEMT_SIZE(getMaxHistoryDays(), sampleSize);
-        CHECK(dayIndex >= 0 && dayIndex < dateSize, "标记错误");
-        bool * curFlagCache = getNodeCacheMemory(nodeId, dateSize, stockSize, flagCache);
-        int deltaSpace = dateSize + dayBefore - dayIndex;
-        //只需要标记没有标记过的
-        int curIndex = dayIndex * stockSize + stockIndex;
-        if(curFlagCache[curIndex] == false){
-            if(nodeList_[nodeId].getChildNum() == 0){
-                bool* alphaDataBase->getFlag()
-                Stock* stock = alphaDataBase->getStock(curCode, nodeList_[nodeId].getWatchLeafDataClass());
-                if(stock == nullptr || stock->size < deltaSpace || stock->volume[stock->size - deltaSpace] <= 0){
-                    curFlagCache[curIndex] = CacheFlag::CAN_NOT_FLAG;
-                    //cout<<stock->code<<" "<<curCode<<" "<<nodeList_[nodeId].getWatchLeafDataClass()<<" "<<stock->size<<"-"<<deltaSpace<<" "<<stockIndex<<" stock err"<<endl;
-                } else{
-                    curFlagCache[curIndex] = CacheFlag::NEED_CAL;
-                }
-            } else{
-                //先标记孩子
-                int dayNum = (int)roundf(nodeList_[nodeId].getNeedBeforeDays(coffList_));
-                switch(nodeList_[nodeId].getElement()->getDateRange()){
-                    case DateRange::CUR_DAY:
-                        flagAllChild(nodeId, dayIndex, stockIndex, alphaDataBase, dayBefore, sampleSize, flagCache, curCode, stockSize, isCalAllNode);
-                        break;
-                    case DateRange::BEFORE_DAY:
-                        flagAllChild(nodeId,dayIndex - dayNum, stockIndex, alphaDataBase, dayBefore, sampleSize, flagCache, curCode, stockSize, isCalAllNode);
-                        break;
-                    case DateRange::CUR_AND_BEFORE_DAY:
-                        flagAllChild(nodeId, dayIndex, stockIndex, alphaDataBase, dayBefore, sampleSize, flagCache, curCode, stockSize, isCalAllNode);
-                        flagAllChild(nodeId,dayIndex - dayNum, stockIndex, alphaDataBase, dayBefore, sampleSize, flagCache, curCode, stockSize, isCalAllNode);
-                        break;
-                    case DateRange::ALL_DAY:
-                        for(auto i = 0; i <= dayNum; ++i)
-                            flagAllChild(nodeId,dayIndex - i, stockIndex, alphaDataBase, dayBefore, sampleSize, flagCache, curCode, stockSize, isCalAllNode);
-                        break;
-                }
-                if(isCalAllNode){
-                    for(int i = getMaxHistoryDays() - 1; i < getMaxHistoryDays() + sampleSize - 1; ++i){
-                        flagAllChild(nodeId,i, stockIndex, alphaDataBase, dayBefore, sampleSize, flagCache, curCode, stockSize, isCalAllNode);
-                    }
-                }
-                //再标记自己
-                CacheFlag * leftFlagCache = getNodeCacheMemory(nodeList_[nodeId].leftId, dateSize, stockSize, flagCache);
-                CacheFlag * rightFlagCache = nodeList_[nodeId].getChildNum() > 1 ? getNodeCacheMemory(nodeList_[nodeId].rightId, dateSize, stockSize, flagCache) : nullptr;
-                switch(nodeList_[nodeId].getElement()->getDateRange()){
-                    case DateRange::CUR_DAY:
-                        curFlagCache[curIndex] = getFlag(leftFlagCache, rightFlagCache, curIndex);
-                        break;
-                    case DateRange::BEFORE_DAY:
-                        curFlagCache[curIndex] = getFlag(leftFlagCache, rightFlagCache, curIndex - dayNum * stockSize);
-                        break;
-                    case DateRange::CUR_AND_BEFORE_DAY:
-                        curFlagCache[curIndex] = CacheFlag::NEED_CAL;
-                        if(getFlag(leftFlagCache, rightFlagCache, curIndex) == CacheFlag::CAN_NOT_FLAG || getFlag(leftFlagCache, rightFlagCache, curIndex - dayNum * stockSize) == CacheFlag::CAN_NOT_FLAG)
-                            curFlagCache[curIndex] = CacheFlag::CAN_NOT_FLAG;
-                        break;
-                    case DateRange::ALL_DAY:
-                        curFlagCache[curIndex] = CacheFlag::NEED_CAL;
-                        for(auto i = 0; i <= dayNum; ++i){
-                            if(getFlag(leftFlagCache, rightFlagCache, curIndex - i * stockSize) == CacheFlag::CAN_NOT_FLAG){
-                                curFlagCache[curIndex] = CacheFlag::CAN_NOT_FLAG;
-                                return;
-                            }
-                        }
-                        break;
-                }
-            }
-        }
-    }*/
 
     int maxHistoryDay_;
 
@@ -604,7 +525,6 @@ private:
     }
 
     inline void flagAllChild(int nodeId, int dayIndex, int dateSize, AlphaCache *cache) {
-
         for (int i = 0; i < nodeList_[nodeId].getChildNum(); ++i)
             flagNodeDay(nodeList_[nodeId].childIds[i], dayIndex, dateSize, cache);
         //flagNodeDay(nodeList_[nodeId].leftId, dayIndex, dateSize, cache);

@@ -117,8 +117,14 @@ public:
     CoffUnit getCoffUnit(){return element_->getCoffUnit();}
 
     float getNeedBeforeDays(DArray<AlphaCoff, MAX_NODE_BLOCK>& coffList){
-        if(getCoffUnit() == CoffUnit::COFF_DAY)
+        if(getCoffUnit() == CoffUnit::COFF_DAY){
+            if(isnanf(coffList[externalCoffIndex_].coffValue))
+            {
+                cout<<"error "<<externalCoffIndex_<<endl;
+            }
             return coffList[externalCoffIndex_].coffValue;
+        }
+
         return 0;
         //float day = coffList[externalCoffIndex_];
         //return fmaxf(day, element_->getMinHistoryDays());

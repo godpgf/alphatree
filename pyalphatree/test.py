@@ -662,7 +662,7 @@ def cache_path(af, path):
             cache_alpha(af, tmp[0].replace(" ",""), tmp[1][:-1])
 
 
-def test_eraito_strategy(af, daybefore = 0, sample_size = 250):
+def test_res_eraito_strategy(af, daybefore = 0, sample_size = 250):
     print "test eratio-------------------------------------"
     root = "../strategy"
     cache_path(af,"../strategy/base.txt")
@@ -689,34 +689,66 @@ def test_eraito_strategy(af, daybefore = 0, sample_size = 250):
                         tmp = line.split('=')
                         print tmp
                         af.decode_alphatree(alphatree_id, tmp[0], tmp[1][:-1])
-                    af.decode_alphatree(alphatree_id, "target", "ft_sharp(buy, close, low)")
+                    #af.decode_alphatree(alphatree_id, "target", "ft_sharp(buy, close, low)")
 
-                    #print af.encode_alphatree(alphatree_id, tmp[0])
+                    af.decode_alphatree(alphatree_id, "res", "res_eratio(buy, close, atr14)")
 
-                    af.decode_alphatree(alphatree_id, "res", "eratio(buy, close, atr14)")
-                    #af.decode_alphatree(alphatree_id, "res2", "sharp(buy, close)")
-                    #print af.encode_alphatree(alphatree_id, "buy")
                     history_days = af.get_max_history_days(alphatree_id)
                     codes = af.get_stock_codes()
 
                     af.cal_alpha(alphatree_id, cache_id, daybefore, sample_size, codes)
-                    #sell = np.array(af.get_root_alpha(alphatree_id, "sell", cache_id, sample_size))
                     buy = np.array(af.get_root_alpha(alphatree_id, "buy", cache_id, sample_size))
-                    target = np.array(af.get_root_alpha(alphatree_id, "target", cache_id, sample_size))
-                    #af.process_alpha(alphatree_id, cache_id)
+                    #target = np.array(af.get_root_alpha(alphatree_id, "target", cache_id, sample_size))
 
                     process_res = json.loads(af.get_process(alphatree_id, "res", cache_id))
-
-                    #feature_list = ["return5","return10","return20","amount0_5","amount5_20",
-                    #                "r_amount0_5", "r_amount5_10", "r_return", "r_return5", "r_return10",
-                    #                "r_return0_5", "r_return5_10"]
-                    #af.learn_filter(alphatree_id, cache_id, feature_list, tree_size=2, max_depth=8, adj_weight_rule=0, iterator_num=4)
-
 
                     af.release_cache(cache_id)
                     af.release_alphatree(alphatree_id)
 
                     print process_res
+
+def test_opt_sharp_strategy(af, daybefore = 0, sample_size = 250):
+    print "test sharp-------------------------------------"
+    root = "../strategy"
+    cache_path(af,"../strategy/base.txt")
+
+    paths = os.listdir(root)
+    for path in paths:
+        if os.path.isdir(root + "/" + path):
+            print path
+            files = os.listdir(root + "/" + path)
+            for file in files:  # 遍历文件夹
+                if not os.path.isdir(root + "/" + path + "/" + file) and file.endswith(".txt"):  # 判断是否是文件夹，不是文件夹才打开
+
+                    print path + "/" + file
+                    f = open(root + "/" + path + "/" + file);  # 打开文件
+                    iter_f = iter(f);  # 创建迭代器
+
+                    alphatree_id = af.create_alphatree()
+                    cache_id = af.use_cache()
+
+                    for line in iter_f:
+                        if line.startswith("#"):
+                            print line[1:-1]
+                            continue
+                        tmp = line.split('=')
+                        print tmp
+                        af.decode_alphatree(alphatree_id, tmp[0], tmp[1][:-1])
+                    #af.decode_alphatree(alphatree_id, "target", "ft_sharp(buy, close, low)")
+
+                    af.decode_alphatree(alphatree_id, "opt", "opt_sharp(buy, close)")
+
+                    history_days = af.get_max_history_days(alphatree_id)
+                    codes = af.get_stock_codes()
+
+                    print "sharp:%.4f"%af.optimize_alpha(alphatree_id, cache_id, "opt", daybefore, sample_size, codes)
+                    #buy = np.array(af.get_root_alpha(alphatree_id, "buy", cache_id, sample_size))
+                    #target = np.array(af.get_root_alpha(alphatree_id, "target", cache_id, sample_size))
+
+                    #process_res = json.loads(af.get_process(alphatree_id, "res", cache_id))
+
+                    af.release_cache(cache_id)
+                    af.release_alphatree(alphatree_id)
 
 
 if __name__ == '__main__':
@@ -732,7 +764,5 @@ if __name__ == '__main__':
 
     #test_alpha101(af)
 
-
-
-    test_eraito_strategy(af)
-
+    #test_res_eraito_strategy(af)
+    test_opt_sharp_strategy(af)

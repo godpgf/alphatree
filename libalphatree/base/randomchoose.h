@@ -28,13 +28,17 @@ public:
     void reduce(int elementId){--elementList_[elementId];}
     int choose(){
         float sumP = 0;
-        for(int i = 0; i < elementSize_; ++i)
+        for(int i = 0; i < elementSize_; ++i){
             sumP += sigmoid(elementList_[i]);
-        float rValue = rand() * sumP / (float)RAND_MAX;
+        }
+
+        float rValue = rand() / (float)RAND_MAX;
+        rValue *= sumP;
         for(int i = 0; i < elementSize_; ++i){
             rValue -= sigmoid(elementList_[i]);
-            if(rValue <= 0)
+            if(rValue <= 0){
                 return i;
+            }
         }
         return elementSize_-1;
     }

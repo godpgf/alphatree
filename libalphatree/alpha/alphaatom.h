@@ -183,7 +183,8 @@ AlphaAtom AlphaAtom::alphaAtomList[] = {
         AlphaAtom("cross_to", crossTo, 1, 0, CoffUnit::COFF_DAY, DateRange::CUR_AND_BEFORE_DAY),
         AlphaAtom("match", match, 2),
         AlphaAtom("ft_sharp", ftSharp, 3, 2),
-        AlphaAtom("eratio", eratio, 4, 3),
+        AlphaAtom("res_eratio", resEratio, 4, 3),
+        AlphaAtom("opt_sharp", optShape, 2),
         //AlphaAtom("up_mean", upMean, 1, CoffUnit::COFF_DAY),
 };
 
