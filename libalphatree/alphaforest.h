@@ -8,6 +8,7 @@
 
 #include "alpha/alphatree.h"
 #include "filter/filterforest.h"
+#include "carf/carf.h"
 #include "base/cache.h"
 #include "base/dcache.h"
 #include "base/threadpool.h"

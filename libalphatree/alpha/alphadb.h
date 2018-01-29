@@ -146,7 +146,7 @@ public:
             getline(ss, feature, ',');
             while(getline(ss, feature, ','))
                 featureArray.push_back(feature);
-            int dayIndex = 0;
+            size_t dayIndex = 0;
             int featureIndex = 0;
             long last_day = 0;
             while (getline(inFile, lineStr)){

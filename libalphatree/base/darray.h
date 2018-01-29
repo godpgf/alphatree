@@ -1,5 +1,6 @@
 //
 // Created by yanyu on 2017/9/24.
+// 不是线程安全的！
 //
 
 #ifndef ALPHATREE_DARRAY_H

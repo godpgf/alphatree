@@ -1,6 +1,5 @@
 //
 // Created by yanyu on 2017/7/12.
-// 实现所有计算,规定所有运算参数小于等于2个
 //
 
 #ifndef ALPHATREE_ALPHA_H
