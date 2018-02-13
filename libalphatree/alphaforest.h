@@ -7,8 +7,6 @@
 #define ALPHATREE_ALPHAFOREST_H
 
 #include "alpha/alphatree.h"
-#include "filter/filterforest.h"
-#include "carf/carf.h"
 #include "base/cache.h"
 #include "base/dcache.h"
 #include "base/threadpool.h"
@@ -20,7 +18,6 @@
 #include <string.h>
 
 using namespace std;
-using namespace fb;
 
 class AlphaForest {
 public:
@@ -84,8 +81,8 @@ public:
         getAlphaTree(alphaTreeId)->calAlpha(&alphaDataBase_, dayBefore, sampleSize, codes, stockSize, alphaCache_->getCacheMemory(cacheId), &threadPool_);
     }
 
-    const void cacheAlpha(int alphaTreeId, int cacheId, bool isToFile) {
-        getAlphaTree(alphaTreeId)->cacheAlpha(&alphaDataBase_, alphaCache_->getCacheMemory(cacheId), &threadPool_, isToFile);
+    const void cacheAlpha(int alphaTreeId, int cacheId, const char* featureName) {
+        getAlphaTree(alphaTreeId)->cacheAlpha(&alphaDataBase_, alphaCache_->getCacheMemory(cacheId), &threadPool_, featureName);
     }
 
     float optimizeAlpha(int alphaTreeId, int cacheId, const char *rootName, size_t dayBefore, size_t sampleSize, const char *codes, size_t stockSize, float exploteRatio, int errTryTime){

@@ -81,6 +81,9 @@ class AlphaForest(object):
     def load_db(self, path):
         alphatree.loadDataBase(c_char_p(path))
 
+    def cache_feature(self, feature_name):
+        alphatree.cacheFeature(c_char_p(feature_name))
+
     # def load_data(self, codeProxy, dataProxy, classifiedProxy):
     #     data_size = len(dataProxy.trading_calender_int)
     #     stock_dict, market_dict, industry_dict, concept_dict = load_all_stock_flat(codeProxy, dataProxy,

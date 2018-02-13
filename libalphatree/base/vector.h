@@ -61,8 +61,6 @@ protected:
     char name_[MAX_VECTOR_NAME_LEN];
     T* memory_ = {nullptr};
     size_t size_ = {0};
-
-
 };
 
 #endif //ALPHATREE_VECTOR_H

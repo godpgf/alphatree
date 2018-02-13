@@ -19,6 +19,8 @@ public:
     }
 
     void cleanNode(int nodeId){
+        if(nodeId == 6)
+            cout<<"eerr\n";
         for(int i = 0; i < getChildNum(nodeId); ++i){
             cleanNode(getChild(nodeId, i));
         }
@@ -26,7 +28,14 @@ public:
         releaseNodeMemory(nodeId);
     }
 
-
+    void freeNode(int nodeId){
+        for(int i = 0; i < getChildNum(nodeId); ++i){
+            int childId = getChild(nodeId, i);
+            nodeMemoryBuf_[childId].preId = -1;
+        }
+        nodeMemoryBuf_[nodeId].childNum = 0;
+        releaseNodeMemory(nodeId);
+    }
 
     void releaseAll(){
         std::unique_lock<std::mutex> lock{mutex_};
@@ -47,18 +56,31 @@ public:
         return true;
     }
 
+    int getLeafNum(int rootId){
+        int leftNum = 0;
+        for(int i = 0; i < getChildNum(rootId); ++i){
+            leftNum += getLeafNum(getChild(rootId, i));
+        }
+        if(leftNum % 2 == 1)
+            ++leftNum;
+        return leftNum == 0 ? 1 : leftNum;
+    }
+
     int getChildNum(int rootId){ return nodeMemoryBuf_[rootId].childNum;}
     int getChild(int rootId, int childIndex){ return nodeMemoryBuf_[rootId].children[childIndex];}
     int getParent(int rootId){ return nodeMemoryBuf_[rootId].preId;}
     void removeChild(int rootId, int childIndex){
+
         cleanNode(getChild(rootId, childIndex));
 
         while (childIndex <  getChildNum(rootId) - 1){
             nodeMemoryBuf_[rootId].children[childIndex] = nodeMemoryBuf_[rootId].children[childIndex+1];
             ++childIndex;
         }
+
         --nodeMemoryBuf_[rootId].childNum;
     }
+
 
     T& operator[](int nodeIndex){
         return nodeMemoryBuf_[nodeIndex].data;

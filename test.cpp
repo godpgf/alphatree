@@ -6,6 +6,7 @@
 #include "libalphatree/base/darray.h"
 #include "libalphatree/base/normal.h"
 #include <thread>
+#include <vector>
 
 using namespace std;
 
@@ -94,6 +95,53 @@ class B{
 };
 
 int main() {
+    AlphaForest::initialize(4);
+    AlphaForest::getAlphaforest()->getAlphaDataBase()->loadDataBase("pyalphatree/data");
+    //AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/data", "date");
+
+    /*{
+        AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/data", "date");
+        AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/data", "open");
+        AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/data", "high");
+        AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/data", "low");
+        AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/data", "close");
+        AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/data", "volume");
+        AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/data", "vwap");
+        AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/data", "returns");
+        AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/data", "amount");
+        AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/data", "turn");
+        AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/data", "tcap");
+        AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/data", "mcap");
+    }*/
+
+    {
+        //AlphaForest::getAlphaforest()->getAlphaDataBase()->cacheFeature("date");
+        //AlphaForest::getAlphaforest()->getAlphaDataBase()->cacheFeature("returns");
+
+        int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
+        AlphaForest::getAlphaforest()->decode(alphatreeId, "root", "atr15");
+        int cacheId = AlphaForest::getAlphaforest()->useCache();
+        char codes[8 * 4096];
+        size_t stockNum = AlphaForest::getAlphaforest()->getAlphaDataBase()->getStockCodes(codes);
+        AlphaForest::getAlphaforest()->calAlpha(alphatreeId, cacheId, 0, 1, codes, stockNum);
+        const float* alpha = AlphaForest::getAlphaforest()->getAlpha(alphatreeId, "root", cacheId);
+
+        AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
+        AlphaForest::getAlphaforest()->releaseCache(cacheId);
+    }
+
+    {
+        int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
+        AlphaForest::getAlphaforest()->decode(alphatreeId, "atr15", "mean(max((high - low), max((high - delay(close, 1)), (delay(close, 1) - low))), 14)");
+        int cacheId = AlphaForest::getAlphaforest()->useCache();
+        AlphaForest::getAlphaforest()->cacheAlpha(alphatreeId, cacheId, "atr15");
+        AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
+        AlphaForest::getAlphaforest()->releaseCache(cacheId);
+    }
+
+    //vector<string> f;
+    //f.push_back()
+
     B* bb = new B();
     cout<<"test darray--------------\n";
     DArray<int, 1024> a;
@@ -167,20 +215,6 @@ int main() {
         cout<<id<<endl;
     }
 
-
-
-    int id = AlphaForest::getAlphaforest()->useAlphaTree();
-    AlphaForest::getAlphaforest()->decode(id, "alpha", "(indneutralize((correlation(delta(close, 1), delta(delay(close, 1), 1), 250) * (delta(close, 1) / close)), IndClass.market) / sum(((delta(close, 1) / delay(close, 1)) ^ 2), 250))");
-    cout<<AlphaForest::getAlphaforest()->encodeAlphaTree(id, "alpha",outstr)<<endl;
-    int ids[] = {id};
-    int substr = AlphaForest::getAlphaforest()->summarySubAlphaTree(ids,1,2,outstr);
-    char* p = outstr;
-    while(substr--){
-        cout<<p<<endl;
-        p += (strlen(p)+1);
-    }
-
-    id = AlphaForest::getAlphaforest()->useFilterTree();
 
     return 0;
 }

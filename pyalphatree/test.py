@@ -129,12 +129,16 @@ def test_alphaforest(af, alphatree_list, subalphatree_dict, sample_size = 1):
 def test_base_calculate(af, dataProxy, is_cmp = False):
     print "start test base calculate .................."
 
+
     print "cache alpha"
-    cache_alpha(af, "atr15", "mean(max((high - low), max((high - delay(close, 1)), (delay(close, 1) - low))), 14)")
+    #cache_alpha(af, "atr15", "mean(max((high - low), max((high - delay(close, 1)), (delay(close, 1) - low))), 14)")
     alpha, codes = cal_alpha(af, "atr15", 1)
-    if is_cmp and False:
+    if is_cmp:
         for index, code in enumerate(codes):
+            print code
             close = dataProxy.get_all_Data(code)[-16][4]
+            if dataProxy.get_all_Data(code)[-1][5] >= 0:
+                continue
             sum = 0
             for i in xrange(15):
                 tr = max((dataProxy.get_all_Data(code)[-15 + i][2] - dataProxy.get_all_Data(code)[-15 + i][3]),
@@ -149,6 +153,7 @@ def test_base_calculate(af, dataProxy, is_cmp = False):
     alpha, codes = cal_alpha(af, "returns", 2)
     if is_cmp:
         for index, code in enumerate(codes):
+            #print code
             float_equal(dataProxy.get_all_Data(code)[-1][7], alpha[-1][index])
             float_equal(dataProxy.get_all_Data(code)[-2][7], alpha[-2][index])
 
@@ -753,16 +758,32 @@ def test_opt_sharp_strategy(af, daybefore = 0, sample_size = 250):
 
 if __name__ == '__main__':
     #download_stock_data()
+    #print "finish download"
 
     af = AlphaForest()
     af.load_db("data")
 
+    #缓存数据到内存
+    #af.cache_feature("date")
+    #af.cache_feature("open")
+    #af.cache_feature("high")
+    #af.cache_feature("low")
+    #af.cache_feature("close")
+    #af.cache_feature("volume")
+    #af.cache_feature("vwap")
+    #af.cache_feature("returns")
+    #af.cache_feature("amount")
+    #af.cache_feature("turn")
+    #af.cache_feature("tcap")
+    #af.cache_feature("mcap")
+    #print "finish cache"
+
     #codeProxy = LocalCodeProxy(cache_path = "data", is_offline = False)
-    #dataProxy = LocalDataProxy(cache_path = "data", is_offline = True)
-    #test_base_calculate(af, dataProxy, True)
+    dataProxy = LocalDataProxy(cache_path = "data", is_offline = True)
+    test_base_calculate(af, dataProxy, True)
     #classifiedProxy = LocalClassifiedProxy(cache_path = "data", is_offline = False)
 
     #test_alpha101(af)
 
     #test_res_eraito_strategy(af)
-    test_opt_sharp_strategy(af)
+    #test_opt_sharp_strategy(af)

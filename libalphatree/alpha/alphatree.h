@@ -60,31 +60,6 @@ public:
         initialize(nodeSize, historyDays, dayBefore, sampleDays, stockSize);
     }
 
-    void initialize(size_t nodeSize, size_t historyDays, AlphaDB *alphaDatabase) {
-        size_t sampleDays = alphaDatabase->getDays() - historyDays + 1;
-        initialize(nodeSize, historyDays, 0, sampleDays, alphaDatabase->getStockNum());
-        this->stockSize = alphaDatabase->getAllCodes(this->codes);
-    }
-
-
-    //监控某个节点在多线程中的计算状态
-    std::shared_future<int> *nodeRes = {nullptr};
-    //保存中间计算结果
-    DCache<NodeCache> *result = {nullptr};
-    //保存某日所有股票是否需要计算
-    CacheFlag *dayFlag = {nullptr};
-    //保存需要计算的股票代码
-    char *codes = {nullptr};
-    //记录各个缓存当前大小,如果某个计算要求的大小超过了就需要重新分配内存
-    size_t nodeCacheSize = {0};
-    size_t dayCacheSize = {0};
-    size_t codeCacheSize = {0};
-
-    size_t dayBefore = {0};
-    size_t sampleDays = {0};
-    size_t stockSize = {0};
-
-protected:
     void initialize(size_t nodeSize, size_t historyDays, size_t dayBefore, size_t sampleDays, size_t stockSize) {
         this->dayBefore = dayBefore;
         this->sampleDays = sampleDays;
@@ -124,6 +99,25 @@ protected:
         memset(dayFlag, 0, dcs * sizeof(CacheFlag));
         result->releaseAll();
     }
+
+
+    //监控某个节点在多线程中的计算状态
+    std::shared_future<int> *nodeRes = {nullptr};
+    //保存中间计算结果
+    DCache<NodeCache> *result = {nullptr};
+    //保存某日所有股票是否需要计算
+    CacheFlag *dayFlag = {nullptr};
+    //保存需要计算的股票代码
+    char *codes = {nullptr};
+    //记录各个缓存当前大小,如果某个计算要求的大小超过了就需要重新分配内存
+    size_t nodeCacheSize = {0};
+    size_t dayCacheSize = {0};
+    size_t codeCacheSize = {0};
+
+    size_t dayBefore = {0};
+    size_t sampleDays = {0};
+    size_t stockSize = {0};
+
 };
 
 
@@ -161,24 +155,39 @@ public:
     }
 
 
-    //保存alphatree到alphaDB,isFeature表示是否作为机器学习的特征
-    void cacheAlpha(AlphaDB *alphaDataBase, AlphaCache *cache, ThreadPool *threadPool, bool isToFile) {
+    void cacheAlpha(AlphaDB *alphaDataBase, AlphaCache *cache, ThreadPool *threadPool, const char* featureName) {
         maxHistoryDay_ = NONE;
-        cache->initialize(nodeList_.getSize(), getMaxHistoryDays(), alphaDataBase);
-        //int dateSize = alphaDataBase->getDays();
-        //重新标记所有节点
-        flagAllNode(cache);
-        //flagAllStock(alphaDataBase, cache, threadPool, true);
-        calAlpha(alphaDataBase, cache, threadPool);
-        for (auto i = 0; i < subtreeList_.getSize(); ++i) {
-            int memid = cache->nodeRes[subtreeList_[i].rootId].get();
-            float *alpha = (float *) cache->result->getCacheMemory(memid).cache;
-            //bool *flag = cache->flagRes[subtreeList_[i].rootId].get();
-            int needDay = getMaxHistoryDays() - 1;
-            //cout<<"set "<<subtreeList_[i].name<<endl;
-            alphaDataBase->setElement(subtreeList_[i].name, needDay, alpha, isToFile);
+        size_t maxHistoryDays = getMaxHistoryDays();
+        size_t days = alphaDataBase->getDays();
+        size_t sampleDays = alphaDataBase->getDays() - maxHistoryDays + 1;
+        if(sampleDays > 1024)
+            sampleDays = 1024;
+
+        size_t dayBefore = days - maxHistoryDays - sampleDays;
+        size_t stockSize = alphaDataBase->getAllCodes(cache->codes);
+        bool isFirstWrite = true;
+        ofstream* file = alphaDataBase->createCacheFile(featureName);
+        while (true){
+            cache->initialize(nodeList_.getSize(), maxHistoryDays, dayBefore, sampleDays, stockSize);
+            //重新标记所有节点
+            flagAllNode(cache);
+            calAlpha(alphaDataBase, cache, threadPool);
+
+            //写入计算结果
+            const float* alpha = getAlpha(featureName, cache);
+
+            alphaDataBase->invFill2File(alpha, dayBefore, sampleDays, featureName, file, isFirstWrite);
+            isFirstWrite = false;
+
+            cout<<dayBefore<<endl;
+            if(dayBefore == 0)
+                break;
+            if(dayBefore < sampleDays)
+                sampleDays = dayBefore;
+            dayBefore -= sampleDays;
         }
-        //cout<<"fc!"<<endl;
+        alphaDataBase->releaseCacheFile(file);
+        cout<<"finish cache "<<featureName<<endl;
     }
 
 
@@ -200,7 +209,7 @@ public:
             float lastCoffValue = NAN;
             int curIndex = 0;
             bool isAdd = false;
-            while(isnanf(lastCoffValue)){
+            while(isnan(lastCoffValue)){
                 curIndex = rc.choose();
                 isAdd = curIndex < coffList_.getSize();
                 curIndex = curIndex % coffList_.getSize();
@@ -223,7 +232,7 @@ public:
                     }
                     coffList_[curIndex].coffValue = max(coffList_[curIndex].coffValue, nodeList_[srcIndex].getElement()->getMinCoff());
                 }
-                if(isnanf(lastCoffValue)){
+                if(isnan(lastCoffValue)){
                     curIndex = isAdd ? curIndex : coffList_.getSize() + curIndex;
                     rc.reduce(curIndex);
                 }

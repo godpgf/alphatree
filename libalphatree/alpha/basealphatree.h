@@ -118,7 +118,7 @@ public:
 
     float getNeedBeforeDays(DArray<AlphaCoff, MAX_NODE_BLOCK>& coffList){
         if(getCoffUnit() == CoffUnit::COFF_DAY){
-            if(isnanf(coffList[externalCoffIndex_].coffValue))
+            if(isnan(coffList[externalCoffIndex_].coffValue))
             {
                 cout<<"error "<<externalCoffIndex_<<endl;
             }

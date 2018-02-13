@@ -28,6 +28,18 @@ void releaseAlphaforest() {
     AlphaForest::release();
 }
 
+void loadDataBase(const char *path) {
+    AlphaForest::getAlphaforest()->getAlphaDataBase()->loadDataBase(path);
+}
+
+void csv2binary(const char *path, const char* featureName){
+    AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary(path, featureName);
+}
+
+void cacheFeature(const char* featureName){
+    AlphaForest::getAlphaforest()->getAlphaDataBase()->cacheFeature(featureName);
+}
+
 int createAlphatree() {
     return AlphaForest::getAlphaforest()->useAlphaTree();
 }
@@ -120,9 +132,7 @@ int learnFilterForest(int alphatreeId, int cacheId, const char *features, int fe
     return forestId;
 }*/
 
-void loadDataBase(const char *path) {
-    AlphaForest::getAlphaforest()->getAlphaDataBase()->loadDataBase(path);
-}
+
 
 //    void loadStockMeta(const char* codes, int* marketIndex, int* industryIndex, int* conceptIndex, int size, int days){
 //        AlphaForest::getAlphaforest()->getAlphaDataBase()->loadStockMeta(codes, marketIndex, industryIndex, conceptIndex, size, days);
@@ -151,8 +161,8 @@ void calAlpha(int alphaTreeId, int cacheId, int dayBefore, int sampleSize, const
     AlphaForest::getAlphaforest()->calAlpha(alphaTreeId, cacheId, dayBefore, sampleSize, codes, stockSize);
 }
 
-void cacheAlpha(int alphaTreeId, int cacheId, bool isToFile) {
-    AlphaForest::getAlphaforest()->cacheAlpha(alphaTreeId, cacheId, isToFile);
+void cacheAlpha(int alphaTreeId, int cacheId, const char* featureName) {
+    AlphaForest::getAlphaforest()->cacheAlpha(alphaTreeId, cacheId, featureName);
 }
 
 float optimizeAlpha(int alphaTreeId, int cacheId, const char *rootName, int dayBefore, int sampleSize, const char *codes, size_t stockSize, float exploteRatio, int errTryTime){
