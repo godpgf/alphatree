@@ -61,14 +61,17 @@ public:
             strcpy(sm.code, code.c_str());
             sm.days = atoi(days.c_str());
             //offset += sm.days;
+            //cout<<market<<market.length()<<industry<<industry.length()<<endl;
             if(market.length() != 0 && industry.length() == 0){
                 sm.stockType = StockMeta::StockType::MARKET;
-            } else if(market.length() == 0 && industry.length() != 0){
-                sm.stockType = StockMeta::StockType::INDUSTRY;
             } else {
-                sm.stockType = StockMeta::StockType::STOCK;
-                strcpy(sm.marker, market.c_str());
-                strcpy(sm.industry, industry.c_str());
+                if(market.length() == 0 && industry.length() != 0){
+                    sm.stockType = StockMeta::StockType::INDUSTRY;
+                } else {
+                    sm.stockType = StockMeta::StockType::STOCK;
+                    strcpy(sm.marker, market.c_str());
+                    strcpy(sm.industry, industry.c_str());
+                }
             }
 
             stockMetas[sm.code] = sm;
@@ -80,11 +83,13 @@ public:
             //cout<<offset<<" "<<stockMetas[i].code<<endl;
             stockMetas[i].offset = offset;
             offset += stockMetas[i].days;
-            if(stockMetas[i].stockType == StockMeta::StockType::MARKET && stockMetas[i].days > maxDays){
+            //cout<<(int)stockMetas[i].stockType<<" "<<stockMetas[i].days<<endl;
+            if(stockMetas[i].days > maxDays){
                 maxDays = stockMetas[i].days;
                 mainStock = i;
             }
         }
+        //cout<<stockMetas.getSize()<<" init "<<mainStock<<endl;
     }
 
     HashMap<StockMeta> stockMetas;

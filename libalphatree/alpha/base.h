@@ -365,7 +365,7 @@ inline void _tsMinIndex(float *dst, const float *src, size_t historySize, size_t
             size_t lastId = (size_t) dst[(i - 1) * elementSize + j];
             if (lastId + range >= i) {
                 //上一个元素记录的最小值在自己的视野内
-                dst[i * elementSize + j] = (src[i * elementSize + j] <= src[lastId * elementSize + j]) ? i : lastId;
+                dst[i * elementSize + j] = (src[i * elementSize + j] < src[lastId * elementSize + j]) ? i : lastId;
             } else {
                 size_t minId = i;
                 for (size_t k = 1; k <= range; k++) {

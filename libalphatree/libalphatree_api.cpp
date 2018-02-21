@@ -162,8 +162,36 @@ void calAlpha(int alphaTreeId, int cacheId, int dayBefore, int sampleSize, const
 }
 
 void cacheAlpha(int alphaTreeId, int cacheId, const char* featureName) {
+    cout<<featureName<<endl;
     AlphaForest::getAlphaforest()->cacheAlpha(alphaTreeId, cacheId, featureName);
 }
+
+void cacheSign(int alphaTreeId, int cacheId, const char* signName){
+    AlphaForest::getAlphaforest()->cacheSign(alphaTreeId, cacheId, signName);
+}
+
+void* createSignFeatureIter(const char* signName, const char* featureName, int dayBefore, int sampleDays, int offset){
+    return AlphaForest::getAlphaforest()->getAlphaDataBase()->createSignFeatureIter(signName, featureName, dayBefore, sampleDays, offset);
+}
+
+void iterSkip(void* piter, int offset, bool isRelative){
+    ((BaseIterator<float>*)piter)->skip(offset, isRelative);
+}
+
+bool iterIsValid(void* piter){
+    return ((BaseIterator<float>*)piter)->isValid();
+}
+
+int iterSize(void* piter){
+    return (int)((BaseIterator<float>*)piter)->size();
+}
+
+float iterValue(void* piter){
+    //cout<<*(*(BaseIterator<float>*)piter)<<" "<<(*(BaseIterator<float>*)piter).size()<<endl;
+    return *(*(BaseIterator<float>*)piter);
+}
+
+void releaseIter(void* piter){delete (BaseIterator<float>*)piter;}
 
 float optimizeAlpha(int alphaTreeId, int cacheId, const char *rootName, int dayBefore, int sampleSize, const char *codes, size_t stockSize, float exploteRatio, int errTryTime){
     return AlphaForest::getAlphaforest()->optimizeAlpha(alphaTreeId, cacheId, rootName, dayBefore, sampleSize, codes, stockSize, exploteRatio, errTryTime);

@@ -67,8 +67,8 @@ class AlphaForest(object):
         str_list = [self.encode_cache[i] for i in xrange(str_len)]
         return "".join(str_list)
 
-    def decode_alphatree(self, alphatree_id, root_name, line, is_local=False):
-        alphatree.decodeAlphatree(alphatree_id, c_char_p(root_name), c_char_p(line), c_bool(is_local))
+    def decode_alphatree(self, alphatree_id, root_name, line):
+        alphatree.decodeAlphatree(alphatree_id, c_char_p(root_name), c_char_p(line))
 
     def get_max_history_days(self, alphatree_id):
         return alphatree.getMaxHistoryDays(alphatree_id)
@@ -76,90 +76,33 @@ class AlphaForest(object):
     def optimize_alphatree(self):
         pass
 
+    #将某个公式的计算结果保持在文件
+    def cache_alpha(self, name, line):
+        alphatree_id = self.create_alphatree()
+        cache_id = self.use_cache()
+        self.decode_alphatree(alphatree_id, name, line)
+        alphatree.cacheAlpha(alphatree_id, cache_id, c_char_p(name))
+        self.release_cache(cache_id)
+        self.release_alphatree(alphatree_id)
+
+    #将某个信号保存在文件
+    def cache_sign(self, name, line):
+        alphatree_id = self.create_alphatree()
+        cache_id = self.use_cache()
+        self.decode_alphatree(alphatree_id, name, line)
+        alphatree.cacheSign(alphatree_id, cache_id, c_char_p(name))
+        self.release_cache(cache_id)
+        self.release_alphatree(alphatree_id)
 
     # 读取数据
     def load_db(self, path):
         alphatree.loadDataBase(c_char_p(path))
 
+    def csv2binary(self, path, feature_name):
+        alphatree.csv2binary(c_char_p(path), c_char_p(feature_name))
+
     def cache_feature(self, feature_name):
         alphatree.cacheFeature(c_char_p(feature_name))
-
-    # def load_data(self, codeProxy, dataProxy, classifiedProxy):
-    #     data_size = len(dataProxy.trading_calender_int)
-    #     stock_dict, market_dict, industry_dict, concept_dict = load_all_stock_flat(codeProxy, dataProxy,
-    #                                                                                classifiedProxy)
-    #     stock_size = len(stock_dict) + len(market_dict) + len(industry_dict) + len(concept_dict)
-    #
-    #     open = (c_float * (data_size * stock_size))()
-    #     high = (c_float * (data_size * stock_size))()
-    #     low = (c_float * (data_size * stock_size))()
-    #     close = (c_float * (data_size * stock_size))()
-    #     volume = (c_float * (data_size * stock_size))()
-    #     vwap = (c_float * (data_size * stock_size))()
-    #     returns = (c_float * (data_size * stock_size))()
-    #
-    #     if stock_size > self.max_stoct_size:
-    #         self.max_stoct_size = stock_size
-    #         self.code_cache = (c_char * (self.max_stoct_size * 64))()
-    #         self.alpha_cache = (c_float * (self.max_stoct_size * data_size))()
-    #     market_index_cache = (c_int * self.max_stoct_size)()
-    #     industry_index_cache = (c_int * self.max_stoct_size)()
-    #     concept_index_cache = (c_int * self.max_stoct_size)()
-    #
-    #     market_index = {}
-    #     industry_index = {}
-    #     concept_index = {}
-    #     cur_index = 0
-    #     cur_code_index = 0
-    #     cur_data_index = 0
-    #     for key, value in market_dict.items():
-    #         self._write_data(open, high, low, close, volume, vwap, returns, value.bar, cur_data_index)
-    #         cur_data_index += data_size
-    #
-    #         market_index[key] = cur_index
-    #         cur_code_index = self._write_code(key, self.code_cache, cur_code_index)
-    #         market_index_cache[cur_index] = -2
-    #         industry_index_cache[cur_index] = -1
-    #         concept_index_cache[cur_index] = -1
-    #         cur_index += 1
-    #     for key, value in industry_dict.items():
-    #         self._write_data(open, high, low, close, volume, vwap, returns, value.bar, cur_data_index)
-    #         cur_data_index += data_size
-    #
-    #         industry_index[key] = cur_index
-    #         cur_code_index = self._write_code(key, self.code_cache, cur_code_index)
-    #         market_index_cache[cur_index] = -1
-    #         industry_index_cache[cur_index] = -2
-    #         concept_index_cache[cur_index] = -1
-    #         cur_index += 1
-    #     for key, value in concept_dict.items():
-    #         self._write_data(open, high, low, close, volume, vwap, returns, value.bar, cur_data_index)
-    #         cur_data_index += data_size
-    #
-    #         concept_index[key] = cur_index
-    #         cur_code_index = self._write_code(key, self.code_cache, cur_code_index)
-    #         market_index_cache[cur_index] = -1
-    #         industry_index_cache[cur_index] = -1
-    #         concept_index_cache[cur_index] = -2
-    #         cur_index += 1
-    #     for key, value in stock_dict.items():
-    #         self._write_data(open, high, low, close, volume, vwap, returns, value.bar, cur_data_index)
-    #         cur_data_index += data_size
-    #
-    #         cur_code_index = self._write_code(key, self.code_cache, cur_code_index)
-    #         market_index_cache[cur_index] = market_index[value.market]
-    #         industry_index_cache[cur_index] = industry_index[value.industry]
-    #         concept_index_cache[cur_index] = concept_index[value.concept]
-    #         cur_index += 1
-    #
-    #     alphatree.loadStockMeta(self.code_cache, market_index_cache, industry_index_cache, concept_index_cache, stock_size, data_size)
-    #     alphatree.loadDataElement("open", open, 0)
-    #     alphatree.loadDataElement("high", high, 0)
-    #     alphatree.loadDataElement("low", low, 0)
-    #     alphatree.loadDataElement("close", close, 0)
-    #     alphatree.loadDataElement("volume", volume, 0)
-    #     alphatree.loadDataElement("vwap", vwap, 0)
-    #     alphatree.loadDataElement("returns", returns, 0)
 
 
     def get_stock_codes(self):
@@ -173,8 +116,6 @@ class AlphaForest(object):
         self._write_codes(codes)
         alphatree.calAlpha(alphatree_id, cache_id, daybefore, sample_size, self.code_cache, stock_size)
 
-    def cache_alpha(self, alphatree_id, cache_id, is_to_file):
-        alphatree.cacheAlpha(alphatree_id, cache_id, c_bool(is_to_file))
 
     def optimize_alpha(self, alphatree_id, cache_id, root_name, daybefore, sample_size, codes, exploteRatio = 0.1, errTryTime = 64):
         stock_size = len(codes)

@@ -77,13 +77,6 @@ def cal_alpha(af, line, sample_size, sub_tree = None, daybefore = 0):
     af.release_alphatree(alphatree_id)
     return alpha, codes
 
-def cache_alpha(af, name, line, is_to_file = False):
-    alphatree_id = af.create_alphatree()
-    cache_id = af.use_cache()
-    af.decode_alphatree(alphatree_id, name, line)
-    af.cache_alpha(alphatree_id, cache_id, is_to_file)
-    af.release_cache(cache_id)
-    af.release_alphatree(alphatree_id)
 
 
 def test_alphaforest(af, alphatree_list, subalphatree_dict, sample_size = 1):
@@ -131,7 +124,7 @@ def test_base_calculate(af, dataProxy, is_cmp = False):
 
 
     print "cache alpha"
-    #cache_alpha(af, "atr15", "mean(max((high - low), max((high - delay(close, 1)), (delay(close, 1) - low))), 14)")
+    af.cache_alpha( "atr15", "mean(max((high - low), max((high - delay(close, 1)), (delay(close, 1) - low))), 14)")
     alpha, codes = cal_alpha(af, "atr15", 1)
     if is_cmp:
         for index, code in enumerate(codes):
@@ -757,11 +750,13 @@ def test_opt_sharp_strategy(af, daybefore = 0, sample_size = 250):
 
 
 if __name__ == '__main__':
+    #dataProxy = LocalDataProxy(cache_path="../../data", is_offline=False)
+    #dataProxy.get_all_Data("0600645")
     #download_stock_data()
     #print "finish download"
 
     af = AlphaForest()
-    af.load_db("data")
+    af.load_db("../../data")
 
     #缓存数据到内存
     #af.cache_feature("date")
@@ -779,7 +774,7 @@ if __name__ == '__main__':
     #print "finish cache"
 
     #codeProxy = LocalCodeProxy(cache_path = "data", is_offline = False)
-    dataProxy = LocalDataProxy(cache_path = "data", is_offline = True)
+    dataProxy = LocalDataProxy(cache_path = "../../data", is_offline = True)
     test_base_calculate(af, dataProxy, True)
     #classifiedProxy = LocalClassifiedProxy(cache_path = "data", is_offline = False)
 

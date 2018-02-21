@@ -13,12 +13,14 @@ class BaseIterator{
 public:
     virtual ~BaseIterator(){}
     virtual BaseIterator& operator++() { return *this;}
-    virtual BaseIterator& skip(long size){ return *this;}
+    //跳过指定位置，isRelative如果是false就是从起点开始计算，否则是从当前开始计算
+    virtual BaseIterator& skip(long size, bool isRelative = true){ return *this;}
     virtual bool isValid(){ return false;}
     virtual T& operator*() { return (T&)(*this);}
     virtual int size(){ return 0;}
     //假设数据是有序的，跳到首次某个元素，这个元素刚好最后一次小于value
-    virtual int jumpTo(T value){ return -1;}
+    virtual int jumpTo(T value){ return jumpTo(value, 0, size());}
+    virtual int jumpTo(T value, int start, int length){ return -1;}
 };
 
 template <class T>
@@ -54,8 +56,8 @@ public:
         ++(*iter_);
         return *this;
     }
-    virtual Iterator& skip(long size){
-        iter_->skip(size);
+    virtual Iterator& skip(long size, bool isRelative = true){
+        iter_->skip(size, isRelative);
         return *this;
     }
     virtual bool isValid(){ return iter_->isValid();}
@@ -63,6 +65,9 @@ public:
     virtual int size(){ return iter_->size();}
     virtual int jumpTo(T value){
         return iter_->jumpTo(value);
+    }
+    virtual int jumpTo(T value, int start, int length){
+        return iter_->jumpTo(value, start, length);
     }
 protected:
     IteratorClient<T>* owner_;
@@ -80,21 +85,24 @@ public:
         curMemory_ = curMemory_ + 1;
         return *this;
     }
-    virtual BaseIterator<T>& skip(long size){
-        curMemory_ += size;
+    virtual BaseIterator<T>& skip(long size, bool isRelative = true){
+        if(isRelative)
+            curMemory_ += size;
+        else
+            curMemory_ = endMemory_ - this->size() + size;
         return *this;
     }
     virtual bool isValid(){ return curMemory_ < endMemory_;}
     virtual T& operator*() { return *curMemory_;}
     virtual int size(){ return endMemory_ - curMemory_;}
-    virtual int jumpTo(T value){
-        int dataNum = size();
-        T* startMemory = endMemory_ - dataNum;
+    virtual int jumpTo(T value, int start, int length){
+        int dataNum = length;
+        T* startMemory = endMemory_ - size() + start;
         if(startMemory[0] >= value){
             curMemory_ = startMemory;
             return -1;
         } else if(startMemory[dataNum-1] < value){
-            curMemory_ = endMemory_ - 1;
+            curMemory_ = endMemory_ - size() + start + length - 1;
             return dataNum - 1;
         }
         int l = 0, r = dataNum-2;
@@ -145,7 +153,9 @@ public:
         isValid_ = getline(inFile_, curLine_) ? true : false;
         return *this;
     }
-    virtual BaseIterator<T>& skip(long size){
+    virtual BaseIterator<T>& skip(long size, bool isRelative = true){
+        if(isRelative == false)
+            throw "不支持！";
         while (size && isValid_){
             isValid_ = getline(inFile_, curLine_) ? true : false;
             size--;
@@ -161,13 +171,8 @@ public:
         return realData_;
     }
     virtual int size(){ return -1;}
-    virtual int jumpTo(T value){
-        int index = 0;
-        while (this->isValid() && *(*this) < value){
-            ++(*this);
-            ++index;
-        }
-        return index;
+    virtual int jumpTo(T value, int start, int length){
+        throw "不支持";
     }
 protected:
     void readData(long& data){
@@ -211,10 +216,22 @@ public:
         return *this;
     }
 
-    virtual BaseIterator<T>& skip(long size){
-        file_.seekg(sizeof(T) * (size-1),ios::cur);
+    virtual BaseIterator<T>& skip(long size, bool isRelative = true){
+        if(isRelative){
+            if(size > 0){
+                file_.seekg(sizeof(T) * (size-1),ios::cur);
+                curIndex_ += size;
+            } else {
+                return *this;
+            }
+        }
+        else{
+            file_.seekg(sizeof(T) * (size + start_),ios::beg);
+            curIndex_ = size;
+        }
+
         file_.read( reinterpret_cast< char* >( &realData_ ), sizeof( T ) );
-        curIndex_ += size;
+
         return *this;
     }
 
@@ -230,15 +247,15 @@ public:
         return size_;
     }
 
-    virtual int jumpTo(T value){
-        int dataNum = size();
-        file_.seekg(start_ * sizeof(T), ios::beg);
+    virtual int jumpTo(T value, int start, int length){
+        int dataNum = length;
+        file_.seekg((start_ + start) * sizeof(T), ios::beg);
         file_.read( reinterpret_cast< char* >( &realData_ ), sizeof( T ) );
         if(realData_ >= value){
             curIndex_ = 0;
             return -1;
         } else{
-            file_.seekg((start_ + dataNum-1) * sizeof(T), ios::beg);
+            file_.seekg((start_ + start + dataNum-1) * sizeof(T), ios::beg);
             file_.read( reinterpret_cast< char* >( &realData_ ), sizeof( T ) );
             if(realData_ < value){
                 curIndex_ = dataNum-1;
@@ -248,7 +265,7 @@ public:
         int l = 0, r = dataNum-2;
         curIndex_ = ((l + r) >> 1);
         while (l < r){
-            file_.seekg((start_ + curIndex_) * sizeof(T), ios::beg);
+            file_.seekg((start_ + start + curIndex_) * sizeof(T), ios::beg);
             file_.read( reinterpret_cast< char* >( &realData_ ), sizeof( T ) );
             if(realData_ >= value)
                 r = curIndex_ - 1;
@@ -263,7 +280,7 @@ public:
             }
             curIndex_ = ((l + r) >> 1);
         }
-        file_.seekg((start_ + curIndex_) * sizeof(T), ios::beg);
+        file_.seekg((start_ + start + curIndex_) * sizeof(T), ios::beg);
         file_.read( reinterpret_cast< char* >( &realData_ ), sizeof( T ) );
         return curIndex_;
     }

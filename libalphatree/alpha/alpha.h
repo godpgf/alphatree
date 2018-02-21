@@ -43,11 +43,13 @@ void* product(void** pars, float coff, size_t historySize, size_t stockSize, Cac
     float* pleft = (float*)(pars[0]);
     memcpy(pout, pleft, historySize * stockSize * sizeof(float));
     size_t d = (size_t)roundf(coff);
-    for(size_t i = 1; i < historySize; ++i){
-        _mulNoZero((pout + i * stockSize), (pout + (i - 1) * stockSize), stockSize);
+    for(size_t i = d; i < historySize; ++i){
+        for(int j = 1; j <= d; ++j)
+            _mul(pout + i * stockSize, pleft + (i-j) * stockSize, stockSize);
+        /*_mulNoZero((pout + i * stockSize), (pout + (i - 1) * stockSize), stockSize);
         if(i > d){
             _divNoZero((pout + i * stockSize), (pleft + (i - 1 - d) * stockSize), stockSize);
-        }
+        }*/
     }
     return pout;
 }

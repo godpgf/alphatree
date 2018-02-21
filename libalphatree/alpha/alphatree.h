@@ -155,18 +155,22 @@ public:
     }
 
 
-    void cacheAlpha(AlphaDB *alphaDataBase, AlphaCache *cache, ThreadPool *threadPool, const char* featureName) {
+    template <class T>
+    void cacheAlpha(AlphaDB *alphaDataBase, AlphaCache *cache, ThreadPool *threadPool, const char* featureName, size_t dayFuture = 0) {
         maxHistoryDay_ = NONE;
         size_t maxHistoryDays = getMaxHistoryDays();
+        //cout<<"start feature a "<<featureName<<endl;
         size_t days = alphaDataBase->getDays();
+        //cout<<"start feature c "<<featureName<<endl;
         size_t sampleDays = alphaDataBase->getDays() - maxHistoryDays + 1;
         if(sampleDays > 1024)
             sampleDays = 1024;
-
-        size_t dayBefore = days - maxHistoryDays - sampleDays;
+        //cout<<"start feature b "<<featureName<<endl;
+        size_t dayBefore = days - GET_ELEMEMT_SIZE(maxHistoryDays, sampleDays);
         size_t stockSize = alphaDataBase->getAllCodes(cache->codes);
         bool isFirstWrite = true;
         ofstream* file = alphaDataBase->createCacheFile(featureName);
+        //cout<<"start feature "<<featureName<<endl;
         while (true){
             cache->initialize(nodeList_.getSize(), maxHistoryDays, dayBefore, sampleDays, stockSize);
             //重新标记所有节点
@@ -176,20 +180,57 @@ public:
             //写入计算结果
             const float* alpha = getAlpha(featureName, cache);
 
-            alphaDataBase->invFill2File(alpha, dayBefore, sampleDays, featureName, file, isFirstWrite);
+            alphaDataBase->invFill2File<T>(alpha, dayBefore, sampleDays, featureName, file, dayFuture, isFirstWrite);
             isFirstWrite = false;
 
-            cout<<dayBefore<<endl;
+            if(dayBefore == 0)
+                break;
+            if(dayBefore < sampleDays - dayFuture)
+                sampleDays = dayBefore + dayFuture;
+            dayBefore -= sampleDays - dayFuture;
+        }
+        alphaDataBase->releaseCacheFile(file);
+        //cout<<"finish cache "<<featureName<<endl;
+    }
+
+    void cacheSign(AlphaDB *alphaDataBase, AlphaCache *cache, ThreadPool *threadPool, const char* featureName){
+        maxHistoryDay_ = NONE;
+        size_t maxHistoryDays = getMaxHistoryDays();
+        size_t days = alphaDataBase->getDays();
+        size_t sampleDays = alphaDataBase->getDays() - maxHistoryDays + 1;
+        if(sampleDays > 1024)
+            sampleDays = 1024;
+
+        size_t dayBefore = days - GET_ELEMEMT_SIZE(maxHistoryDays, sampleDays);
+        size_t stockSize = alphaDataBase->getAllCodes(cache->codes);
+
+        ofstream* file = alphaDataBase->createCacheFile(featureName);
+        size_t preSignCnt = 0;
+        size_t preDayNum = 0;
+        for(preDayNum = 0; preDayNum < maxHistoryDays-1; ++preDayNum){
+            file->write(reinterpret_cast<const char* >( &preSignCnt ), sizeof(size_t));
+        }
+        while (true){
+            cache->initialize(nodeList_.getSize(), maxHistoryDays, dayBefore, sampleDays, stockSize);
+            //重新标记所有节点
+            flagAllNode(cache);
+
+            calAlpha(alphaDataBase, cache, threadPool);
+
+            //写入计算结果
+            const float* alpha = getAlpha(featureName, cache);
+            alphaDataBase->invFill2Sign(alpha, dayBefore, sampleDays, featureName, file, preDayNum, preSignCnt);
+
             if(dayBefore == 0)
                 break;
             if(dayBefore < sampleDays)
                 sampleDays = dayBefore;
             dayBefore -= sampleDays;
+            cout<<dayBefore<<" "<<preSignCnt<<endl;
         }
         alphaDataBase->releaseCacheFile(file);
         cout<<"finish cache "<<featureName<<endl;
     }
-
 
     float optimizeAlpha(const char *rootName, AlphaDB *alphaDataBase, size_t dayBefore, size_t sampleSize, const char *codes, size_t stockSize,
                        AlphaCache *cache, ThreadPool *threadPool, float exploteRatio = 0.1f, int errTryTime = 64) {

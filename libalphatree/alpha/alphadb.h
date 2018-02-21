@@ -150,10 +150,15 @@ class AlphaDB{
             return cache_->createCacheFile(featureName);
         }
 
+        template<class T>
         void invFill2File(const float* cache, size_t dayBefore, size_t daySize, const char* featureName, ofstream* file,
-                          bool isWritePreData = false){
+                          size_t dayFuture = 0,bool isWritePreData = false){
             for(int i = 0; i < des_->stockMetas.getSize(); ++i)
-                cache_->invFill2File(cache, dayBefore, daySize, des_->stockMetas[i].code, featureName, i, des_->stockMetas.getSize(), file, isWritePreData);
+                cache_->invFill2File<T>(cache, dayBefore, daySize, des_->stockMetas[i].code, featureName, i, des_->stockMetas.getSize(), file, dayFuture, isWritePreData);
+        }
+
+        void invFill2Sign(const float* cache, size_t dayBefore, size_t daySize, const char* featureName, ofstream* file, size_t& preDayNum, size_t& preSignCnt){
+            cache_->invFill2Sign(cache, daySize, des_->stockMetas.getSize(), file, getDays(), preDayNum, preSignCnt);
         }
 
         void releaseCacheFile(ofstream * file){
@@ -164,8 +169,16 @@ class AlphaDB{
             cache_->cacheFeature(featureName);
         }
 
+        BaseIterator<float>* createSignFeatureIter(const char* signName, const char* featureName, size_t dayBefore, size_t sampleDays, int offset){
+            return cache_->createSignFeatureIter(signName, featureName, dayBefore, sampleDays, offset);
+        }
+
         size_t getStockNum(){ return des_->stockMetas.getSize();}
-        size_t getDays(){ return des_->stockMetas[des_->mainStock].days;}
+        size_t getDays(){
+            //cout<<des_->stockMetas.getSize()<<endl;
+            //cout<<des_->mainStock<<endl;
+            return des_->stockMetas[des_->mainStock].days;
+        }
 
     protected:
         inline const char* getCode(const char* code, const char* leafDataClass){

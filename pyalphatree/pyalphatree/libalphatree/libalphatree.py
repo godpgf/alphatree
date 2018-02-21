@@ -1,7 +1,7 @@
 # coding=utf-8
 # author=godpgf
 import ctypes
-from ctypes import c_void_p, c_float
+from ctypes import c_void_p, c_float, c_bool, c_int32
 
 import os
 curr_path = os.path.dirname(os.path.abspath(os.path.expanduser(__file__)))
@@ -14,3 +14,7 @@ except OSError,e:
     alphatree = ctypes.cdll.LoadLibrary(lib_path + "libalphatree_api.so")
 
 alphatree.optimizeAlpha.restype = c_float
+alphatree.createSignFeatureIter.restype = c_void_p
+alphatree.iterIsValid.restype = c_bool
+alphatree.iterSize.restype = c_int32
+alphatree.iterValue.restype = c_float

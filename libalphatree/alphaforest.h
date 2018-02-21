@@ -81,9 +81,15 @@ public:
         getAlphaTree(alphaTreeId)->calAlpha(&alphaDataBase_, dayBefore, sampleSize, codes, stockSize, alphaCache_->getCacheMemory(cacheId), &threadPool_);
     }
 
-    const void cacheAlpha(int alphaTreeId, int cacheId, const char* featureName) {
-        getAlphaTree(alphaTreeId)->cacheAlpha(&alphaDataBase_, alphaCache_->getCacheMemory(cacheId), &threadPool_, featureName);
+    const void cacheAlpha(int alphaTreeId, int cacheId, const char* featureName, size_t dayFuture = 0) {
+        getAlphaTree(alphaTreeId)->cacheAlpha<float>(&alphaDataBase_, alphaCache_->getCacheMemory(cacheId), &threadPool_, featureName, dayFuture);
     }
+
+    const void cacheSign(int alphaTreeId, int cacheId, const char* featureName){
+        getAlphaTree(alphaTreeId)->cacheSign(&alphaDataBase_, alphaCache_->getCacheMemory(cacheId), &threadPool_, featureName);
+    }
+
+
 
     float optimizeAlpha(int alphaTreeId, int cacheId, const char *rootName, size_t dayBefore, size_t sampleSize, const char *codes, size_t stockSize, float exploteRatio, int errTryTime){
         return getAlphaTree(alphaTreeId)->optimizeAlpha(rootName, &alphaDataBase_, dayBefore, sampleSize, codes, stockSize, alphaCache_->getCacheMemory(cacheId), &threadPool_, exploteRatio, errTryTime);

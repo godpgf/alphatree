@@ -7,6 +7,8 @@
 
 #include "../base/hashmap.h"
 #include "stockfeature.h"
+#include "signiterator.h"
+#include <map>
 
 
 class StockCache{
@@ -57,8 +59,10 @@ public:
         });
     }
 
+
+    template<class T>
     void invFill2File(const float* cache, size_t dayBefore, size_t daySize, const char* code, const char* featureName, size_t offset, size_t stockNum, ofstream* file,
-                      bool isWritePreData = false){
+                      size_t dayFeature = 0, bool isWritePreData = false){
         StockFeature<long> *date = date_ ? date_ : new StockFeature<long>(feature2path_("date").c_str());
 
         auto mainStockMeta = des_->stockMetas[des_->mainStock];
@@ -70,7 +74,8 @@ public:
         //主元素先跳到子元素位置上
         int skip = mainDateIter.jumpTo(*curDateIter);
         ++skip;
-        ++mainDateIter;
+        if(skip > 0)
+            ++mainDateIter;
         //跳到的位置超过了当前要写入数据的范围就返回
         if(mainDateIter.size() - dayBefore - 1 < skip)
             return;
@@ -104,23 +109,128 @@ public:
         size_t startIndex = skip - (mainDateIter.size() - dayBefore - daySize);
         if(isWritePreData){
             (*file).seekp((des_->stockMetas[code].offset) * sizeof(float), ios::beg);
-            for(int i = 0; i < subSkip; ++i)
-                (*file).write( reinterpret_cast<const char* >( &cache[startIndex * stockNum + offset] ), sizeof( float ) );
+            for(int i = 0; i < subSkip; ++i) {
+                T value = (T) cache[startIndex * stockNum + offset];
+                (*file).write(reinterpret_cast<const char * >( &value ), sizeof(T));
+            }
                 //(*file)<<cache[startIndex * stockNum + offset];
         }else{
-            (*file).seekp((des_->stockMetas[code].offset + subSkip) * sizeof(float), ios::beg);
+            (*file).seekp((des_->stockMetas[code].offset + subSkip) * sizeof(T), ios::beg);
         }
 
+        size_t curIndex = 0;
         for(size_t i = startIndex; i < daySize; ++i){
             if(*curDateIter == *mainDateIter){
+                curIndex = i + dayFeature;
                 //(*file) << cache[i * stockNum + offset];
-                (*file).write( reinterpret_cast<const char* >( &cache[i * stockNum + offset] ), sizeof( float ) );
-                if(strcmp(code,"0603156") == 0)
-                    cout<<":"<<cache[i * stockNum + offset]<<endl;
+                T value = curIndex < daySize ? (T)cache[curIndex * stockNum + offset] : 0;
+                (*file).write( reinterpret_cast<const char* >( &value ), sizeof( T ) );
+               // if(strcmp(code,"0603156") == 0)
+               //     cout<<":"<<cache[i * stockNum + offset]<<endl;
                 ++curDateIter;
             }
             ++mainDateIter;
         }
+    }
+
+    void invFill2Sign(const float* cache, size_t daySize, size_t stockNum, ofstream* file, size_t allDayNum, size_t& preDayNum, size_t& preSignCnt){
+        //cout<<"ssss1\n";
+        StockFeature<long> *date = date_ ? date_ : new StockFeature<long>(feature2path_("date").c_str());
+        auto mainStockMeta = des_->stockMetas[des_->mainStock];
+        Iterator<long> mainDateIter(date->createIter(mainStockMeta.offset, mainStockMeta.days));
+        Iterator<long> allDateIter(date->createIter(0, des_->stockMetas[des_->stockMetas.getSize()-1].offset + des_->stockMetas[des_->stockMetas.getSize()-1].days));
+
+        size_t lastId = 0;
+        //包括今天在内，之前有多少信号
+        size_t *pPreSignCnt = &preSignCnt;
+        size_t *pPreDayNum = &preDayNum;
+        size_t *pLastId = &lastId;
+        Iterator<long>* pMainDateIter = &mainDateIter;
+        Iterator<long>* pAllDateIter = &allDateIter;
+        pMainDateIter->skip(preDayNum, false);
+
+        file->seekp((allDayNum + (*pPreSignCnt)) * sizeof(size_t), ios::beg);
+        StockDes* des = des_;
+
+        //提高程序运行效率
+        map<int,int> stock2offset;//股票上次发出信号的偏移+1
+        map<int,long> stock2LastDate;//股票上次发出信号的日期
+        for(int i=0; i < stockNum; ++i){
+            stock2offset[i] = 0;
+            stock2LastDate[i] = 0;
+        }
+        auto pStock2Offset = &stock2offset;
+        auto pStock2LastDate = &stock2LastDate;
+
+        //test
+        //StockFeature<float>* returns = new StockFeature<float>(feature2path_("returns").c_str());
+        //BaseIterator<float>* rt = returns->createIter(0, des->stockMetas[des->stockMetas.getSize()-1].offset + des->stockMetas[des->stockMetas.getSize()-1].days);
+        //cout<<"ssss2\n";
+        invFillSign_(cache, daySize, stockNum, [pStock2Offset, pStock2LastDate, des, pMainDateIter, pAllDateIter, allDayNum, pPreSignCnt, pPreDayNum, pLastId, file](size_t dayIndex, size_t stockIndex){
+            if((*pLastId) != dayIndex){
+                file->seekp((*pPreDayNum) * sizeof(size_t), ios::beg);
+                while ((*pLastId) != dayIndex){
+                    //更新昨天以前的
+                    file->write(reinterpret_cast<const char* >( pPreSignCnt ), sizeof(size_t));
+                    ++(*pLastId);
+                    ++(*pPreDayNum);
+                }
+                file->seekp((allDayNum + (*pPreSignCnt)) * sizeof(size_t), ios::beg);
+                pMainDateIter->skip(*pPreDayNum, false);
+            }
+            //得到当前日期
+            long date = *(*pMainDateIter);
+            //得到偏移
+            int evalStart = des->stockMetas[stockIndex].offset + (*pStock2Offset)[stockIndex];
+            long lastDate = (*pStock2LastDate)[stockIndex];
+            int evalLen = (int)min((long)(des->stockMetas[stockIndex].days - (*pStock2Offset)[stockIndex]), (long)(date - lastDate));
+            int skip = pAllDateIter->jumpTo(date, evalStart, evalLen);
+            ++skip;
+            if(skip > 0)
+                ++(*pAllDateIter);
+            if(*(*pAllDateIter) == date){
+                size_t subOffset = des->stockMetas[stockIndex].offset + skip + (*pStock2Offset)[stockIndex];
+                //rt->skip(subOffset, false);
+                //if(**rt < 0.09f && **rt > -0.09f)
+                //    cout<<stockIndex<<" "<<des->stockMetas[stockIndex].code<<" "<<date<<" "<<**rt<<endl;
+                file->write(reinterpret_cast<const char* >( &subOffset ), sizeof(size_t));
+                ++(*pPreSignCnt);
+                (*pStock2Offset)[stockIndex] = (*pStock2Offset)[stockIndex] + skip + 1;
+                //cout<<(*pStock2Offset)[stockIndex]<<endl;
+                (*pStock2LastDate)[stockIndex] = date;
+            } else {
+                cout<<stockIndex<<" "<<date<<" "<<"我擦，居然没找到!\n";
+            }
+
+        });
+        //cout<<"ssss3\n";
+        file->seekp((*pPreDayNum) * sizeof(size_t), ios::beg);
+
+        while ((*pLastId) != daySize-1){
+            //更新昨天以前的
+            file->write(reinterpret_cast<const char* >( pPreSignCnt ), sizeof(size_t));
+            ++(*pLastId);
+            ++(*pPreDayNum);
+        }
+        //最后一个元素再加一次(因为之前都是到了下一天才更新第一天的，最后一个元素没有下一天了)，以便下次调用是对的，这个bug查了两小时~
+        file->write(reinterpret_cast<const char* >( pPreSignCnt ), sizeof(size_t));
+        ++(*pPreDayNum);
+        //cout<<"ssss4\n";
+    }
+
+    BaseIterator<float>* createSignFeatureIter(const char* signName, const char* featureName, size_t dayBefore, size_t sampleDays, int offset){
+        StockFeature<float> *ft = nullptr;
+        auto** pHashNameNode = feature_.find(featureName);
+        if(*pHashNameNode == nullptr){
+            ft = new StockFeature<float>(feature2path_(featureName).c_str());
+        } else {
+            ft = (*pHashNameNode)->value;
+        }
+        size_t allDays = des_->stockMetas[des_->mainStock].days;
+        BaseIterator<size_t>* signIter = new BinarySignIterator(feature2path_(signName).c_str(), dayBefore, sampleDays, des_->stockMetas[des_->mainStock].days, offset);
+        //cout<<des_->stockMetas[des_->stockMetas.getSize()-1].offset + des_->stockMetas[des_->stockMetas.getSize()-1].days<<endl;
+        BaseIterator<float>* featureIter = ft->createIter(0, des_->stockMetas[des_->stockMetas.getSize()-1].offset + des_->stockMetas[des_->stockMetas.getSize()-1].days);
+        return new Sign2FeatureIterator(signIter, featureIter);
     }
 protected:
     const char* path_;
@@ -139,7 +249,6 @@ protected:
             ft = (*pHashNameNode)->value;
         }
 
-
         auto mainStockMeta = des_->stockMetas[des_->mainStock];
         Iterator<long> mainDateIter(date->createIter(mainStockMeta.offset, mainStockMeta.days));
         auto curStockMeta = des_->stockMetas[code];
@@ -155,6 +264,7 @@ protected:
             }
         }*/
 
+
         //定位要读取的数据
         auto skipOffset = mainDateIter.size() - dayBefore - daySize;
         mainDateIter.skip(skipOffset);
@@ -168,7 +278,9 @@ protected:
             ++curFeatureIter;
         }
 
-
+        //if(dayBefore == 4515 && strcmp(code, "0600867") == 0){
+        //    cout<<":"<<*mainDateIter<<endl;
+        //}
 
         //填写要读取的数据，如有缺失就补上
         for(size_t i = 0; i < daySize; ++i){
@@ -186,6 +298,9 @@ protected:
                     }
                 }
             }
+            //if(dayBefore == 4515 && strcmp(code, "0600867") == 0 && i == 1){
+            //    cout<<":"<<*mainDateIter<<endl;
+            //}
             f(offset + i * stockNum, lastFeature);
             //if(strcmp(code,"0603156") == 0)
             //    cout<<*curDateIter<<" "<<*mainDateIter<<" "<<lastFeature<<endl;
@@ -197,6 +312,18 @@ protected:
             delete date;
         if(ft && !ft->isCache())
             delete ft;
+    }
+
+    template <class F>
+    void invFillSign_(const float* cache, size_t daySize, size_t stockNum, F&& f){
+        for(size_t i = 0; i < daySize; ++i){
+            for(size_t j = 0; j < stockNum; ++j){
+                if(cache[i * stockNum + j] > 0){
+                    //cout<<cache[i * stockNum + j]<<endl;
+                    f(i, j);
+                }
+            }
+        }
     }
 
     string feature2path_(const char* featureName){
@@ -218,6 +345,9 @@ public:
             return filePath;
         };
         file.open(filepath(featureName, ".ft"), ios::binary | ios::out);
+
+        //T lastValue = 0;
+
         for(int i = 0; i < des->stockMetas.getSize(); ++i){
             auto meta = des->stockMetas[i];
             CSVIterator<T> iter(filepath(meta.code,".csv").c_str(), featureName);
@@ -228,6 +358,9 @@ public:
             while (iter.isValid()){
                 //file<<*iter;
                 T value = *iter;
+                //if(value < lastValue)
+                //    cout<<"error\n";
+                //lastValue = value;
                 file.write( reinterpret_cast< char* >( &value ), sizeof( T ) );
                 ++dayNum;
                 ++iter;

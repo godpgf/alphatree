@@ -6,6 +6,7 @@
 #include "libalphatree/base/darray.h"
 #include "libalphatree/base/normal.h"
 #include <thread>
+#include <math.h>
 #include <vector>
 
 using namespace std;
@@ -96,7 +97,90 @@ class B{
 
 int main() {
     AlphaForest::initialize(4);
-    AlphaForest::getAlphaforest()->getAlphaDataBase()->loadDataBase("pyalphatree/data");
+
+    {
+        AlphaForest::getAlphaforest()->getAlphaDataBase()->loadDataBase("pyalphatree/cffex_if");
+        {
+//            AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/cffex_if", "date");
+//            AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/cffex_if", "open");
+//            AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/cffex_if", "high");
+//            AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/cffex_if", "low");
+//            AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/cffex_if", "close");
+//            AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/cffex_if", "volume");
+//            AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/cffex_if", "amount");
+//            AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/cffex_if", "askprice");
+//            AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/cffex_if", "askvolume");
+//            AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/cffex_if", "bidprice");
+//            AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/cffex_if", "bidvolume");
+
+//            int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
+//            AlphaForest::getAlphaforest()->decode(alphatreeId, "returns", "((close - delay(close, 1)) / delay(close, 1))");
+//            int cacheId = AlphaForest::getAlphaforest()->useCache();
+//            AlphaForest::getAlphaforest()->cacheAlpha(alphatreeId, cacheId, "returns");
+//            AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
+//            AlphaForest::getAlphaforest()->releaseCache(cacheId);
+
+            int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
+            AlphaForest::getAlphaforest()->decode(alphatreeId, "target", "(returns * 1.5)");
+            int cacheId = AlphaForest::getAlphaforest()->useCache();
+            AlphaForest::getAlphaforest()->cacheAlpha(alphatreeId, cacheId, "target");
+            AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
+            AlphaForest::getAlphaforest()->releaseCache(cacheId);
+
+//            int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
+//            AlphaForest::getAlphaforest()->decode(alphatreeId, "filter","(product(volume, 5) > 0)");
+//            int cacheId = AlphaForest::getAlphaforest()->useCache();
+//            AlphaForest::getAlphaforest()->cacheSign(alphatreeId, cacheId, "filter");
+//            AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
+//            AlphaForest::getAlphaforest()->releaseCache(cacheId);
+
+
+//            int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
+//            AlphaForest::getAlphaforest()->decode(alphatreeId, "test_filter","(returns < 0)");
+//            int cacheId = AlphaForest::getAlphaforest()->useCache();
+//            AlphaForest::getAlphaforest()->cacheSign(alphatreeId, cacheId, "test_filter");
+//            AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
+//            AlphaForest::getAlphaforest()->releaseCache(cacheId);
+
+            auto iter = AlphaForest::getAlphaforest()->getAlphaDataBase()->createSignFeatureIter("test_filter", "target", 0, 21002925, 0);
+            int num = 0;
+            while (iter->isValid()){
+                if(**iter >= 0){
+                    cout<<"error "<<**iter<<endl;
+                }
+                ++*iter;
+                ++num;
+            }
+            cout<<"num="<<num<<endl;
+        }
+        /*{
+
+            auto iter = AlphaForest::getAlphaforest()->getAlphaDataBase()->createSignFeatureIter("filter", "returns", 0, 21002925,0);
+            while(iter->isValid()){
+                if(**iter > 0)
+                    cout<<**iter<<"error\n";
+                ++(*iter);
+            }
+        }*/
+
+        /*{
+            int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
+            AlphaForest::getAlphaforest()->decode(alphatreeId, "sign", "(abs(returns) > 0.09)");
+            int cacheId = AlphaForest::getAlphaforest()->useCache();
+            AlphaForest::getAlphaforest()->cacheSign(alphatreeId, cacheId, "sign");
+            AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
+            AlphaForest::getAlphaforest()->releaseCache(cacheId);
+
+            Iterator<float> signFeatureIter(AlphaForest::getAlphaforest()->getAlphaDataBase()->createSignFeatureIter("sign","returns", 20,512));
+            while (signFeatureIter.isValid()){
+                if(abs(*signFeatureIter) < 0.09){
+                    cout<<"error "<<*signFeatureIter<<endl;
+                }
+                ++signFeatureIter;
+            }
+            cout<<"finish test sign feature iter\n";
+        }*/
+    }
     //AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/data", "date");
 
     /*{
@@ -114,30 +198,51 @@ int main() {
         AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/data", "mcap");
     }*/
 
-    {
+    /*{
         //AlphaForest::getAlphaforest()->getAlphaDataBase()->cacheFeature("date");
         //AlphaForest::getAlphaforest()->getAlphaDataBase()->cacheFeature("returns");
 
         int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
-        AlphaForest::getAlphaforest()->decode(alphatreeId, "root", "atr15");
+        AlphaForest::getAlphaforest()->decode(alphatreeId, "root", "returns");
         int cacheId = AlphaForest::getAlphaforest()->useCache();
         char codes[8 * 4096];
         size_t stockNum = AlphaForest::getAlphaforest()->getAlphaDataBase()->getStockCodes(codes);
-        AlphaForest::getAlphaforest()->calAlpha(alphatreeId, cacheId, 0, 1, codes, stockNum);
+        AlphaForest::getAlphaforest()->calAlpha(alphatreeId, cacheId, 50, 1024, codes, stockNum);
         const float* alpha = AlphaForest::getAlphaforest()->getAlpha(alphatreeId, "root", cacheId);
+        for(int i= 0; i < 1024; ++i)
+            cout<<alpha[i]<<endl;
 
         AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
         AlphaForest::getAlphaforest()->releaseCache(cacheId);
-    }
+    }*/
 
-    {
+    /*{
         int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
         AlphaForest::getAlphaforest()->decode(alphatreeId, "atr15", "mean(max((high - low), max((high - delay(close, 1)), (delay(close, 1) - low))), 14)");
         int cacheId = AlphaForest::getAlphaforest()->useCache();
         AlphaForest::getAlphaforest()->cacheAlpha(alphatreeId, cacheId, "atr15");
         AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
         AlphaForest::getAlphaforest()->releaseCache(cacheId);
-    }
+    }*/
+
+    /*{
+        int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
+        AlphaForest::getAlphaforest()->decode(alphatreeId, "test_sign", "(abs(returns) > 0.09)");
+        int cacheId = AlphaForest::getAlphaforest()->useCache();
+        AlphaForest::getAlphaforest()->cacheSign(alphatreeId, cacheId, "test_sign");
+        AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
+        AlphaForest::getAlphaforest()->releaseCache(cacheId);
+
+        Iterator<float> signFeatureIter(AlphaForest::getAlphaforest()->getAlphaDataBase()->createSignFeatureIter("test_sign","returns", 20,512));
+        while (signFeatureIter.isValid()){
+            if(abs(*signFeatureIter) < 0.09){
+                cout<<"error "<<*signFeatureIter<<endl;
+            }
+            ++signFeatureIter;
+        }
+        cout<<"finish test sign feature iter\n";
+    }*/
+
 
     //vector<string> f;
     //f.push_back()
