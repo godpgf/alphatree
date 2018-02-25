@@ -191,6 +191,10 @@ float iterValue(void* piter){
     return *(*(BaseIterator<float>*)piter);
 }
 
+float iterSmooth(void* piter, float threshold){
+    return smooth((BaseIterator<float>*)piter, threshold);
+}
+
 void releaseIter(void* piter){delete (BaseIterator<float>*)piter;}
 
 float optimizeAlpha(int alphaTreeId, int cacheId, const char *rootName, int dayBefore, int sampleSize, const char *codes, size_t stockSize, float exploteRatio, int errTryTime){

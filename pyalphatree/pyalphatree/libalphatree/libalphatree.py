@@ -18,3 +18,4 @@ alphatree.createSignFeatureIter.restype = c_void_p
 alphatree.iterIsValid.restype = c_bool
 alphatree.iterSize.restype = c_int32
 alphatree.iterValue.restype = c_float
+alphatree.iterSmooth.restype = c_float

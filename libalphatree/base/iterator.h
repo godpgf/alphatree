@@ -292,4 +292,48 @@ protected:
     ifstream file_;
 };
 
+template<class T>
+T smooth(BaseIterator<T>* piter, float threshold){
+    size_t valueLength = threshold < 0.5f ? (size_t)(piter->size() * threshold) : (size_t)(piter->size() * (1 - threshold));
+    T* values = new T[valueLength];
+    int lastIndex = -1;
+    int curIndex = 0;
+    piter->skip(0, false);
+
+    T lastValue, curValue;
+    while (piter->isValid()){
+        curValue = **piter;
+        if(lastIndex == -1){
+            values[0] = curValue;
+            lastIndex = 0;
+        } else {
+            lastValue = values[lastIndex];
+            curIndex = lastIndex;
+            if(threshold < 0.5f && curValue < values[lastIndex]){
+                while (curIndex > 0 && values[curIndex-1] > curValue){
+                    values[curIndex] = values[curIndex-1];
+                    --curIndex;
+                }
+                values[curIndex] = curValue;
+                if(lastIndex < valueLength - 1)
+                    values[++lastIndex] = lastValue;
+            } else if(threshold >= 0.5 && curValue > values[lastIndex]){
+                while (curIndex > 0 && values[curIndex-1] < curValue){
+                    values[curIndex] = values[curIndex-1];
+                    --curIndex;
+                }
+                values[curIndex] = curValue;
+                if(lastIndex < valueLength - 1)
+                    values[++lastIndex] = lastValue;
+            }
+
+        }
+        ++*piter;
+    }
+    piter->skip(0, false);
+    curValue = values[valueLength-1];
+    delete []values;
+    return curValue;
+}
+
 #endif //ALPHATREE_ITERATOR_H

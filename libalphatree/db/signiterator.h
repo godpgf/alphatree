@@ -49,12 +49,14 @@ public:
             curIndex_ = size;
         file_.seekg(sizeof(size_t) * (allDays_ + preSize_ + curIndex_), ios::beg);
         readCurDataOffset();
+        //cout<<curIndex_<<" "<<curDataOffset_<<endl;
         //file_.read(reinterpret_cast< char* >( &curDataOffset_ ), sizeof( size_t ));
         return (*this);
     }
     virtual bool isValid(){ return curIndex_ < size_;}
 
     virtual size_t& operator*() {
+        //cout<<curDataOffset_<<endl;
         return curDataOffset_;
     }
     virtual int size(){ return size_;}
@@ -77,10 +79,12 @@ protected:
 
     void readCurDataOffset(){
         file_.read(reinterpret_cast< char* >( &curDataOffset_ ), sizeof( size_t ));
+        //cout<<curIndex_<<" "<<curDataOffset_<<" ";
         if(offset_ < 0)
             curDataOffset_ -= (size_t)abs(offset_);
         else
             curDataOffset_ += offset_;
+        //cout<<curDataOffset_<<endl;
     }
 };
 
@@ -108,6 +112,7 @@ public:
     virtual BaseIterator& skip(long size, bool isRelative = true){
         signIter_->skip(size, isRelative);
         featureIter_->skip(*(*signIter_), false);
+        //cout<<"feature skip "<<*(*signIter_)<<" "<<*(*featureIter_)<<endl;
         return (*this);
     }
 

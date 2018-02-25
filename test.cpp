@@ -120,12 +120,12 @@ int main() {
 //            AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
 //            AlphaForest::getAlphaforest()->releaseCache(cacheId);
 
-            int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
-            AlphaForest::getAlphaforest()->decode(alphatreeId, "target", "(returns * 1.5)");
-            int cacheId = AlphaForest::getAlphaforest()->useCache();
-            AlphaForest::getAlphaforest()->cacheAlpha(alphatreeId, cacheId, "target");
-            AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
-            AlphaForest::getAlphaforest()->releaseCache(cacheId);
+//            int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
+//            AlphaForest::getAlphaforest()->decode(alphatreeId, "target", "(returns * 1.5)");
+//            int cacheId = AlphaForest::getAlphaforest()->useCache();
+//            AlphaForest::getAlphaforest()->cacheAlpha(alphatreeId, cacheId, "target");
+//            AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
+//            AlphaForest::getAlphaforest()->releaseCache(cacheId);
 
 //            int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
 //            AlphaForest::getAlphaforest()->decode(alphatreeId, "filter","(product(volume, 5) > 0)");
@@ -142,7 +142,13 @@ int main() {
 //            AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
 //            AlphaForest::getAlphaforest()->releaseCache(cacheId);
 
+            auto iter_c_0 = AlphaForest::getAlphaforest()->getAlphaDataBase()->createSignFeatureIter("filter", "volume", 0, 21002925, 0);
+            auto iter_c_1 = AlphaForest::getAlphaforest()->getAlphaDataBase()->createSignFeatureIter("filter", "volume", 0, 21002925, -1);
+            auto iter_c_2 = AlphaForest::getAlphaforest()->getAlphaDataBase()->createSignFeatureIter("filter", "volume", 0, 21002925, -2);
+            float c = smooth(iter_c_1, 0.999f);
+
             auto iter = AlphaForest::getAlphaforest()->getAlphaDataBase()->createSignFeatureIter("test_filter", "target", 0, 21002925, 0);
+
             int num = 0;
             while (iter->isValid()){
                 if(**iter >= 0){

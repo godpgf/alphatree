@@ -164,7 +164,7 @@ if __name__ == "__main__":
     # af.csv2binary("../../cffex_if", "bidvolume")
     # af.cache_alpha("returns", "((close - delay(close, 1)) / delay(close, 1))")
     # af.cache_alpha("target", "((sign(returns) + 1) * 0.5)")
-    af.cache_sign("filter","((product(volume, 5) > 0) & (abs(returns) > 0))")
+    af.cache_sign("filter","((product(volume, 6) > 0) & (abs(returns) > 0))")
     # af.cache_sign("test_filter","(returns < 0)")
     # af.cache_sign("test_filter","(delay(returns, 2) < 0)")
     #
