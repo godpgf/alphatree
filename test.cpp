@@ -1,7 +1,7 @@
 #include <iostream>
 #include "libalphatree/alphaforest.h"
-#include "libalphatree/alpha/alpha.h"
-#include "libalphatree/alpha/base.h"
+#include "atom/alpha.h"
+#include "atom/base.h"
 #include "libalphatree/base/threadpool.h"
 #include "libalphatree/base/darray.h"
 #include "libalphatree/base/normal.h"

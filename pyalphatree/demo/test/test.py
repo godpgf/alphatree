@@ -122,13 +122,37 @@ def test_alphaforest(af, alphatree_list, subalphatree_dict, sample_size = 1):
 def test_base_calculate(af, dataProxy, is_cmp = False):
     print "start test base calculate .................."
 
+    print "iter feature"
+    codes = af.get_stock_codes()
+    ft = FeatureIter("close", 1, 2, codes)
+    if is_cmp:
+        values = ft.get_value()
+        for index, code in enumerate(codes):
+            print code
+            if values[index] > 0:
+                vol = dataProxy.get_all_Data(code)[-3][4]
+                float_equal(vol, values[index])
+        ft.skip()
+        values = ft.get_value()
+        for index, code in enumerate(codes):
+            if values[index] > 0:
+                vol = dataProxy.get_all_Data(code)[-2][4]
+                float_equal(vol, values[index])
+        ft.skip()
+        assert ft.is_valid() == False
+
+    print "iter sign"
+    af.cache_sign("sign_returns", "(returns > 0)")
+    si = AlphaIter("sign_returns", "returns", 10, 20)
+    while si.is_valid():
+        assert si.get_value() > 0
+        si.skip()
 
     print "cache alpha"
     af.cache_alpha( "atr15", "mean(max((high - low), max((high - delay(close, 1)), (delay(close, 1) - low))), 14)")
     alpha, codes = cal_alpha(af, "atr15", 1)
     if is_cmp:
         for index, code in enumerate(codes):
-            print code
             close = dataProxy.get_all_Data(code)[-16][4]
             if dataProxy.get_all_Data(code)[-1][5] >= 0:
                 continue
@@ -657,7 +681,7 @@ def cache_path(af, path):
                 continue
             tmp = line.split('=')
             print tmp[0]
-            cache_alpha(af, tmp[0].replace(" ",""), tmp[1][:-1])
+            af.cache_alpha(tmp[0].replace(" ",""), tmp[1][:-1])
 
 
 def test_res_eraito_strategy(af, daybefore = 0, sample_size = 250):
@@ -757,21 +781,34 @@ if __name__ == '__main__':
 
     af = AlphaForest()
     af.load_db("../../data")
+    # af.csv2binary("../../data", "date")
+    # af.csv2binary("../../data", "open")
+    # af.csv2binary("../../data", "high")
+    # af.csv2binary("../../data", "low")
+    # af.csv2binary("../../data", "close")
+    # af.csv2binary("../../data", "volume")
+    # af.csv2binary("../../data", "vwap")
+    # af.csv2binary("../../data", "returns")
+    # af.csv2binary("../../data", "amount")
+    # af.csv2binary("../../data", "turn")
+    # af.csv2binary("../../data", "tcap")
+    # af.csv2binary("../../data", "mcap")
+    # print "finish data convert"
 
     #缓存数据到内存
-    #af.cache_feature("date")
-    #af.cache_feature("open")
-    #af.cache_feature("high")
-    #af.cache_feature("low")
-    #af.cache_feature("close")
-    #af.cache_feature("volume")
-    #af.cache_feature("vwap")
-    #af.cache_feature("returns")
-    #af.cache_feature("amount")
-    #af.cache_feature("turn")
-    #af.cache_feature("tcap")
-    #af.cache_feature("mcap")
-    #print "finish cache"
+    # af.cache_feature("date")
+    # af.cache_feature("open")
+    # af.cache_feature("high")
+    # af.cache_feature("low")
+    # af.cache_feature("close")
+    # af.cache_feature("volume")
+    # af.cache_feature("vwap")
+    # af.cache_feature("returns")
+    # af.cache_feature("amount")
+    # af.cache_feature("turn")
+    # af.cache_feature("tcap")
+    # af.cache_feature("mcap")
+    # print "finish cache"
 
     #codeProxy = LocalCodeProxy(cache_path = "data", is_offline = False)
     dataProxy = LocalDataProxy(cache_path = "../../data", is_offline = True)

@@ -47,9 +47,10 @@ public:
             curIndex_ += size;
         else
             curIndex_ = size;
+
         file_.seekg(sizeof(size_t) * (allDays_ + preSize_ + curIndex_), ios::beg);
         readCurDataOffset();
-        //cout<<curIndex_<<" "<<curDataOffset_<<endl;
+        //cout<<":"<<curIndex_<<" "<<size_<<endl;
         //file_.read(reinterpret_cast< char* >( &curDataOffset_ ), sizeof( size_t ));
         return (*this);
     }

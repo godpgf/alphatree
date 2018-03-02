@@ -151,6 +151,12 @@ public:
         return false;
     }
 
+    static bool isCmpFun(const char* str){
+        if (strcmp(str, "min") == 0 || strcmp(str, "max") == 0)
+            return true;
+        return false;
+    }
+
     static bool isNum(const char* str){
         int curIndex = 0;
         int len = strlen(str);

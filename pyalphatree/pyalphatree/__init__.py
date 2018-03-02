@@ -1,4 +1,4 @@
-from .util import AlphaForest, AlphaIter
+from .util import AlphaForest, AlphaIter, FeatureIter
 from .util import AlphaTree, AlphaNode
 import re
 from stdb import *

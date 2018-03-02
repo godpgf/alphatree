@@ -278,7 +278,7 @@ protected:
         char* dataClass = (parDataClass == nullptr) ? nullptr : curDataClass;
 
         //特殊处理一些操作符的系数
-        if(converter_.isSymbolFun(opt)){
+        if(converter_.isSymbolFun(opt) || converter_.isCmpFun(opt)){
             //如果第一个孩子是数字,变成opt_from
             if(converter_.getOptSize(outCache, 1) < MAX_OPT_STR_LEN && converter_.isNum(converter_.readOpt(line, outCache, optCache,1))){
                 coff = atof(optCache);

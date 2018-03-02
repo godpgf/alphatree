@@ -143,9 +143,29 @@ inline void _min(float *dst, const float *a, const float *b, size_t size){
         dst[i] = a[i] < b[i] ? a[i] : b[i];
 }
 
+inline void _minFrom(float *dst, const float a, const float *b, size_t size){
+    for(size_t i = 0; i < size; ++i)
+        dst[i] = a < b[i] ? a : b[i];
+}
+
+inline void _minTo(float *dst, const float *a, const float b, size_t size){
+    for(size_t i = 0; i < size; ++i)
+        dst[i] = a[i] < b ? a[i] : b;
+}
+
 inline void _max(float *dst, const float *a, const float *b, size_t size){
     for(size_t i = 0; i < size; ++i)
         dst[i] = a[i] > b[i] ? a[i] : b[i];
+}
+
+inline void _maxFrom(float *dst, const float a, const float *b, size_t size){
+    for(size_t i = 0; i < size; ++i)
+        dst[i] = a > b[i] ? a : b[i];
+}
+
+inline void _maxTo(float *dst, const float *a, const float b, size_t size){
+    for(size_t i = 0; i < size; ++i)
+        dst[i] = a[i] > b ? a[i] : b;
 }
 
 inline void _abs(float *dst, const float *src, size_t size){

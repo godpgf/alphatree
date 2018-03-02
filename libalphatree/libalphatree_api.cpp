@@ -174,28 +174,49 @@ void* createSignFeatureIter(const char* signName, const char* featureName, int d
     return AlphaForest::getAlphaforest()->getAlphaDataBase()->createSignFeatureIter(signName, featureName, dayBefore, sampleDays, offset);
 }
 
-void iterSkip(void* piter, int offset, bool isRelative){
-    ((BaseIterator<float>*)piter)->skip(offset, isRelative);
+void* createFeatureIter(const char* featureName, int dayBefore, int sampleDays, int stockNum, const char* codes, bool isCache){
+    return AlphaForest::getAlphaforest()->getAlphaDataBase()->createFeatureIter(featureName, dayBefore, sampleDays, stockNum, codes, isCache);
 }
 
-bool iterIsValid(void* piter){
+void iterSkip(void* piter, int offset, bool isRelative, bool isFeature){
+    if(isFeature)
+        ((BaseIterator<float*>*)piter)->skip(offset, isRelative);
+    else
+        ((BaseIterator<float>*)piter)->skip(offset, isRelative);
+}
+
+bool iterIsValid(void* piter, bool isFeature){
+    if(isFeature)
+        return ((BaseIterator<float*>*)piter)->isValid();
     return ((BaseIterator<float>*)piter)->isValid();
 }
 
-int iterSize(void* piter){
+int iterSize(void* piter, bool isFeature){
+    if(isFeature)
+        return (int)((BaseIterator<float*>*)piter)->size();
     return (int)((BaseIterator<float>*)piter)->size();
 }
 
-float iterValue(void* piter){
+void iterValue(void* piter, bool isFeature, float* dst){
     //cout<<*(*(BaseIterator<float>*)piter)<<" "<<(*(BaseIterator<float>*)piter).size()<<endl;
-    return *(*(BaseIterator<float>*)piter);
+    if(isFeature)
+        memcpy(dst, **((FeatureIterator*)piter), ((FeatureIterator*)piter)->getStockNum() * sizeof(float));
+    else
+        dst[0] = *(*(BaseIterator<float>*)piter);
 }
 
-float iterSmooth(void* piter, float threshold){
+float iterSmooth(void* piter, bool isFeature, float threshold){
+    if(isFeature)
+        throw "不支持";
     return smooth((BaseIterator<float>*)piter, threshold);
 }
 
-void releaseIter(void* piter){delete (BaseIterator<float>*)piter;}
+void releaseIter(void* piter, bool isFeature){
+    if(isFeature)
+        delete (BaseIterator<float*>*)piter;
+    else
+        delete (BaseIterator<float>*)piter;
+}
 
 float optimizeAlpha(int alphaTreeId, int cacheId, const char *rootName, int dayBefore, int sampleSize, const char *codes, size_t stockSize, float exploteRatio, int errTryTime){
     return AlphaForest::getAlphaforest()->optimizeAlpha(alphaTreeId, cacheId, rootName, dayBefore, sampleSize, codes, stockSize, exploteRatio, errTryTime);

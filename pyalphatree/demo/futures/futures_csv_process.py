@@ -5,7 +5,17 @@ import os
 from pyalphatree import *
 
 
-def conbine_csv(rootdir, topath):
+def _avg(value_list):
+    sum = 0
+    cnt = 0
+    for v in value_list:
+        if v > 0:
+            sum += v
+            cnt += 1
+    return "%.4f"%(sum / max(float(cnt), 1.0))
+
+
+def conbine_csv(rootdir, topath, time_offset = 0):
     list = os.listdir(rootdir)
     list.sort()
 
@@ -51,6 +61,8 @@ def conbine_csv(rootdir, topath):
                     date = tmp[c_map['TRADINGDAY']]
                     time = tmp[c_map['TIME']]
                     dt = date + time.replace(":", "")
+                    if time_offset > 0:
+                        dt = dt[:-time_offset]
                     data = [dt]
                     nonull = lambda a : a if a and len(a) else '0'
                     #open
@@ -66,11 +78,11 @@ def conbine_csv(rootdir, topath):
                     #amount
                     data.append(nonull(tmp[c_map["TURNOVER"]]))
                     #askprice
-                    data.append(nonull(tmp[c_map["ASKPRICE1"]]))
+                    data.append([float(nonull(tmp[c_map["ASKPRICE1"]]))])
                     #askvolume
                     data.append(nonull(tmp[c_map["ASKVOLUME1"]]))
                     #bidprice
-                    data.append(nonull(tmp[c_map['BIDPRICE1']]))
+                    data.append([float(nonull(tmp[c_map['BIDPRICE1']]))])
                     #bidvolume
                     data.append(nonull(tmp[c_map['BIDVOLUME1']]))
                     #for j in xrange(len(column)):
@@ -84,15 +96,15 @@ def conbine_csv(rootdir, topath):
                         data_map[inst][dt] = data
                         vol_map[inst] += float(data[6])
                     else:
-                        avg = lambda a, b: str((float(a) + float(b)) * 0.5)
+                        #avg = lambda a, b: str((float(a) + float(b)) * 0.5)
                         data_map[inst][dt][2] = max(data_map[inst][dt][2], data[2])
                         data_map[inst][dt][3] = min(data_map[inst][dt][3], data[3])
                         data_map[inst][dt][4] = data[4]
                         data_map[inst][dt][5] = str(long(data_map[inst][dt][5]) + long(data[5]))
                         data_map[inst][dt][6] = str(float(data_map[inst][dt][6]) + float(data[6]))
-                        data_map[inst][dt][7] = avg(data_map[inst][dt][7], data[7])
+                        data_map[inst][dt][7].extend(data[7])
                         data_map[inst][dt][8] = str(long(data_map[inst][dt][8]) + long(data[8]))
-                        data_map[inst][dt][9] = avg(data_map[inst][dt][9], data[9])
+                        data_map[inst][dt][9].extend(data[9])
                         data_map[inst][dt][10] = str(long(data_map[inst][dt][10]) + long(data[10]))
                         vol_map[inst] += float(data[6])
                     line = rf.readline()[:-2]
@@ -104,6 +116,9 @@ def conbine_csv(rootdir, topath):
                         max_inst = key
                 data_list = [value for key, value in data_map[max_inst].items()]
                 data_list = sorted(data_list, key=lambda d: d[0])
+                for data in data_list:
+                    data[7] = _avg(data[7])
+                    data[9] = _avg(data[9])
                 #if tmp[c_map['TRADINGDAY']] == "20141201":
                 #    for k in xrange(1, len(data_list)):
                 #        if data_list[k][0] < data_list[k-1][0]:
@@ -146,25 +161,24 @@ if __name__ == "__main__":
     #         line = rf.readline()
     #         lnum += 1
 
-
-    #conbine_csv("/Users/godpgf/Downloads/CFFEX_IF", "../../cffex_if/IF.csv")
+    conbine_csv("/home/godpgf/data/CFFEX_IF", "../../cffex_if/IF.csv", 0)
 
     af = AlphaForest()
     af.load_db("../../cffex_if")
-    # af.csv2binary("../../cffex_if", "date")
-    # af.csv2binary("../../cffex_if", "open")
-    # af.csv2binary("../../cffex_if", "high")
-    # af.csv2binary("../../cffex_if", "low")
-    # af.csv2binary("../../cffex_if", "close")
-    # af.csv2binary("../../cffex_if", "volume")
-    # af.csv2binary("../../cffex_if", "amount")
-    # af.csv2binary("../../cffex_if", "askprice")
-    # af.csv2binary("../../cffex_if", "askvolume")
-    # af.csv2binary("../../cffex_if", "bidprice")
-    # af.csv2binary("../../cffex_if", "bidvolume")
-    # af.cache_alpha("returns", "((close - delay(close, 1)) / delay(close, 1))")
-    # af.cache_alpha("target", "((sign(returns) + 1) * 0.5)")
-    af.cache_sign("filter","((product(volume, 6) > 0) & (abs(returns) > 0))")
+    af.csv2binary("../../cffex_if", "date")
+    af.csv2binary("../../cffex_if", "open")
+    af.csv2binary("../../cffex_if", "high")
+    af.csv2binary("../../cffex_if", "low")
+    af.csv2binary("../../cffex_if", "close")
+    af.csv2binary("../../cffex_if", "volume")
+    af.csv2binary("../../cffex_if", "amount")
+    af.csv2binary("../../cffex_if", "askprice")
+    af.csv2binary("../../cffex_if", "askvolume")
+    af.csv2binary("../../cffex_if", "bidprice")
+    af.csv2binary("../../cffex_if", "bidvolume")
+    af.cache_alpha("returns", "((close - delay(close, 1)) / delay(close, 1))")
+    af.cache_alpha("target", "((returns > 0.0002) ? 1 : ((returns < -0.0002) ? 0 : 0.5))")
+    af.cache_sign("filter","((product(volume, 6) > 0) & amplitude_sample(returns, 0.0002))")
     # af.cache_sign("test_filter","(returns < 0)")
     # af.cache_sign("test_filter","(delay(returns, 2) < 0)")
     #

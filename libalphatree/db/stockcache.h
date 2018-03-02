@@ -232,6 +232,7 @@ public:
         BaseIterator<float>* featureIter = ft->createIter(0, des_->stockMetas[des_->stockMetas.getSize()-1].offset + des_->stockMetas[des_->stockMetas.getSize()-1].days);
         return new Sign2FeatureIterator(signIter, featureIter);
     }
+
 protected:
     const char* path_;
     StockDes* des_;
@@ -254,16 +255,6 @@ protected:
         auto curStockMeta = des_->stockMetas[code];
         Iterator<long> curDateIter(date->createIter(curStockMeta.offset, curStockMeta.days));
         Iterator<float> curFeatureIter(ft->createIter(curStockMeta.offset, curStockMeta.days));
-
-        /*if(strcmp(code, "0603156") == 0){
-            while (curFeatureIter.isValid() && curDateIter.isValid())
-            {
-                cout<<*curDateIter<<" "<<*curFeatureIter<<endl;
-                ++curFeatureIter;
-                ++curDateIter;
-            }
-        }*/
-
 
         //定位要读取的数据
         auto skipOffset = mainDateIter.size() - dayBefore - daySize;

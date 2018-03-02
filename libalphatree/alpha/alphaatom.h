@@ -6,7 +6,9 @@
 #define ALPHATREE_ALPHAATOM_H
 
 #include "alphadb.h"
-#include "alpha.h"
+#include "atom/alpha.h"
+#include "atom/sample.h"
+#include "atom/backtrace.h"
 
 
 //系数单位
@@ -137,7 +139,12 @@ AlphaAtom AlphaAtom::alphaAtomList[] = {
         AlphaAtom("ts_min", tsMin, 2, 1, CoffUnit::COFF_DAY, DateRange::ALL_DAY),
         AlphaAtom("ts_max", tsMax, 2, 1, CoffUnit::COFF_DAY, DateRange::ALL_DAY),
         AlphaAtom("min", min, 2),
+        AlphaAtom("min_from", minFrom, 1, 0, CoffUnit::COFF_VAR),
+        AlphaAtom("min_to", minTo, 1, 0, CoffUnit::COFF_CONST),
         AlphaAtom("max", max, 2),
+        AlphaAtom("max_from", minFrom, 1, 0, CoffUnit::COFF_VAR),
+        AlphaAtom("max_to", minTo, 1, 0, CoffUnit::COFF_CONST),
+
         AlphaAtom("ts_argmin", tsArgMin, 2, 1, CoffUnit::COFF_DAY, DateRange::ALL_DAY),
         AlphaAtom("ts_argmax", tsArgMax, 2, 1, CoffUnit::COFF_DAY, DateRange::ALL_DAY),
         AlphaAtom("sum", sum, 1, 0, CoffUnit::COFF_DAY, DateRange::ALL_DAY),
@@ -185,6 +192,8 @@ AlphaAtom AlphaAtom::alphaAtomList[] = {
         AlphaAtom("ft_sharp", ftSharp, 3, 2),
         AlphaAtom("res_eratio", resEratio, 4, 3),
         AlphaAtom("opt_sharp", optShape, 2),
+
+        AlphaAtom("amplitude_sample", amplitudeSample, 1, 0, CoffUnit::COFF_CONST),
         //AlphaAtom("up_mean", upMean, 1, CoffUnit::COFF_DAY),
 };
 

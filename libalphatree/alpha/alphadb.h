@@ -12,13 +12,14 @@
 #include <math.h>
 #include <set>
 #include <vector>
-#include "base.h"
+#include "atom/base.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include "../base/hashmap.h"
 #include "../db/stockdes.h"
 #include "../db/stockcache.h"
+#include "../db/featureiterator.h"
 using namespace std;
 
 //返回中间结果和取样数据所需要考虑的所有天数,比如delate(close,3)取样5天,就返回3+5-1天的数据,这些天以外的数据计算时不会涉及到的.
@@ -118,6 +119,7 @@ class AlphaDB{
             return dst;
         }
 
+
         //将满足要求的特征写入内存或文件，可以分段写入
         void fillFeature(size_t dayBefore, size_t historyNum, size_t sampleNum, size_t stockNum, const char* name, const char* leafDataClass,
                          const float* sign, Iterator<float>& featureOut, const char* codes){
@@ -171,6 +173,10 @@ class AlphaDB{
 
         BaseIterator<float>* createSignFeatureIter(const char* signName, const char* featureName, size_t dayBefore, size_t sampleDays, int offset){
             return cache_->createSignFeatureIter(signName, featureName, dayBefore, sampleDays, offset);
+        }
+
+        BaseIterator<float*>* createFeatureIter(const char* featureName, size_t dayBefore, size_t sampleDays, size_t stockNum, const char* codes, bool isCache){
+            return new FeatureIterator(featureName, dayBefore, sampleDays, stockNum, codes, isCache, cache_);
         }
 
         size_t getStockNum(){ return des_->stockMetas.getSize();}
