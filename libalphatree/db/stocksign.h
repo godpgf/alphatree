@@ -1,22 +1,19 @@
 //
-// Created by 严宇 on 2018/2/14.
+// Created by godpgf on 18-3-4.
 //
 
-//todo delete
+#ifndef ALPHATREE_STOCKSIGN_H
+#define ALPHATREE_STOCKSIGN_H
 
-#ifndef ALPHATREE_SIGNITERATOR_H
-#define ALPHATREE_SIGNITERATOR_H
-
-//#include <fstream>
-//#include <sstream>
+#include "stockdes.h"
 #include "../base/iterator.h"
 
 
 class BinarySignIterator : public IBaseIterator<size_t>{
 public:
     //在所有的信号中从dayBefore天前取样sampleDays的信号，机器学习一般都会需要某个信号前几天的数据，offset=-1就表示取信号发生前一天的数据
-    BinarySignIterator(const char* path, size_t dayBefore, size_t sampleDays, size_t allDayNum, int offset = 0):
-            dayBefore_(dayBefore),sampleDays_(sampleDays),allDays_(allDayNum),preSize_(0),curIndex_(0),offset_(offset){
+    BinarySignIterator(const char* path, size_t dayBefore, size_t sampleDays, size_t allDayNum):
+            dayBefore_(dayBefore),sampleDays_(sampleDays),allDays_(allDayNum),preSize_(0),curIndex_(0){
         file_.open(path,ios::binary|ios::in);
         size_t curDayIndex = allDays_ - dayBefore_ - sampleDays_;
         size_t allSize = 0;
@@ -27,7 +24,7 @@ public:
             file_.read(reinterpret_cast< char* >( &preSize_ ), sizeof( size_t ));
         }
         file_.seekg(sizeof(size_t) * (allDayNum + preSize_), ios::beg);
-        readCurDataOffset();
+        file_.read(reinterpret_cast< char* >( &curDataOffset_ ), sizeof( size_t ));
         //file_.read(reinterpret_cast< char* >( &curDataOffset_ ), sizeof( size_t ));
 
         size_ = allSize - preSize_;
@@ -39,7 +36,7 @@ public:
 
     virtual void operator++() {
         ++curIndex_;
-        readCurDataOffset();
+        file_.read(reinterpret_cast< char* >( &curDataOffset_ ), sizeof( size_t ));
         //file_.read(reinterpret_cast< char* >( &curDataOffset_ ), sizeof( size_t ));
     }
 
@@ -50,7 +47,7 @@ public:
             curIndex_ = size;
 
         file_.seekg(sizeof(size_t) * (allDays_ + preSize_ + curIndex_), ios::beg);
-        readCurDataOffset();
+        file_.read(reinterpret_cast< char* >( &curDataOffset_ ), sizeof( size_t ));
         //cout<<":"<<curIndex_<<" "<<size_<<endl;
         //file_.read(reinterpret_cast< char* >( &curDataOffset_ ), sizeof( size_t ));
     }
@@ -69,54 +66,46 @@ protected:
     size_t curIndex_;
     //当前信号数据对应的文件偏移
     size_t curDataOffset_;
-    int offset_;
     size_t size_;
     ifstream file_;
-
-    void readCurDataOffset(){
-        file_.read(reinterpret_cast< char* >( &curDataOffset_ ), sizeof( size_t ));
-        //cout<<curIndex_<<" "<<curDataOffset_<<" ";
-        if(offset_ < 0)
-            curDataOffset_ -= (size_t)abs(offset_);
-        else
-            curDataOffset_ += offset_;
-        //cout<<curDataOffset_<<endl;
-    }
 };
 
 
-class Sign2FeatureIterator : public IBaseIterator<float>{
+class StockSign{
 public:
-    Sign2FeatureIterator(IBaseIterator<size_t>* signIter, IBaseIterator<float>* featureIter):signIter_(signIter), featureIter_(featureIter){
-        signIter_->skip(0, false);
-        featureIter->skip(*(*signIter), false);
+    StockSign(const char* path, size_t allDays, bool isCache):allDays_(allDays){
+        strcpy(path_, path);
+        if(isCache){
+            ifstream file;
+            file.open(path,ios::binary|ios::in);
+            file.seekg(sizeof(size_t) * (allDays_-1),ios::beg);
+            size_t allSize = 0;
+            file.read( reinterpret_cast< char* >( &allSize ), sizeof( size_t ) );
+            file.close();
+            cache_ = new size_t[allSize + allDays_];
+        }
     }
 
-    virtual ~Sign2FeatureIterator(){
-        delete signIter_;
-        delete featureIter_;
+    IBaseIterator<size_t>* createIter(size_t dayBefore, size_t sampleDays){
+        if(isCache()){
+            //todo
+            throw "以后再做";
+        } else {
+            return new BinarySignIterator(path_, dayBefore, sampleDays, allDays_);
+        }
     }
 
-    virtual void operator++() {
-        ++(*signIter_);
-        featureIter_->skip(*(*signIter_), false);
+    bool isCache(){ return cache_ != nullptr;};
+
+    virtual ~StockSign(){
+        if(cache_)
+            delete []cache_;
     }
 
-    virtual void skip(long size, bool isRelative = true){
-        signIter_->skip(size, isRelative);
-        featureIter_->skip(*(*signIter_), false);
-        //cout<<"feature skip "<<*(*signIter_)<<" "<<*(*featureIter_)<<endl;
-    }
-
-    virtual bool isValid(){ return signIter_->isValid();}
-
-    virtual float&& getValue(){
-        return std::move(**featureIter_);
-    }
-    virtual long size(){ return signIter_->size();}
 protected:
-    IBaseIterator<size_t>* signIter_;
-    IBaseIterator<float>* featureIter_;
+    char path_[64];
+    size_t allDays_;
+    size_t* cache_ = {nullptr};
 };
 
-#endif //ALPHATREE_SIGNITERATOR_H
+#endif //ALPHATREE_STOCKSIGN_H

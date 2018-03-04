@@ -161,6 +161,10 @@ void calAlpha(int alphaTreeId, int cacheId, int dayBefore, int sampleSize, const
     AlphaForest::getAlphaforest()->calAlpha(alphaTreeId, cacheId, dayBefore, sampleSize, codes, stockSize);
 }
 
+void calSignAlpha(int alphaTreeId, int cacheId, int dayBefore, int sampleSize, int signHistoryDays, const char* signName){
+    AlphaForest::getAlphaforest()->calAlpha(alphaTreeId, cacheId, dayBefore, sampleSize, signHistoryDays, signName);
+}
+
 void cacheAlpha(int alphaTreeId, int cacheId, const char* featureName) {
     cout<<featureName<<endl;
     AlphaForest::getAlphaforest()->cacheAlpha(alphaTreeId, cacheId, featureName);
@@ -169,54 +173,56 @@ void cacheAlpha(int alphaTreeId, int cacheId, const char* featureName) {
 void cacheSign(int alphaTreeId, int cacheId, const char* signName){
     AlphaForest::getAlphaforest()->cacheSign(alphaTreeId, cacheId, signName);
 }
+//todo delete later -----------------------------------------------------------------
+//void* createSignFeatureIter(const char* signName, const char* featureName, int dayBefore, int sampleDays, int offset){
+//    return AlphaForest::getAlphaforest()->getAlphaDataBase()->createSignFeatureIter(signName, featureName, dayBefore, sampleDays, offset);
+//}
+//
+//void* createFeatureIter(const char* featureName, int dayBefore, int sampleDays, int stockNum, const char* codes, bool isCache){
+//    return AlphaForest::getAlphaforest()->getAlphaDataBase()->createFeatureIter(featureName, dayBefore, sampleDays, stockNum, codes, isCache);
+//}
 
-void* createSignFeatureIter(const char* signName, const char* featureName, int dayBefore, int sampleDays, int offset){
-    return AlphaForest::getAlphaforest()->getAlphaDataBase()->createSignFeatureIter(signName, featureName, dayBefore, sampleDays, offset);
-}
 
-void* createFeatureIter(const char* featureName, int dayBefore, int sampleDays, int stockNum, const char* codes, bool isCache){
-    return AlphaForest::getAlphaforest()->getAlphaDataBase()->createFeatureIter(featureName, dayBefore, sampleDays, stockNum, codes, isCache);
-}
-
-void iterSkip(void* piter, int offset, bool isRelative, bool isFeature){
-    if(isFeature)
-        ((BaseIterator<float*>*)piter)->skip(offset, isRelative);
-    else
-        ((BaseIterator<float>*)piter)->skip(offset, isRelative);
-}
-
-bool iterIsValid(void* piter, bool isFeature){
-    if(isFeature)
-        return ((BaseIterator<float*>*)piter)->isValid();
-    return ((BaseIterator<float>*)piter)->isValid();
-}
-
-int iterSize(void* piter, bool isFeature){
-    if(isFeature)
-        return (int)((BaseIterator<float*>*)piter)->size();
-    return (int)((BaseIterator<float>*)piter)->size();
-}
-
-void iterValue(void* piter, bool isFeature, float* dst){
-    //cout<<*(*(BaseIterator<float>*)piter)<<" "<<(*(BaseIterator<float>*)piter).size()<<endl;
-    if(isFeature)
-        memcpy(dst, **((FeatureIterator*)piter), ((FeatureIterator*)piter)->getStockNum() * sizeof(float));
-    else
-        dst[0] = *(*(BaseIterator<float>*)piter);
-}
-
-float iterSmooth(void* piter, bool isFeature, float threshold){
-    if(isFeature)
-        throw "不支持";
-    return smooth((BaseIterator<float>*)piter, threshold);
-}
-
-void releaseIter(void* piter, bool isFeature){
-    if(isFeature)
-        delete (BaseIterator<float*>*)piter;
-    else
-        delete (BaseIterator<float>*)piter;
-}
+//void iterSkip(void* piter, int offset, bool isRelative, bool isFeature){
+//    if(isFeature)
+//        ((BaseIterator<float*>*)piter)->skip(offset, isRelative);
+//    else
+//        ((BaseIterator<float>*)piter)->skip(offset, isRelative);
+//}
+//
+//bool iterIsValid(void* piter, bool isFeature){
+//    if(isFeature)
+//        return ((BaseIterator<float*>*)piter)->isValid();
+//    return ((BaseIterator<float>*)piter)->isValid();
+//}
+//
+//int iterSize(void* piter, bool isFeature){
+//    if(isFeature)
+//        return (int)((BaseIterator<float*>*)piter)->size();
+//    return (int)((BaseIterator<float>*)piter)->size();
+//}
+//
+//void iterValue(void* piter, bool isFeature, float* dst){
+//    //cout<<*(*(BaseIterator<float>*)piter)<<" "<<(*(BaseIterator<float>*)piter).size()<<endl;
+//    if(isFeature)
+//        memcpy(dst, **((FeatureIterator*)piter), ((FeatureIterator*)piter)->getStockNum() * sizeof(float));
+//    else
+//        dst[0] = *(*(BaseIterator<float>*)piter);
+//}
+//
+//float iterSmooth(void* piter, bool isFeature, float threshold){
+//    if(isFeature)
+//        throw "不支持";
+//    return smooth((BaseIterator<float>*)piter, threshold);
+//}
+//
+//void releaseIter(void* piter, bool isFeature){
+//    if(isFeature)
+//        delete (BaseIterator<float*>*)piter;
+//    else
+//        delete (BaseIterator<float>*)piter;
+//}
+//-----------------------------------------------------------------------------------------
 
 float optimizeAlpha(int alphaTreeId, int cacheId, const char *rootName, int dayBefore, int sampleSize, const char *codes, size_t stockSize, float exploteRatio, int errTryTime){
     return AlphaForest::getAlphaforest()->optimizeAlpha(alphaTreeId, cacheId, rootName, dayBefore, sampleSize, codes, stockSize, exploteRatio, errTryTime);
@@ -225,7 +231,7 @@ float optimizeAlpha(int alphaTreeId, int cacheId, const char *rootName, int dayB
 int getRootAlpha(int alphaTreeId, const char *rootName, int cacheId, float *alpha) {
     const float *res = AlphaForest::getAlphaforest()->getAlpha(alphaTreeId, rootName, cacheId);
     auto *cache = AlphaForest::getAlphaforest()->getCache(cacheId);
-    int dataSize = cache->sampleDays * cache->stockSize;
+    int dataSize = (cache->isSign() ? cache->signHistoryDays : cache->sampleDays) * cache->stockSize;
     memcpy(alpha, res, dataSize * sizeof(float));
     return dataSize;
 }

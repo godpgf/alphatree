@@ -99,8 +99,8 @@ int main() {
     AlphaForest::initialize(4);
 
     {
-        AlphaForest::getAlphaforest()->getAlphaDataBase()->loadDataBase("pyalphatree/cffex_if");
-        {
+//        AlphaForest::getAlphaforest()->getAlphaDataBase()->loadDataBase("pyalphatree/cffex_if");
+//        {
 //            AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/cffex_if", "date");
 //            AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/cffex_if", "open");
 //            AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/cffex_if", "high");
@@ -142,23 +142,23 @@ int main() {
 //            AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
 //            AlphaForest::getAlphaforest()->releaseCache(cacheId);
 
-            auto iter_c_0 = AlphaForest::getAlphaforest()->getAlphaDataBase()->createSignFeatureIter("filter", "volume", 0, 21002925, 0);
-            auto iter_c_1 = AlphaForest::getAlphaforest()->getAlphaDataBase()->createSignFeatureIter("filter", "volume", 0, 21002925, -1);
-            auto iter_c_2 = AlphaForest::getAlphaforest()->getAlphaDataBase()->createSignFeatureIter("filter", "volume", 0, 21002925, -2);
-            float c = smooth(iter_c_1, 0.999f);
-
-            auto iter = AlphaForest::getAlphaforest()->getAlphaDataBase()->createSignFeatureIter("test_filter", "target", 0, 21002925, 0);
-
-            int num = 0;
-            while (iter->isValid()){
-                if(**iter >= 0){
-                    cout<<"error "<<**iter<<endl;
-                }
-                ++*iter;
-                ++num;
-            }
-            cout<<"num="<<num<<endl;
-        }
+//            auto iter_c_0 = AlphaForest::getAlphaforest()->getAlphaDataBase()->createSignFeatureIter("filter", "volume", 0, 21002925, 0);
+//            auto iter_c_1 = AlphaForest::getAlphaforest()->getAlphaDataBase()->createSignFeatureIter("filter", "volume", 0, 21002925, -1);
+//            auto iter_c_2 = AlphaForest::getAlphaforest()->getAlphaDataBase()->createSignFeatureIter("filter", "volume", 0, 21002925, -2);
+//            float c = smooth(iter_c_1, 0.999f);
+//
+//            auto iter = AlphaForest::getAlphaforest()->getAlphaDataBase()->createSignFeatureIter("test_filter", "target", 0, 21002925, 0);
+//
+//            int num = 0;
+//            while (iter->isValid()){
+//                if(**iter >= 0){
+//                    cout<<"error "<<**iter<<endl;
+//                }
+//                ++*iter;
+//                ++num;
+//            }
+//            cout<<"num="<<num<<endl;
+//        }
         /*{
 
             auto iter = AlphaForest::getAlphaforest()->getAlphaDataBase()->createSignFeatureIter("filter", "returns", 0, 21002925,0);
@@ -187,7 +187,16 @@ int main() {
             cout<<"finish test sign feature iter\n";
         }*/
     }
-    //AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/data", "date");
+    AlphaForest::getAlphaforest()->getAlphaDataBase()->loadDataBase("pyalphatree/data");
+    {
+        int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
+        AlphaForest::getAlphaforest()->decode(alphatreeId, "root", "returns");
+        int cacheId = AlphaForest::getAlphaforest()->useCache();
+        AlphaForest::getAlphaforest()->calAlpha(alphatreeId, cacheId, 0, 2, 2, "test_sign");
+        const float* alpha = AlphaForest::getAlphaforest()->getAlpha(alphatreeId, "root", cacheId);
+        for(int i = 0; i < 100; ++i)
+            cout<<alpha[i]<<endl;
+    }
 
     /*{
         AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary("pyalphatree/data", "date");

@@ -7,7 +7,7 @@
 
 #include "../base/hashmap.h"
 #include "stockfeature.h"
-#include "signiterator.h"
+#include "stocksign.h"
 #include <map>
 
 
@@ -33,6 +33,10 @@ public:
         }
     }
 
+    void cacheSign(const char* signName){
+        sign_[signName] = new StockSign(feature2path_(signName).c_str(), des_->stockMetas[des_->mainStock].days, true);
+    }
+
     ofstream* createCacheFile(const char* featureName){
         ofstream* file = new ofstream();
         file->open(feature2path_(featureName).c_str(), ios::binary);
@@ -43,21 +47,44 @@ public:
         file->close();
     }
 
+    size_t getSignNum(size_t dayBefore, size_t daySize, const char* signName){
+        size_t allDays = des_->stockMetas[des_->mainStock].days;
+        StockSign* ss = nullptr;
+        auto ** pSignHashNameNode = sign_.find(signName);
+        if(*pSignHashNameNode == nullptr){
+            ss = new StockSign(feature2path_(signName).c_str(), allDays, false);
+        } else {
+            ss = (*pSignHashNameNode)->value;
+        }
+        auto* iter = ss->createIter(dayBefore, daySize);
+        size_t signNum = iter->size();
+        delete iter;
+        if(!ss->isCache())
+            delete ss;
+        return signNum;
+    }
+
+    void fill(float* dst, size_t dayBefore, size_t daySize, size_t historyDays, const char* signName, const char* featureName){
+        fill_(dayBefore, daySize, historyDays, signName, featureName,[dst](int index, float value){
+            dst[index] = value;
+        });
+    }
+
     void fill(float* dst, size_t dayBefore, size_t daySize, const char* code, const char* featureName, size_t offset, size_t stockNum){
         fill_(dayBefore, daySize, code, featureName, offset, stockNum,[dst](int index, float value){
             dst[index] = value;
         });
     }
 
-    void fill(Iterator<float>& target,const float* sign, size_t dayBefore, size_t daySize, const char* code, const char* featureName, size_t offset, size_t stockNum){
-        Iterator<float>* ptarget = &target;
-        fill_(dayBefore, daySize, code, featureName, offset, stockNum, [ptarget, sign](int index, float value){
-           if(sign[index] > 0){
-               *(*ptarget) = value;
-               ++(*ptarget);
-           }
-        });
-    }
+//    void fill(Iterator<float>& target,const float* sign, size_t dayBefore, size_t daySize, const char* code, const char* featureName, size_t offset, size_t stockNum){
+//        Iterator<float>* ptarget = &target;
+//        fill_(dayBefore, daySize, code, featureName, offset, stockNum, [ptarget, sign](int index, float value){
+//           if(sign[index] > 0){
+//               *(*ptarget) = value;
+//               ++(*ptarget);
+//           }
+//        });
+//    }
 
 
     template<class T>
@@ -72,7 +99,7 @@ public:
 
 
         //主元素先跳到子元素位置上
-        int skip = mainDateIter.jumpTo(*curDateIter);
+        long skip = mainDateIter.jumpTo(*curDateIter);
         ++skip;
         if(skip > 0)
             ++mainDateIter;
@@ -218,7 +245,32 @@ public:
         //cout<<"ssss4\n";
     }
 
-    BaseIterator<float>* createSignFeatureIter(const char* signName, const char* featureName, size_t dayBefore, size_t sampleDays, int offset){
+    //todo delete later
+//    IBaseIterator<float>* createSignFeatureIter(const char* signName, const char* featureName, size_t dayBefore, size_t sampleDays, int offset){
+//        StockFeature<float> *ft = nullptr;
+//        auto** pHashNameNode = feature_.find(featureName);
+//        if(*pHashNameNode == nullptr){
+//            ft = new StockFeature<float>(feature2path_(featureName).c_str());
+//        } else {
+//            ft = (*pHashNameNode)->value;
+//        }
+//        size_t allDays = des_->stockMetas[des_->mainStock].days;
+//        IBaseIterator<size_t>* signIter = new BinarySignIterator(feature2path_(signName).c_str(), dayBefore, sampleDays, des_->stockMetas[des_->mainStock].days, offset);
+//        //cout<<des_->stockMetas[des_->stockMetas.getSize()-1].offset + des_->stockMetas[des_->stockMetas.getSize()-1].days<<endl;
+//        IBaseIterator<float>* featureIter = ft->createIter(0, des_->stockMetas[des_->stockMetas.getSize()-1].offset + des_->stockMetas[des_->stockMetas.getSize()-1].days);
+//        return new Sign2FeatureIterator(signIter, featureIter);
+//    }
+
+protected:
+    const char* path_;
+    StockDes* des_;
+    StockFeature<long>* date_ = nullptr;
+    HashMap<StockFeature<float>*> feature_;
+    HashMap<StockSign*> sign_;
+
+    //在dayBefore前的daySize天取样信号，向前取信号发生时特征(featureName)的historyDays条数据
+    template <class F>
+    void fill_(size_t dayBefore, size_t daySize, size_t historyDays, const char* signName, const char* featureName, F&& f){
         StockFeature<float> *ft = nullptr;
         auto** pHashNameNode = feature_.find(featureName);
         if(*pHashNameNode == nullptr){
@@ -226,18 +278,35 @@ public:
         } else {
             ft = (*pHashNameNode)->value;
         }
-        size_t allDays = des_->stockMetas[des_->mainStock].days;
-        BaseIterator<size_t>* signIter = new BinarySignIterator(feature2path_(signName).c_str(), dayBefore, sampleDays, des_->stockMetas[des_->mainStock].days, offset);
-        //cout<<des_->stockMetas[des_->stockMetas.getSize()-1].offset + des_->stockMetas[des_->stockMetas.getSize()-1].days<<endl;
-        BaseIterator<float>* featureIter = ft->createIter(0, des_->stockMetas[des_->stockMetas.getSize()-1].offset + des_->stockMetas[des_->stockMetas.getSize()-1].days);
-        return new Sign2FeatureIterator(signIter, featureIter);
-    }
 
-protected:
-    const char* path_;
-    StockDes* des_;
-    StockFeature<long>* date_ = nullptr;
-    HashMap<StockFeature<float>*> feature_;
+        size_t allDays = des_->stockMetas[des_->mainStock].days;
+        StockSign* ss = nullptr;
+        auto ** pSignHashNameNode = sign_.find(signName);
+        if(*pSignHashNameNode == nullptr){
+            ss = new StockSign(feature2path_(signName).c_str(), allDays, false);
+        } else {
+            ss = (*pSignHashNameNode)->value;
+        }
+
+        Iterator<float> curFeatureIter(ft->createIter(0, des_->stockMetas[des_->stockMetas.getSize()-1].offset + des_->stockMetas[des_->stockMetas.getSize()-1].days));
+        Iterator<size_t> curSignIter(ss->createIter(dayBefore, daySize));
+        size_t signNum = curSignIter.size();
+        int curIndex = 0;
+        while (curSignIter.isValid()){
+            size_t offset = *curSignIter;
+            curFeatureIter.skip(offset - (historyDays - 1), false);
+            ++curSignIter;
+            for(size_t i = 0; i < historyDays; ++i){
+                f(i * signNum + curIndex, *curFeatureIter);
+                ++curFeatureIter;
+            }
+            ++curIndex;
+        }
+        if(!ft->isCache())
+            delete ft;
+        if(!ss->isCache())
+            delete ss;
+    }
 
     template <class F>
     void fill_(size_t dayBefore, size_t daySize, const char* code, const char* featureName, size_t offset, size_t stockNum, F&& f){

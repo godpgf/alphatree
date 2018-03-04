@@ -116,6 +116,9 @@ class AlphaForest(object):
         self._write_codes(codes)
         alphatree.calAlpha(alphatree_id, cache_id, daybefore, sample_size, self.code_cache, stock_size)
 
+    def cal_sign_alpha(self, alphatree_id, cache_id, daybefore, sample_size, sign_history_days, sign_name):
+        alphatree.calSignAlpha(alphatree_id, cache_id, daybefore, sample_size, sign_history_days, c_char_p(sign_name))
+
 
     def optimize_alpha(self, alphatree_id, cache_id, root_name, daybefore, sample_size, codes, exploteRatio = 0.1, errTryTime = 64):
         stock_size = len(codes)

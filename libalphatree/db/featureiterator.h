@@ -2,6 +2,8 @@
 // Created by godpgf on 18-2-26.
 //
 
+//todo delete
+
 #ifndef ALPHATREE_FEATUREITERATOR_H
 #define ALPHATREE_FEATUREITERATOR_H
 #include "../base/iterator.h"
@@ -9,7 +11,8 @@
 #include <string.h>
 
 
-class FeatureIterator : public BaseIterator<float*>{
+
+class FeatureIterator : public IBaseIterator<float*>{
 public:
 
     FeatureIterator(const char* featureName, size_t dayBefore, size_t sampleDays, size_t stockNum, const char* codes, bool isCache, StockCache* cache)
@@ -45,7 +48,7 @@ public:
         delete []feature_;
     }
 
-    virtual BaseIterator<float*>& operator++() {
+    virtual void operator++() {
         ++curIndex_;
         if(curIndex_ < sampleDays_){
             if(isCache_)
@@ -55,7 +58,7 @@ public:
         }
     }
 
-    virtual BaseIterator<float*>& skip(long size, bool isRelative = true){
+    virtual void skip(long size, bool isRelative = true){
         if(isRelative){
             curIndex_ += size;
             if(curIndex_ < sampleDays_){
@@ -75,14 +78,10 @@ public:
         }
     }
     virtual bool isValid(){ return curIndex_ < sampleDays_;}
-    virtual float*& operator*() {
-        return curFeature_;
+    virtual float*&& getValue() {
+        return std::move(curFeature_);
     }
-    virtual int size(){ return sampleDays_;}
-
-    virtual int jumpTo(float* value, int start, int length){
-        throw "不支持";
-    }
+    virtual long size(){ return sampleDays_;}
 
     virtual int getStockNum(){
         return stockNum_;

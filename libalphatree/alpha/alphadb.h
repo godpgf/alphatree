@@ -103,6 +103,7 @@ class AlphaDB{
             return codeNum;
         }
 
+        //得到所有股票数据
         float* getStock(size_t dayBefore, size_t historyNum, size_t sampleNum, size_t stockNum, const char* name, const char* leafDataClass,
                         float* dst, const char* codes){
             const char* curCode = codes;
@@ -119,34 +120,45 @@ class AlphaDB{
             return dst;
         }
 
-
-        //将满足要求的特征写入内存或文件，可以分段写入
-        void fillFeature(size_t dayBefore, size_t historyNum, size_t sampleNum, size_t stockNum, const char* name, const char* leafDataClass,
-                         const float* sign, Iterator<float>& featureOut, const char* codes){
-            const char* curCode = codes;
-            size_t dayNum = GET_ELEMEMT_SIZE(historyNum, sampleNum);
-            //size_t needDay = dayBefore + dayNum;
-
-            for(size_t i = 0; i < stockNum; ++i){
-                const char* code = getCode(curCode, leafDataClass);
-                cache_->fill(featureOut, sign, dayBefore, dayNum, code, name, i, stockNum);
-                curCode = curCode + strlen(curCode) + 1;
-            }
+        //得到信号发生时的股票数据
+        float* getStock(size_t dayBefore, size_t historyNum, size_t sampleNum, size_t signHistoryDays, const char* name, const char* signName, float* dst){
+            size_t dayNum = GET_ELEMEMT_SIZE(historyNum, signHistoryDays);
+            cache_->fill(dst, dayBefore, sampleNum, dayNum, signName, name);
+            return dst;
         }
 
-        void fillFeature(size_t historyNum, size_t sampleNum, size_t stockNum, const float* sign,
-                         Iterator<float>& featureOut, size_t sampleSize, float* feature){
-            size_t dayNum = GET_ELEMEMT_SIZE(historyNum, sampleNum);
-            for(size_t i = 0; i < stockNum; ++i){
-                for(size_t j = 0; j < dayNum; ++j){
-                    size_t index = j * stockNum + i;
-                    if(sign[index] > 0){
-                        *featureOut = feature[index];
-                        ++featureOut;
-                    }
-                }
-            }
+        size_t getSignNum(size_t dayBefore, size_t daySize, const char* signName){
+            return cache_->getSignNum(dayBefore, daySize, signName);
         }
+
+
+//        //将满足要求的特征写入内存或文件，可以分段写入
+//        void fillFeature(size_t dayBefore, size_t historyNum, size_t sampleNum, size_t stockNum, const char* name, const char* leafDataClass,
+//                         const float* sign, Iterator<float>& featureOut, const char* codes){
+//            const char* curCode = codes;
+//            size_t dayNum = GET_ELEMEMT_SIZE(historyNum, sampleNum);
+//            //size_t needDay = dayBefore + dayNum;
+//
+//            for(size_t i = 0; i < stockNum; ++i){
+//                const char* code = getCode(curCode, leafDataClass);
+//                cache_->fill(featureOut, sign, dayBefore, dayNum, code, name, i, stockNum);
+//                curCode = curCode + strlen(curCode) + 1;
+//            }
+//        }
+//
+//        void fillFeature(size_t historyNum, size_t sampleNum, size_t stockNum, const float* sign,
+//                         Iterator<float>& featureOut, size_t sampleSize, float* feature){
+//            size_t dayNum = GET_ELEMEMT_SIZE(historyNum, sampleNum);
+//            for(size_t i = 0; i < stockNum; ++i){
+//                for(size_t j = 0; j < dayNum; ++j){
+//                    size_t index = j * stockNum + i;
+//                    if(sign[index] > 0){
+//                        *featureOut = feature[index];
+//                        ++featureOut;
+//                    }
+//                }
+//            }
+//        }
 
         ofstream* createCacheFile(const char* featureName){
             return cache_->createCacheFile(featureName);
@@ -171,13 +183,13 @@ class AlphaDB{
             cache_->cacheFeature(featureName);
         }
 
-        BaseIterator<float>* createSignFeatureIter(const char* signName, const char* featureName, size_t dayBefore, size_t sampleDays, int offset){
-            return cache_->createSignFeatureIter(signName, featureName, dayBefore, sampleDays, offset);
-        }
-
-        BaseIterator<float*>* createFeatureIter(const char* featureName, size_t dayBefore, size_t sampleDays, size_t stockNum, const char* codes, bool isCache){
-            return new FeatureIterator(featureName, dayBefore, sampleDays, stockNum, codes, isCache, cache_);
-        }
+//        IBaseIterator<float>* createSignFeatureIter(const char* signName, const char* featureName, size_t dayBefore, size_t sampleDays, int offset){
+//            return cache_->createSignFeatureIter(signName, featureName, dayBefore, sampleDays, offset);
+//        }
+//
+//        IBaseIterator<float*>* createFeatureIter(const char* featureName, size_t dayBefore, size_t sampleDays, size_t stockNum, const char* codes, bool isCache){
+//            return new FeatureIterator(featureName, dayBefore, sampleDays, stockNum, codes, isCache, cache_);
+//        }
 
         size_t getStockNum(){ return des_->stockMetas.getSize();}
         size_t getDays(){

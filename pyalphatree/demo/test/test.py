@@ -77,7 +77,15 @@ def cal_alpha(af, line, sample_size, sub_tree = None, daybefore = 0):
     af.release_alphatree(alphatree_id)
     return alpha, codes
 
-
+def cal_sign_alpha(af, line, sample_size, sign_history_days, sign_name, daybefore = 0):
+    alphatree_id = af.create_alphatree()
+    cache_id = af.use_cache()
+    af.decode_alphatree(alphatree_id, "alpha", line)
+    af.cal_sign_alpha(alphatree_id, cache_id, daybefore,sample_size,sign_history_days, sign_name)
+    alpha = af.get_root_alpha(alphatree_id, "alpha", cache_id, sign_history_days)
+    af.release_cache(cache_id)
+    af.release_alphatree(alphatree_id)
+    return alpha
 
 def test_alphaforest(af, alphatree_list, subalphatree_dict, sample_size = 1):
     alphatree_id_list = []
@@ -122,31 +130,39 @@ def test_alphaforest(af, alphatree_list, subalphatree_dict, sample_size = 1):
 def test_base_calculate(af, dataProxy, is_cmp = False):
     print "start test base calculate .................."
 
-    print "iter feature"
-    codes = af.get_stock_codes()
-    ft = FeatureIter("close", 1, 2, codes)
-    if is_cmp:
-        values = ft.get_value()
-        for index, code in enumerate(codes):
-            print code
-            if values[index] > 0:
-                vol = dataProxy.get_all_Data(code)[-3][4]
-                float_equal(vol, values[index])
-        ft.skip()
-        values = ft.get_value()
-        for index, code in enumerate(codes):
-            if values[index] > 0:
-                vol = dataProxy.get_all_Data(code)[-2][4]
-                float_equal(vol, values[index])
-        ft.skip()
-        assert ft.is_valid() == False
+    print "test sign"
+    af.cache_sign("test_sign", "((returns > 0) & (delay(returns, 1) > 0))")
+    alpha = cal_sign_alpha(af, "returns", 2, 2, "test_sign")
+    for i in xrange(len(alpha[0])):
+        assert alpha[0][i] > 0
+    for i in xrange(len(alpha[1])):
+        assert alpha[1][i] > 0
 
-    print "iter sign"
-    af.cache_sign("sign_returns", "(returns > 0)")
-    si = AlphaIter("sign_returns", "returns", 10, 20)
-    while si.is_valid():
-        assert si.get_value() > 0
-        si.skip()
+    # print "iter feature"
+    # codes = af.get_stock_codes()
+    # ft = FeatureIter("close", 1, 2, codes)
+    # if is_cmp:
+    #     values = ft.get_value()
+    #     for index, code in enumerate(codes):
+    #         print code
+    #         if values[index] > 0:
+    #             vol = dataProxy.get_all_Data(code)[-3][4]
+    #             float_equal(vol, values[index])
+    #     ft.skip()
+    #     values = ft.get_value()
+    #     for index, code in enumerate(codes):
+    #         if values[index] > 0:
+    #             vol = dataProxy.get_all_Data(code)[-2][4]
+    #             float_equal(vol, values[index])
+    #     ft.skip()
+    #     assert ft.is_valid() == False
+    #
+    # print "iter sign"
+    # af.cache_sign("sign_returns", "(returns > 0)")
+    # si = AlphaIter("sign_returns", "returns", 10, 20)
+    # while si.is_valid():
+    #     assert si.get_value() > 0
+    #     si.skip()
 
     print "cache alpha"
     af.cache_alpha( "atr15", "mean(max((high - low), max((high - delay(close, 1)), (delay(close, 1) - low))), 14)")

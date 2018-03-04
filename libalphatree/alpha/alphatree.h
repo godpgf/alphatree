@@ -60,10 +60,17 @@ public:
         initialize(nodeSize, historyDays, dayBefore, sampleDays, stockSize);
     }
 
-    void initialize(size_t nodeSize, size_t historyDays, size_t dayBefore, size_t sampleDays, size_t stockSize) {
+    void initialize(size_t nodeSize, size_t historyDays, size_t dayBefore, size_t sampleDays, size_t stockSize, size_t signHistoryDays, const char* signName){
+        initialize(nodeSize, historyDays, dayBefore, sampleDays, stockSize, signHistoryDays);
+        strcpy(this->signName, signName);
+    }
+
+    void initialize(size_t nodeSize, size_t historyDays, size_t dayBefore, size_t sampleDays, size_t stockSize, size_t signHistoryDays = 0) {
         this->dayBefore = dayBefore;
         this->sampleDays = sampleDays;
         this->stockSize = stockSize;
+        this->signHistoryDays = signHistoryDays;
+        this->signName[0] = 0;
 
         if (nodeSize > nodeCacheSize) {
             delete[]nodeRes;
@@ -73,14 +80,14 @@ public:
             nodeCacheSize = nodeSize;
         }
 
-        size_t scs = GET_ELEMEMT_SIZE(historyDays, sampleDays) * stockSize * sizeof(float);
+        size_t scs = GET_ELEMEMT_SIZE(historyDays, signHistoryDays > 0 ? signHistoryDays : sampleDays) * stockSize * sizeof(float);
         if (scs > NodeCache::cacheSize) {
             DCache<NodeCache>::release(result);
             NodeCache::cacheSize = scs;
             result = DCache<NodeCache>::create();
         }
 
-        size_t dcs = nodeSize * GET_ELEMEMT_SIZE(historyDays, sampleDays);
+        size_t dcs = nodeSize * GET_ELEMEMT_SIZE(historyDays, signHistoryDays > 0 ? signHistoryDays : sampleDays);
         if (dcs > dayCacheSize) {
             delete[]dayFlag;
 
@@ -100,6 +107,9 @@ public:
         result->releaseAll();
     }
 
+    bool isSign(){
+        return signName[0] > 0;
+    }
 
     //监控某个节点在多线程中的计算状态
     std::shared_future<int> *nodeRes = {nullptr};
@@ -115,9 +125,12 @@ public:
     size_t codeCacheSize = {0};
 
     size_t dayBefore = {0};
+    //取样期
     size_t sampleDays = {0};
     size_t stockSize = {0};
-
+    //保留信号发生前多少天的数据
+    size_t signHistoryDays = {0};
+    char signName[64];
 };
 
 
@@ -154,7 +167,17 @@ public:
         calAlpha(alphaDataBase, cache, threadPool);
     }
 
+    //计算信号发生时的alpha，返还信号数量。sampleSize是信号发生的取样期，signHistoryDays是读取信号发生时signHistoryDays天的数据
+    void calAlpha(AlphaDB *alphaDataBase, size_t dayBefore, size_t sampleSize, size_t signHistoryDays, const char *signName, AlphaCache *cache, ThreadPool *threadPool){
+        maxHistoryDay_ = NONE;
+        cache->initialize(nodeList_.getSize(), getMaxHistoryDays(), dayBefore, sampleSize, alphaDataBase->getSignNum(dayBefore, sampleSize, signName), signHistoryDays, signName);
+        //重新标记所有节点
+        flagAllNode(cache);
+        calAlpha(alphaDataBase, cache, threadPool);
+    }
 
+
+    //将计算结果存在文件中
     template <class T>
     void cacheAlpha(AlphaDB *alphaDataBase, AlphaCache *cache, ThreadPool *threadPool, const char* featureName, size_t dayFuture = 0) {
         maxHistoryDay_ = NONE;
@@ -193,6 +216,7 @@ public:
         //cout<<"finish cache "<<featureName<<endl;
     }
 
+    //将信号存在文件中
     void cacheSign(AlphaDB *alphaDataBase, AlphaCache *cache, ThreadPool *threadPool, const char* featureName){
         maxHistoryDay_ = NONE;
         size_t maxHistoryDays = getMaxHistoryDays();
@@ -226,10 +250,8 @@ public:
             if(dayBefore < sampleDays)
                 sampleDays = dayBefore;
             dayBefore -= sampleDays;
-            cout<<dayBefore<<" "<<preSignCnt<<endl;
         }
         alphaDataBase->releaseCacheFile(file);
-        cout<<"finish cache "<<featureName<<endl;
     }
 
     float optimizeAlpha(const char *rootName, AlphaDB *alphaDataBase, size_t dayBefore, size_t sampleSize, const char *codes, size_t stockSize,
@@ -377,15 +399,25 @@ protected:
         int outMemoryId = 0;
         if (nodeList_[nodeId].getChildNum() == 0) {
             outMemoryId = cache->result->useCacheMemory();
-            alphaDataBase->getStock(cache->dayBefore,
-                                    getMaxHistoryDays(),
-                                    cache->sampleDays,
-                                    cache->stockSize,
-                                    nodeList_[nodeId].getName(),
-                    //((AlphaPar *) nodeList_[nodeId].getElement())->leafDataType,
-                                    nodeList_[nodeId].getWatchLeafDataClass(),
-                                    (float *) cache->result->getCacheMemory(outMemoryId).cache,
-                                    cache->codes);
+            if(cache->isSign()){
+                alphaDataBase->getStock(cache->dayBefore,
+                                        getMaxHistoryDays(),
+                                        cache->sampleDays,
+                                        cache->signHistoryDays,
+                                        nodeList_[nodeId].getName(),
+                                        cache->signName,
+                                        (float *) cache->result->getCacheMemory(outMemoryId).cache);
+            } else {
+                alphaDataBase->getStock(cache->dayBefore,
+                                        getMaxHistoryDays(),
+                                        cache->sampleDays,
+                                        cache->stockSize,
+                                        nodeList_[nodeId].getName(),
+                        //((AlphaPar *) nodeList_[nodeId].getElement())->leafDataType,
+                                        nodeList_[nodeId].getWatchLeafDataClass(),
+                                        (float *) cache->result->getCacheMemory(outMemoryId).cache,
+                                        cache->codes);
+            }
 
         } else {
             int childMemoryIds[MAX_CHILD_NUM];
@@ -425,13 +457,6 @@ protected:
                     outMemoryId = childMemoryIds[i];
                 }
             }
-//                for(size_t i = 0; i < dateSize * cache->stockSize; ++i)
-//                    if(isnan(curResultCache[i])){
-//                        cout<<"error "<<nodeList_[nodeId].getName()<<endl;
-//                        cout<<"left "<<leftRes[i]<<endl;
-//                        if(rightRes)
-//                            cout<<"right "<<rightRes[i]<<endl;
-//                    }
 
         }
         for (auto i = 0; i < dateSize; ++i) {

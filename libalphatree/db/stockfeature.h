@@ -27,7 +27,7 @@ public:
         }
     }
 
-    BaseIterator<T>* createIter(size_t offset, size_t days){
+    IBaseIterator<T>* createIter(size_t offset, size_t days){
         if(cache_){
             return new MemoryIterator<T>(cache_ + offset, days);
         }else{
