@@ -282,6 +282,8 @@ void* signAnd(void** pars, float coff, size_t historySize, size_t stockSize, Cac
     float* pout = (float*)pars[0];
     float* pleft = (float*)pars[0];
     float* pright = (float*)pars[1];
+
+
     for(size_t i = 0; i < historySize; ++i) {
         if(pflag[i] == CacheFlag::NEED_CAL) {
             _signAnd((pout + i * stockSize), (pleft + i * stockSize), (pright + i * stockSize), stockSize);

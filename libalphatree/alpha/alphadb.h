@@ -23,7 +23,7 @@
 using namespace std;
 
 //返回中间结果和取样数据所需要考虑的所有天数,比如delate(close,3)取样5天,就返回3+5-1天的数据,这些天以外的数据计算时不会涉及到的.
-#define GET_ELEMEMT_SIZE(historyDays, sampleDays) (historyDays + sampleDays - 1)
+#define GET_ELEMEMT_SIZE(historyDays, sampleDays) (historyDays + (sampleDays) - 1)
 
 
 class AlphaDB{
@@ -57,6 +57,10 @@ class AlphaDB{
             }
 
             return des_->stockMetas.getSize();
+        }
+
+        const char* testGetCode(int id){
+            return des_->stockMetas[id].code;
         }
 
         size_t getStockCodes(char* codes){
@@ -121,9 +125,9 @@ class AlphaDB{
         }
 
         //得到信号发生时的股票数据
-        float* getStock(size_t dayBefore, size_t historyNum, size_t sampleNum, size_t signHistoryDays, const char* name, const char* signName, float* dst){
+        float* getStock(size_t dayBefore, size_t historyNum, size_t sampleNum, size_t signHistoryDays, size_t startIndex, size_t signNum, const char* name, const char* signName, float* dst){
             size_t dayNum = GET_ELEMEMT_SIZE(historyNum, signHistoryDays);
-            cache_->fill(dst, dayBefore, sampleNum, dayNum, signName, name);
+            cache_->fill(dst, dayBefore, sampleNum, dayNum, startIndex, signNum, signName, name);
             return dst;
         }
 
@@ -171,8 +175,12 @@ class AlphaDB{
                 cache_->invFill2File<T>(cache, dayBefore, daySize, des_->stockMetas[i].code, featureName, i, des_->stockMetas.getSize(), file, dayFuture, isWritePreData);
         }
 
-        void invFill2Sign(const float* cache, size_t dayBefore, size_t daySize, const char* featureName, ofstream* file, size_t& preDayNum, size_t& preSignCnt){
+        void invFill2Sign(const float* cache, size_t daySize, const char* featureName, ofstream* file, size_t& preDayNum, size_t& preSignCnt){
             cache_->invFill2Sign(cache, daySize, des_->stockMetas.getSize(), file, getDays(), preDayNum, preSignCnt);
+        }
+
+        void testInvFill2Sign(const float* cache, const float* testCache, size_t daySize, const char* featureName, ofstream* file, size_t& preDayNum, size_t& preSignCnt){
+            cache_->testInvFill2Sign(cache, testCache, daySize, des_->stockMetas.getSize(), file, getDays(), preDayNum, preSignCnt);
         }
 
         void releaseCacheFile(ofstream * file){

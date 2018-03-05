@@ -81,8 +81,8 @@ public:
         getAlphaTree(alphaTreeId)->calAlpha(&alphaDataBase_, dayBefore, sampleSize, codes, stockSize, alphaCache_->getCacheMemory(cacheId), &threadPool_);
     }
 
-    void calAlpha(int alphaTreeId, int cacheId, size_t dayBefore, size_t sampleSize, size_t  signHistoryDays, const char* signName){
-        getAlphaTree(alphaTreeId)->calAlpha(&alphaDataBase_, dayBefore, sampleSize, signHistoryDays, signName, alphaCache_->getCacheMemory(cacheId), &threadPool_);
+    void calAlpha(int alphaTreeId, int cacheId, size_t dayBefore, size_t sampleSize, size_t startIndex, size_t signNum, size_t  signHistoryDays, const char* signName){
+        getAlphaTree(alphaTreeId)->calAlpha(&alphaDataBase_, dayBefore, sampleSize, startIndex, signNum, signHistoryDays, signName, alphaCache_->getCacheMemory(cacheId), &threadPool_);
     }
 
     const void cacheAlpha(int alphaTreeId, int cacheId, const char* featureName, size_t dayFuture = 0) {
@@ -93,7 +93,9 @@ public:
         getAlphaTree(alphaTreeId)->cacheSign(&alphaDataBase_, alphaCache_->getCacheMemory(cacheId), &threadPool_, featureName);
     }
 
-
+    const void testCacheSign(int alphaTreeId, int cacheId, const char* featureName, const char* testFeatureName){
+        getAlphaTree(alphaTreeId)->testCacheSign(&alphaDataBase_, alphaCache_->getCacheMemory(cacheId), &threadPool_, featureName, testFeatureName);
+    }
 
     float optimizeAlpha(int alphaTreeId, int cacheId, const char *rootName, size_t dayBefore, size_t sampleSize, const char *codes, size_t stockSize, float exploteRatio, int errTryTime){
         return getAlphaTree(alphaTreeId)->optimizeAlpha(rootName, &alphaDataBase_, dayBefore, sampleSize, codes, stockSize, alphaCache_->getCacheMemory(cacheId), &threadPool_, exploteRatio, errTryTime);

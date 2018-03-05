@@ -156,13 +156,17 @@ int getIndustryCodes(const char *industryName, char *codes) {
 
 int getMaxHistoryDays(int alphaTreeId) { return AlphaForest::getAlphaforest()->getMaxHistoryDays(alphaTreeId); }
 
+int getSignNum(int dayBefore, int sampleSize, const char* signName){
+    return AlphaForest::getAlphaforest()->getAlphaDataBase()->getSignNum(dayBefore, sampleSize, signName);
+}
+
 
 void calAlpha(int alphaTreeId, int cacheId, int dayBefore, int sampleSize, const char *codes, int stockSize) {
     AlphaForest::getAlphaforest()->calAlpha(alphaTreeId, cacheId, dayBefore, sampleSize, codes, stockSize);
 }
 
-void calSignAlpha(int alphaTreeId, int cacheId, int dayBefore, int sampleSize, int signHistoryDays, const char* signName){
-    AlphaForest::getAlphaforest()->calAlpha(alphaTreeId, cacheId, dayBefore, sampleSize, signHistoryDays, signName);
+void calSignAlpha(int alphaTreeId, int cacheId, int dayBefore, int sampleSize, int startIndex, int signNum, int signHistoryDays, const char* signName){
+    AlphaForest::getAlphaforest()->calAlpha(alphaTreeId, cacheId, dayBefore, sampleSize, startIndex, signNum, signHistoryDays, signName);
 }
 
 void cacheAlpha(int alphaTreeId, int cacheId, const char* featureName) {

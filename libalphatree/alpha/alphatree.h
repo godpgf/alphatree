@@ -51,26 +51,29 @@ public:
                     size_t stockSize) {
         const char *curSrcCode = codes;
         char *curDstCode = this->codes;
-        for (size_t i = 0; i < stockSize; ++i) {
-            strcpy(curDstCode, curSrcCode);
-            int codeLen = strlen(curSrcCode);
-            curSrcCode += (codeLen + 1);
-            curDstCode += (codeLen + 1);
+        if(curSrcCode != curDstCode){
+            for (size_t i = 0; i < stockSize; ++i) {
+                strcpy(curDstCode, curSrcCode);
+                int codeLen = strlen(curSrcCode);
+                curSrcCode += (codeLen + 1);
+                curDstCode += (codeLen + 1);
+            }
         }
         initialize(nodeSize, historyDays, dayBefore, sampleDays, stockSize);
     }
 
-    void initialize(size_t nodeSize, size_t historyDays, size_t dayBefore, size_t sampleDays, size_t stockSize, size_t signHistoryDays, const char* signName){
-        initialize(nodeSize, historyDays, dayBefore, sampleDays, stockSize, signHistoryDays);
+    void initialize(size_t nodeSize, size_t historyDays, size_t dayBefore, size_t sampleDays, size_t startIndex, size_t signNum, size_t signHistoryDays, const char* signName){
+        initialize(nodeSize, historyDays, dayBefore, sampleDays, signNum, signHistoryDays);
         strcpy(this->signName, signName);
+        this->startSignIndex = startIndex;
     }
 
     void initialize(size_t nodeSize, size_t historyDays, size_t dayBefore, size_t sampleDays, size_t stockSize, size_t signHistoryDays = 0) {
         this->dayBefore = dayBefore;
         this->sampleDays = sampleDays;
         this->stockSize = stockSize;
-        this->signHistoryDays = signHistoryDays;
         this->signName[0] = 0;
+        this->signHistoryDays = signHistoryDays;
 
         if (nodeSize > nodeCacheSize) {
             delete[]nodeRes;
@@ -127,9 +130,12 @@ public:
     size_t dayBefore = {0};
     //取样期
     size_t sampleDays = {0};
+    //股票数量，如果是信号就是信号数量
     size_t stockSize = {0};
     //保留信号发生前多少天的数据
     size_t signHistoryDays = {0};
+    size_t startSignIndex = {0};
+    //size_t signNum = {0};
     char signName[64];
 };
 
@@ -168,12 +174,16 @@ public:
     }
 
     //计算信号发生时的alpha，返还信号数量。sampleSize是信号发生的取样期，signHistoryDays是读取信号发生时signHistoryDays天的数据
-    void calAlpha(AlphaDB *alphaDataBase, size_t dayBefore, size_t sampleSize, size_t signHistoryDays, const char *signName, AlphaCache *cache, ThreadPool *threadPool){
+    void calAlpha(AlphaDB *alphaDataBase, size_t dayBefore, size_t sampleSize, size_t startIndex, size_t signNum, size_t signHistoryDays, const char *signName, AlphaCache *cache, ThreadPool *threadPool){
         maxHistoryDay_ = NONE;
-        cache->initialize(nodeList_.getSize(), getMaxHistoryDays(), dayBefore, sampleSize, alphaDataBase->getSignNum(dayBefore, sampleSize, signName), signHistoryDays, signName);
+//        cout<<"start init\n";
+        cache->initialize(nodeList_.getSize(), getMaxHistoryDays(), dayBefore, sampleSize, startIndex, signNum, signHistoryDays, signName);
+//        cout<<"finish init\n";
         //重新标记所有节点
         flagAllNode(cache);
+//        cout<<"start cal\n";
         calAlpha(alphaDataBase, cache, threadPool);
+//        cout<<"finish cal \n";
     }
 
 
@@ -243,7 +253,58 @@ public:
 
             //写入计算结果
             const float* alpha = getAlpha(featureName, cache);
-            alphaDataBase->invFill2Sign(alpha, dayBefore, sampleDays, featureName, file, preDayNum, preSignCnt);
+            alphaDataBase->invFill2Sign(alpha, sampleDays, featureName, file, preDayNum, preSignCnt);
+
+            if(dayBefore == 0)
+                break;
+            if(dayBefore < sampleDays)
+                sampleDays = dayBefore;
+            dayBefore -= sampleDays;
+        }
+        alphaDataBase->releaseCacheFile(file);
+    }
+
+    //test---------------------------------------
+    void testCacheSign(AlphaDB *alphaDataBase, AlphaCache *cache, ThreadPool *threadPool, const char* featureName, const char* testFeatureName){
+        maxHistoryDay_ = NONE;
+        size_t maxHistoryDays = getMaxHistoryDays();
+        size_t days = alphaDataBase->getDays();
+        size_t sampleDays = alphaDataBase->getDays() - maxHistoryDays + 1;
+        if(sampleDays > 1024)
+            sampleDays = 1024;
+
+        size_t dayBefore = days - GET_ELEMEMT_SIZE(maxHistoryDays, sampleDays);
+        size_t stockSize = alphaDataBase->getAllCodes(cache->codes);
+
+        ofstream* file = alphaDataBase->createCacheFile(featureName);
+        size_t preSignCnt = 0;
+        size_t preDayNum = 0;
+        for(preDayNum = 0; preDayNum < maxHistoryDays-1; ++preDayNum){
+            file->write(reinterpret_cast<const char* >( &preSignCnt ), sizeof(size_t));
+        }
+        while (true){
+            cache->initialize(nodeList_.getSize(), maxHistoryDays, dayBefore, sampleDays, stockSize);
+            //重新标记所有节点
+            flagAllNode(cache);
+
+            calAlpha(alphaDataBase, cache, threadPool);
+
+            //写入计算结果
+            const float* alpha = getAlpha(featureName, cache);
+            const float* testAlpha = getAlpha(testFeatureName, cache);
+
+            for(int l = 1; l < sampleDays; ++l){
+                for(int k = 0; k < stockSize; ++k){
+                    if(alpha[l * stockSize + k] > 0){
+                        if(testAlpha[l * stockSize + k] < 0)
+                            cout<<alpha[l * stockSize + k]<<" "<<alphaDataBase->testGetCode(k)<<" "<<testAlpha[l * stockSize + k]<<endl;
+                        if(testAlpha[(l-1) * stockSize + k] < 0)
+                            cout<<alpha[l * stockSize + k]<<" "<<alphaDataBase->testGetCode(k)<<" "<<testAlpha[(l-1) * stockSize + k]<<endl;
+                    }
+                }
+            }
+
+            alphaDataBase->testInvFill2Sign(alpha, testAlpha, sampleDays, featureName, file, preDayNum, preSignCnt);
 
             if(dayBefore == 0)
                 break;
@@ -352,7 +413,11 @@ public:
         float *result = (float *) cache->result->getCacheMemory(memid).cache;
         //CacheFlag* flag = AlphaTree::getNodeCacheMemory(nodeId, dateSize, cache->stockSize, cache->stockFlag);
         //flagResult(result, flag, dateSize * cache->stockSize);
-        //cout<<"get "<<memid<<" "<<(int) ((getMaxHistoryDays() - 1) * cache->stockSize)<<endl;
+//        cout<<"get "<<memid<<" "<<(int) ((getMaxHistoryDays() - 1) * cache->stockSize)<<endl;
+//        float* tmp = result  + (int) ((getMaxHistoryDays() - 1) * cache->stockSize);
+//        for(int i = 0; i < cache->stockSize; ++i){
+//            cout<<tmp[i]<<endl;
+//        }
         return result + (int) ((getMaxHistoryDays() - 1) * cache->stockSize);
     }
 
@@ -391,7 +456,7 @@ protected:
 
     int cast(AlphaDB *alphaDataBase, int nodeId, AlphaCache *cache) {
         //cout<<"start "<<nodeList_[nodeId].getName()<<endl;
-        int dateSize = GET_ELEMEMT_SIZE(getMaxHistoryDays(), cache->sampleDays);
+        int dateSize = GET_ELEMEMT_SIZE(getMaxHistoryDays(), cache->isSign() ? cache->signHistoryDays : cache->sampleDays);
         //float* curResultCache = getNodeCacheMemory(nodeId, dateSize, cache->stockSize, cache->result);
         //bool* curResultFlag = cache->flagRes[nodeId].get();
         CacheFlag *curDayFlagCache = getNodeFlag(nodeId, dateSize, cache->dayFlag);
@@ -404,6 +469,8 @@ protected:
                                         getMaxHistoryDays(),
                                         cache->sampleDays,
                                         cache->signHistoryDays,
+                                        cache->startSignIndex,
+                                        cache->stockSize,
                                         nodeList_[nodeId].getName(),
                                         cache->signName,
                                         (float *) cache->result->getCacheMemory(outMemoryId).cache);
@@ -480,8 +547,8 @@ protected:
 
 
     void flagAllNode(AlphaCache *cache) {
-
-        int dateSize = GET_ELEMEMT_SIZE(getMaxHistoryDays(), cache->sampleDays);
+        int dateSize = GET_ELEMEMT_SIZE(getMaxHistoryDays(), cache->isSign() ? cache->signHistoryDays : cache->sampleDays);
+        memset(cache->dayFlag, 0, dateSize * nodeList_.getSize() * sizeof(CacheFlag));
         for (size_t dayIndex = 0; dayIndex < cache->sampleDays; ++dayIndex) {
             for (auto i = 0; i < subtreeList_.getSize(); ++i) {
                 int curIndex = dayIndex + getMaxHistoryDays() - 1;

@@ -131,12 +131,18 @@ def test_base_calculate(af, dataProxy, is_cmp = False):
     print "start test base calculate .................."
 
     print "test sign"
-    af.cache_sign("test_sign", "((returns > 0) & (delay(returns, 1) > 0))")
-    alpha = cal_sign_alpha(af, "returns", 2, 2, "test_sign")
-    for i in xrange(len(alpha[0])):
-        assert alpha[0][i] > 0
-    for i in xrange(len(alpha[1])):
-        assert alpha[1][i] > 0
+    #af.cache_sign("test_sign", "((returns > 0) & (delay(returns, 1) > 0))")
+    aa = AlphaArray("test_sign", {"t1" : "returns", "t2":"delay(returns, 1)"}, ["t1", "t2"], 4, 1024, True)
+    length = len(aa)
+    aa = aa[:length]
+    for a in aa:
+        assert a[0] > 0
+        assert a[1] > 0
+    # alpha = cal_sign_alpha(af, "returns", 2, 2, "test_sign")
+    # for i in xrange(len(alpha[0])):
+    #     assert alpha[0][i] > 0
+    # for i in xrange(len(alpha[1])):
+    #     assert alpha[1][i] > 0
 
     # print "iter feature"
     # codes = af.get_stock_codes()

@@ -64,8 +64,8 @@ public:
         return signNum;
     }
 
-    void fill(float* dst, size_t dayBefore, size_t daySize, size_t historyDays, const char* signName, const char* featureName){
-        fill_(dayBefore, daySize, historyDays, signName, featureName,[dst](int index, float value){
+    void fill(float* dst, size_t dayBefore, size_t daySize, size_t historyDays, size_t startIndex, size_t signNum, const char* signName, const char* featureName){
+        fill_(dayBefore, daySize, historyDays, startIndex, signNum, signName, featureName,[dst](int index, float value){
             dst[index] = value;
         });
     }
@@ -189,10 +189,10 @@ public:
         auto pStock2Offset = &stock2offset;
         auto pStock2LastDate = &stock2LastDate;
 
-        //test
-        //StockFeature<float>* returns = new StockFeature<float>(feature2path_("returns").c_str());
-        //BaseIterator<float>* rt = returns->createIter(0, des->stockMetas[des->stockMetas.getSize()-1].offset + des->stockMetas[des->stockMetas.getSize()-1].days);
-        //cout<<"ssss2\n";
+        //test---------------------------
+//        StockFeature<float>* returns = new StockFeature<float>(feature2path_("returns").c_str());
+//        IBaseIterator<float>* rt = returns->createIter(0, des->stockMetas[des->stockMetas.getSize()-1].offset + des->stockMetas[des->stockMetas.getSize()-1].days);
+
         invFillSign_(cache, daySize, stockNum, [pStock2Offset, pStock2LastDate, des, pMainDateIter, pAllDateIter, allDayNum, pPreSignCnt, pPreDayNum, pLastId, file](size_t dayIndex, size_t stockIndex){
             if((*pLastId) != dayIndex){
                 file->seekp((*pPreDayNum) * sizeof(size_t), ios::beg);
@@ -217,8 +217,111 @@ public:
                 ++(*pAllDateIter);
             if(*(*pAllDateIter) == date){
                 size_t subOffset = des->stockMetas[stockIndex].offset + skip + (*pStock2Offset)[stockIndex];
-                //rt->skip(subOffset, false);
-                //if(**rt < 0.09f && **rt > -0.09f)
+
+                //test
+//                rt->skip(subOffset - 1, false);
+//                if(**rt < 0)
+//                    cout<<**rt<<endl;
+//                rt->skip(1);
+//                if(**rt < 0)
+//                    cout<<**rt<<endl;
+
+                //    cout<<stockIndex<<" "<<des->stockMetas[stockIndex].code<<" "<<date<<" "<<**rt<<endl;
+                file->write(reinterpret_cast<const char* >( &subOffset ), sizeof(size_t));
+                ++(*pPreSignCnt);
+                (*pStock2Offset)[stockIndex] = (*pStock2Offset)[stockIndex] + skip + 1;
+                //cout<<(*pStock2Offset)[stockIndex]<<endl;
+                (*pStock2LastDate)[stockIndex] = date;
+            } else {
+                cout<<stockIndex<<" "<<date<<" "<<"我擦，居然没找到!\n";
+            }
+
+        });
+        //cout<<"ssss3\n";
+        file->seekp((*pPreDayNum) * sizeof(size_t), ios::beg);
+
+        while ((*pLastId) != daySize-1){
+            //更新昨天以前的
+            file->write(reinterpret_cast<const char* >( pPreSignCnt ), sizeof(size_t));
+            ++(*pLastId);
+            ++(*pPreDayNum);
+        }
+        //最后一个元素再加一次(因为之前都是到了下一天才更新第一天的，最后一个元素没有下一天了)，以便下次调用是对的，这个bug查了两小时~
+        file->write(reinterpret_cast<const char* >( pPreSignCnt ), sizeof(size_t));
+        ++(*pPreDayNum);
+        //cout<<"ssss4\n";
+    }
+
+    void testInvFill2Sign(const float* cache, const float* testCache, size_t daySize, size_t stockNum, ofstream* file, size_t allDayNum, size_t& preDayNum, size_t& preSignCnt){
+        //cout<<"ssss1\n";
+        StockFeature<long> *date = date_ ? date_ : new StockFeature<long>(feature2path_("date").c_str());
+        auto mainStockMeta = des_->stockMetas[des_->mainStock];
+        Iterator<long> mainDateIter(date->createIter(mainStockMeta.offset, mainStockMeta.days));
+        Iterator<long> allDateIter(date->createIter(0, des_->stockMetas[des_->stockMetas.getSize()-1].offset + des_->stockMetas[des_->stockMetas.getSize()-1].days));
+
+        size_t lastId = 0;
+        //包括今天在内，之前有多少信号
+        size_t *pPreSignCnt = &preSignCnt;
+        size_t *pPreDayNum = &preDayNum;
+        size_t *pLastId = &lastId;
+        Iterator<long>* pMainDateIter = &mainDateIter;
+        Iterator<long>* pAllDateIter = &allDateIter;
+        pMainDateIter->skip(preDayNum, false);
+
+        file->seekp((allDayNum + (*pPreSignCnt)) * sizeof(size_t), ios::beg);
+        StockDes* des = des_;
+
+        //提高程序运行效率
+        map<int,int> stock2offset;//股票上次发出信号的偏移+1
+        map<int,long> stock2LastDate;//股票上次发出信号的日期
+        for(int i=0; i < stockNum; ++i){
+            stock2offset[i] = 0;
+            stock2LastDate[i] = 0;
+        }
+        auto pStock2Offset = &stock2offset;
+        auto pStock2LastDate = &stock2LastDate;
+
+        //test---------------------------
+        StockFeature<float>* returns = new StockFeature<float>(feature2path_("returns").c_str());
+        IBaseIterator<float>* rt = returns->createIter(0, des->stockMetas[des->stockMetas.getSize()-1].offset + des->stockMetas[des->stockMetas.getSize()-1].days);
+
+        invFillSign_(cache, daySize, stockNum, [rt, stockNum, testCache, pStock2Offset, pStock2LastDate, des, pMainDateIter, pAllDateIter, allDayNum, pPreSignCnt, pPreDayNum, pLastId, file](size_t dayIndex, size_t stockIndex){
+            if((*pLastId) != dayIndex){
+                file->seekp((*pPreDayNum) * sizeof(size_t), ios::beg);
+                while ((*pLastId) != dayIndex){
+                    //更新昨天以前的
+                    file->write(reinterpret_cast<const char* >( pPreSignCnt ), sizeof(size_t));
+                    ++(*pLastId);
+                    ++(*pPreDayNum);
+                }
+                file->seekp((allDayNum + (*pPreSignCnt)) * sizeof(size_t), ios::beg);
+                pMainDateIter->skip(*pPreDayNum, false);
+            }
+            //得到当前日期
+            long date = *(*pMainDateIter);
+            //得到偏移
+            int evalStart = des->stockMetas[stockIndex].offset + (*pStock2Offset)[stockIndex];
+            long lastDate = (*pStock2LastDate)[stockIndex];
+            int evalLen = (int)min((long)(des->stockMetas[stockIndex].days - (*pStock2Offset)[stockIndex]), (long)(date - lastDate));
+            int skip = pAllDateIter->jumpTo(date, evalStart, evalLen);
+            ++skip;
+            if(skip > 0)
+                ++(*pAllDateIter);
+            if(*(*pAllDateIter) == date){
+                size_t subOffset = des->stockMetas[stockIndex].offset + skip + (*pStock2Offset)[stockIndex];
+
+                //test
+                if(dayIndex > 0 && testCache[(dayIndex-1) * stockNum + stockIndex] < 0)
+                    cout<<testCache[(dayIndex - 1) * stockNum + stockIndex]<<endl;
+                if(testCache[dayIndex * stockNum + stockIndex] < 0)
+                    cout<<testCache[dayIndex * stockNum + stockIndex]<<endl;
+                rt->skip(subOffset - 1, false);
+                if(dayIndex > 0 && **rt < 0)
+                    cout<<**rt<<endl;
+                rt->skip(1);
+                if(**rt < 0)
+                    cout<<**rt<<endl;
+
                 //    cout<<stockIndex<<" "<<des->stockMetas[stockIndex].code<<" "<<date<<" "<<**rt<<endl;
                 file->write(reinterpret_cast<const char* >( &subOffset ), sizeof(size_t));
                 ++(*pPreSignCnt);
@@ -270,7 +373,7 @@ protected:
 
     //在dayBefore前的daySize天取样信号，向前取信号发生时特征(featureName)的historyDays条数据
     template <class F>
-    void fill_(size_t dayBefore, size_t daySize, size_t historyDays, const char* signName, const char* featureName, F&& f){
+    void fill_(size_t dayBefore, size_t daySize, size_t historyDays, size_t startIndex, size_t signNum, const char* signName, const char* featureName, F&& f){
         StockFeature<float> *ft = nullptr;
         auto** pHashNameNode = feature_.find(featureName);
         if(*pHashNameNode == nullptr){
@@ -290,13 +393,19 @@ protected:
 
         Iterator<float> curFeatureIter(ft->createIter(0, des_->stockMetas[des_->stockMetas.getSize()-1].offset + des_->stockMetas[des_->stockMetas.getSize()-1].days));
         Iterator<size_t> curSignIter(ss->createIter(dayBefore, daySize));
-        size_t signNum = curSignIter.size();
+        size_t allSize = curSignIter.size();
+        if(allSize < startIndex + signNum)
+            throw "信号不够";
         int curIndex = 0;
-        while (curSignIter.isValid()){
+        curSignIter.skip(startIndex);
+        while (curSignIter.isValid() && curIndex < signNum){
             size_t offset = *curSignIter;
             curFeatureIter.skip(offset - (historyDays - 1), false);
             ++curSignIter;
             for(size_t i = 0; i < historyDays; ++i){
+//                if(*curFeatureIter <= 0)
+//                    cout<<*curFeatureIter<<endl;
+                //cout<<i * signNum + curIndex<<" "<<*curFeatureIter<<endl;
                 f(i * signNum + curIndex, *curFeatureIter);
                 ++curFeatureIter;
             }

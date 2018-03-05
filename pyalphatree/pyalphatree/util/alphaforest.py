@@ -73,6 +73,9 @@ class AlphaForest(object):
     def get_max_history_days(self, alphatree_id):
         return alphatree.getMaxHistoryDays(alphatree_id)
 
+    def get_sign_num(self, day_before, sample_days, sign_name):
+        return alphatree.getSignNum(day_before, sample_days, c_char_p(sign_name))
+
     def optimize_alphatree(self):
         pass
 

@@ -190,9 +190,44 @@ int main() {
     AlphaForest::getAlphaforest()->getAlphaDataBase()->loadDataBase("pyalphatree/data");
     {
         int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
+        int cacheId = AlphaForest::getAlphaforest()->useCache();
+        AlphaForest::getAlphaforest()->decode(alphatreeId, "t1", "returns");
+        AlphaForest::getAlphaforest()->decode(alphatreeId, "t2", "delay(returns, 1)");
+        int signNum = AlphaForest::getAlphaforest()->getAlphaDataBase()->getSignNum(4, 1024, "test_sign");
+        AlphaForest::getAlphaforest()->calAlpha(alphatreeId, cacheId, 4, 1024, 0, signNum, 1, "test_sign");
+        const float* t1 = AlphaForest::getAlphaforest()->getAlpha(alphatreeId, "t1", cacheId);
+        const float* t2 = AlphaForest::getAlphaforest()->getAlpha(alphatreeId, "t2", cacheId);
+        cout<<t1[7000]<<" "<<t2[7000]<<endl;
+    }
+    {
+        int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
+        AlphaForest::getAlphaforest()->decode(alphatreeId, "t_returns", "returns");
+        AlphaForest::getAlphaforest()->decode(alphatreeId, "test_sign", "(((t_returns > 0) & (delay(t_returns, 1) > 0)) & (product(volume,2) > 0))");
+        int cacheId = AlphaForest::getAlphaforest()->useCache();
+        size_t stockSize = AlphaForest::getAlphaforest()->getAlphaDataBase()->getAllCodes(AlphaForest::getAlphaforest()->getCache(cacheId)->codes);
+        AlphaForest::getAlphaforest()->calAlpha(alphatreeId, cacheId,5537,1024,AlphaForest::getAlphaforest()->getCache(cacheId)->codes,stockSize);
+        const float* a1 = AlphaForest::getAlphaforest()->getAlpha(alphatreeId, "test_sign", cacheId);
+        const float* a2 = AlphaForest::getAlphaforest()->getAlpha(alphatreeId, "t_returns", cacheId);
+        for(int l = 1; l < 1024; ++l){
+            for(int k = 0; k < stockSize; ++k){
+                if(l == 15 && k == 3047)
+                    cout<<a1[l * stockSize + k]<<" "<<a2[l * stockSize + k]<<" "<<a2[(l-1) * stockSize + k]<<endl;
+                if(a1[l * stockSize + k] > 0){
+                    if(a2[l * stockSize + k] <= 0)
+                        cout<<"err"<<a2[l * stockSize + k]<<endl;
+                    if(a2[(l-1)*stockSize + k] <= 0)
+                        cout<<"err"<<a2[(l-1)*stockSize + k]<<endl;
+                }
+            }
+        }
+        //AlphaForest::getAlphaforest()->testCacheSign(alphatreeId, cacheId, "test_sign", "t_returns");
+        AlphaForest::getAlphaforest()->cacheSign(alphatreeId, cacheId, "test_sign");
+    }
+    {
+        int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
         AlphaForest::getAlphaforest()->decode(alphatreeId, "root", "returns");
         int cacheId = AlphaForest::getAlphaforest()->useCache();
-        AlphaForest::getAlphaforest()->calAlpha(alphatreeId, cacheId, 0, 2, 2, "test_sign");
+        AlphaForest::getAlphaforest()->calAlpha(alphatreeId, cacheId, 5537, 2, 0, 100, 2, "test_sign");
         const float* alpha = AlphaForest::getAlphaforest()->getAlpha(alphatreeId, "root", cacheId);
         for(int i = 0; i < 100; ++i)
             cout<<alpha[i]<<endl;
