@@ -35,8 +35,11 @@ inline void _sign(float *dst, const float *src, size_t size){
 }
 
 inline void _signAnd(float* dst, const float* l, const float* r, size_t size){
-    for(size_t i = 0; i < size; ++i)
+    for(size_t i = 0; i < size; ++i){
+        //cout<<l[i]<<" "<<r[i]<<" "<<endl;
         dst[i] = ((l[i] > 0 && r[i] > 0) ? 1 : 0);
+        //cout<<dst[i]<<endl;
+    }
 }
 
 inline void _signOr(float* dst, const float* l, const float* r, size_t size){
@@ -221,6 +224,7 @@ inline void _lessCond(float *dst, float a, const float *b, size_t size){
 inline void _lessCond(float *dst, const float *a, const float b, size_t size){
     for(size_t i = 0; i < size; ++i) {
         dst[i] = (a[i] < b) ? 1 : 0;
+        //cout<<dst[i]<<" "<<a[i]<<endl;
     }
 }
 

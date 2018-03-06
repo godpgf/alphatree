@@ -232,12 +232,21 @@ float optimizeAlpha(int alphaTreeId, int cacheId, const char *rootName, int dayB
     return AlphaForest::getAlphaforest()->optimizeAlpha(alphaTreeId, cacheId, rootName, dayBefore, sampleSize, codes, stockSize, exploteRatio, errTryTime);
 }
 
-int getRootAlpha(int alphaTreeId, const char *rootName, int cacheId, float *alpha) {
+int getAlpha(int alphaTreeId, const char *rootName, int cacheId, float *alpha) {
     const float *res = AlphaForest::getAlphaforest()->getAlpha(alphaTreeId, rootName, cacheId);
     auto *cache = AlphaForest::getAlphaforest()->getCache(cacheId);
     int dataSize = (cache->isSign() ? cache->signHistoryDays : cache->sampleDays) * cache->stockSize;
     memcpy(alpha, res, dataSize * sizeof(float));
     return dataSize;
+}
+
+void getAlphaSum(int alphaTreeId, const char *rootName, int cacheId, float* alpha){
+    const float* res = AlphaForest::getAlphaforest()->getAlphaSum(alphaTreeId, rootName, cacheId);
+    memcpy(alpha, res, 2 * sizeof(float));
+}
+
+void getAlphaSmooth(int alphaTreeId, const char *rootName, int cacheId, int smoothNum, float* smooth){
+    return AlphaForest::getAlphaforest()->getAlphaSmooth(alphaTreeId, rootName, cacheId, smoothNum, smooth);
 }
 
 void getRootProcess(int alphatreeId, const char *rootName, int cacheId, char* process){
@@ -256,8 +265,8 @@ int getNodeAlpha(int alphaTreeId, int nodeId, int cacheId, float *alpha) {
 
 
 //总结子公式
-int summarySubAlphaTree(const int *alphatreeIds, int len, int minDepth, char *subAlphatreeStr) {
-    return AlphaForest::getAlphaforest()->summarySubAlphaTree(alphatreeIds, len, minDepth, subAlphatreeStr);
-}
+//int summarySubAlphaTree(const int *alphatreeIds, int len, int minDepth, char *subAlphatreeStr) {
+//    return AlphaForest::getAlphaforest()->summarySubAlphaTree(alphatreeIds, len, minDepth, subAlphatreeStr);
+//}
 
 }

@@ -11,22 +11,38 @@
 #include <math.h>
 
 //#define MAX_PROCESS_STR_LEN 4096 * 64
+//在每个节点的内存中附加一部分用来存放一些统计信息
+#define ATTACH_NODE_MEMORY 16
+
 class NodeCache {
 public:
     NodeCache() {
-        cache = new char[cacheSize];
+        //cache = new char[cacheSize];
+    }
+
+    template <class T>
+    T* initialize(size_t cacheSize){
+        if(cacheSize > this->cacheSize){
+            clean();
+            this->cacheSize = cacheSize;
+            cache = new char[cacheSize];
+        }
+        return (T*)cache;
     }
 
     ~NodeCache() {
-        delete[]cache;
+        clean();
     }
 
-    char *cache;
-    static size_t cacheSize;
-};
+    void clean(){
+        if(cache)
+            delete[] cache;
+        cache = nullptr;
+    }
 
-size_t NodeCache::cacheSize = GET_ELEMEMT_SIZE(HISTORY_DAYS, SAMPLE_DAYS) *
-                              STOCK_SIZE * sizeof(float);
+    char *cache = {nullptr};
+    size_t cacheSize = {0};
+};
 
 class AlphaCache {
 public:
@@ -83,12 +99,14 @@ public:
             nodeCacheSize = nodeSize;
         }
 
-        size_t scs = GET_ELEMEMT_SIZE(historyDays, signHistoryDays > 0 ? signHistoryDays : sampleDays) * stockSize * sizeof(float);
-        if (scs > NodeCache::cacheSize) {
+        size_t scs = GET_ELEMEMT_SIZE(historyDays, signHistoryDays > 0 ? signHistoryDays : sampleDays) * stockSize * sizeof(float) + ATTACH_NODE_MEMORY * sizeof(float);
+        if(scs > nodeCacheSize)
+            nodeCacheSize = scs;
+        /*if (scs > NodeCache::cacheSize) {
             DCache<NodeCache>::release(result);
             NodeCache::cacheSize = scs;
             result = DCache<NodeCache>::create();
-        }
+        }*/
 
         size_t dcs = nodeSize * GET_ELEMEMT_SIZE(historyDays, signHistoryDays > 0 ? signHistoryDays : sampleDays);
         if (dcs > dayCacheSize) {
@@ -107,6 +125,7 @@ public:
 
         //更新某个日期是否需要计算的标记
         memset(dayFlag, 0, dcs * sizeof(CacheFlag));
+        //回收之前用的节点内存
         result->releaseAll();
     }
 
@@ -114,10 +133,26 @@ public:
         return signName[0] > 0;
     }
 
+    int useMemory(){
+        return result->useCacheMemory();
+    }
+
+    void releaseMemory(int id){
+        result->releaseCacheMemory(id);
+    }
+
+    template <class T>
+    T* getMemort(int memid){
+        return result->getCacheMemory(memid).initialize<T>(cacheSizePerNode);
+    }
+
+    size_t getAlphaDays(){
+        return signHistoryDays > 0 ? signHistoryDays : sampleDays;
+    }
+
     //监控某个节点在多线程中的计算状态
     std::shared_future<int> *nodeRes = {nullptr};
-    //保存中间计算结果
-    DCache<NodeCache> *result = {nullptr};
+
     //保存某日所有股票是否需要计算
     CacheFlag *dayFlag = {nullptr};
     //保存需要计算的股票代码
@@ -130,6 +165,7 @@ public:
     size_t dayBefore = {0};
     //取样期
     size_t sampleDays = {0};
+
     //股票数量，如果是信号就是信号数量
     size_t stockSize = {0};
     //保留信号发生前多少天的数据
@@ -137,6 +173,15 @@ public:
     size_t startSignIndex = {0};
     //size_t signNum = {0};
     char signName[64];
+
+protected:
+
+
+    //保存中间计算结果
+    DCache<NodeCache> *result = {nullptr};
+    //每个节点可以申请的最大内存大小
+    size_t cacheSizePerNode = {GET_ELEMEMT_SIZE(HISTORY_DAYS, SAMPLE_DAYS) *
+                            STOCK_SIZE * sizeof(float) + ATTACH_NODE_MEMORY * sizeof(float)};
 };
 
 
@@ -400,17 +445,25 @@ public:
         return getAlpha(getSubtreeRootId(rootName), cache);
     }
 
+    const float *getAlphaSum(const char *rootName, AlphaCache *cache){
+        return getAlphaSum(getSubtreeRootId(rootName), cache);
+    }
+
+    void getAlphaSmooth(const char *rootName, AlphaCache *cache, int smoothNum, float* smooth){
+        return getAlphaSmooth(getSubtreeRootId(rootName), cache, smoothNum, smooth);
+    }
+
     const char *getProcess(const char *rootName, AlphaCache *cache) {
         return getProcess(getSubtreeRootId(rootName), cache);
     }
 
 
     //读取已经计算好的alpha
-    const float *getAlpha(int nodeId, AlphaCache *cache) {
+    float *getAlpha(int nodeId, AlphaCache *cache) {
         //int dateSize = GET_ELEMEMT_SIZE(getMaxHistoryDays(), cache->sampleDays);
         //float* result = AlphaTree::getNodeCacheMemory(nodeId, dateSize, stockSize, resultCache);
         int memid = cache->nodeRes[nodeId].get();
-        float *result = (float *) cache->result->getCacheMemory(memid).cache;
+        float *result = cache->getMemort<float>(memid);
         //CacheFlag* flag = AlphaTree::getNodeCacheMemory(nodeId, dateSize, cache->stockSize, cache->stockFlag);
         //flagResult(result, flag, dateSize * cache->stockSize);
 //        cout<<"get "<<memid<<" "<<(int) ((getMaxHistoryDays() - 1) * cache->stockSize)<<endl;
@@ -421,8 +474,29 @@ public:
         return result + (int) ((getMaxHistoryDays() - 1) * cache->stockSize);
     }
 
+    //读取alpha的累加和平方累加
+    float* getAlphaSum(int nodeId, AlphaCache *cache){
+        float *alpha = getAlpha(nodeId, cache);
+        float sum = 0;
+        float sqrSum = 0;
+        for(int i = cache->getAlphaDays() * cache->stockSize - 1; i >=0; --i){
+            sum += alpha[i];
+            sqrSum += alpha[i] * alpha[i];
+        }
+        alpha = alpha + cache->getAlphaDays() * cache->stockSize;
+        alpha[0] = sum;
+        alpha[1] = sqrSum;
+        return alpha;
+    }
+
+    void getAlphaSmooth(int nodeId, AlphaCache *cache, int smoothNum, float* smooth){
+        getAlphaSmooth(nodeId,cache, smoothNum, smooth, true);
+        getAlphaSmooth(nodeId,cache,smoothNum,smooth + smoothNum, false);
+    }
+
     const char *getProcess(int nodeId, AlphaCache *cache) {
-        return (char *) cache->result->getCacheMemory(cache->nodeRes[nodeId].get()).cache;
+        return cache->getMemort<char>(cache->nodeRes[nodeId].get());
+        //return (char *) cache->result->getCacheMemory(cache->nodeRes[nodeId].get()).cache;
     }
 
     /*const int* getSign(AlphaCache* cache){
@@ -440,6 +514,43 @@ public:
 
 
 protected:
+    void getAlphaSmooth(int nodeId, AlphaCache *cache, int smoothNum, float* values, bool isLeft){
+        int lastIndex = -1;
+        int curIndex = 0;
+
+        float* res = getAlpha(nodeId, cache);
+
+        float lastValue, curValue;
+        for (int i = cache->getAlphaDays() * cache->stockSize - 1; i >= 0; --i){
+            curValue = res[i];
+            if(lastIndex == -1){
+                values[0] = curValue;
+                lastIndex = 0;
+            } else {
+                lastValue = values[lastIndex];
+                curIndex = lastIndex;
+                if(isLeft && curValue < values[lastIndex]){
+                    while (curIndex > 0 && values[curIndex-1] > curValue){
+                        values[curIndex] = values[curIndex-1];
+                        --curIndex;
+                    }
+                    values[curIndex] = curValue;
+                    if(lastIndex < smoothNum - 1)
+                        values[++lastIndex] = lastValue;
+                } else if(!isLeft && curValue > values[lastIndex]){
+                    while (curIndex > 0 && values[curIndex-1] < curValue){
+                        values[curIndex] = values[curIndex-1];
+                        --curIndex;
+                    }
+                    values[curIndex] = curValue;
+                    if(lastIndex < smoothNum - 1)
+                        values[++lastIndex] = lastValue;
+                }
+
+            }
+        }
+    }
+
     void calAlpha(AlphaDB *alphaDataBase, AlphaCache *cache, ThreadPool *threadPool) {
 
         //int rootId = getSubtreeRootId(rootName);
@@ -456,14 +567,14 @@ protected:
 
     int cast(AlphaDB *alphaDataBase, int nodeId, AlphaCache *cache) {
         //cout<<"start "<<nodeList_[nodeId].getName()<<endl;
-        int dateSize = GET_ELEMEMT_SIZE(getMaxHistoryDays(), cache->isSign() ? cache->signHistoryDays : cache->sampleDays);
+        int dateSize = GET_ELEMEMT_SIZE(getMaxHistoryDays(), cache->getAlphaDays());
         //float* curResultCache = getNodeCacheMemory(nodeId, dateSize, cache->stockSize, cache->result);
         //bool* curResultFlag = cache->flagRes[nodeId].get();
         CacheFlag *curDayFlagCache = getNodeFlag(nodeId, dateSize, cache->dayFlag);
 
         int outMemoryId = 0;
         if (nodeList_[nodeId].getChildNum() == 0) {
-            outMemoryId = cache->result->useCacheMemory();
+            outMemoryId = cache->useMemory();
             if(cache->isSign()){
                 alphaDataBase->getStock(cache->dayBefore,
                                         getMaxHistoryDays(),
@@ -473,7 +584,7 @@ protected:
                                         cache->stockSize,
                                         nodeList_[nodeId].getName(),
                                         cache->signName,
-                                        (float *) cache->result->getCacheMemory(outMemoryId).cache);
+                                        cache->getMemort<float>(outMemoryId));
             } else {
                 alphaDataBase->getStock(cache->dayBefore,
                                         getMaxHistoryDays(),
@@ -482,7 +593,7 @@ protected:
                                         nodeList_[nodeId].getName(),
                         //((AlphaPar *) nodeList_[nodeId].getElement())->leafDataType,
                                         nodeList_[nodeId].getWatchLeafDataClass(),
-                                        (float *) cache->result->getCacheMemory(outMemoryId).cache,
+                                        cache->getMemort<float>(outMemoryId),
                                         cache->codes);
             }
 
@@ -494,22 +605,22 @@ protected:
                 if (nodeList_[childId].isRoot()) {
 
                     //不能修改子树结果
-                    childMemoryIds[i] = cache->result->useCacheMemory();
+                    childMemoryIds[i] = cache->useMemory();
                     int subTreeMemoryId = cache->nodeRes[childId].get();
                     //cout<<subTreeMemoryId<<" "<<childMemoryIds[i]<<"create new memory\n";
-                    memcpy(cache->result->getCacheMemory(childMemoryIds[i]).cache,
-                           cache->result->getCacheMemory(subTreeMemoryId).cache,
+                    memcpy(cache->getMemort<char>(childMemoryIds[i]),
+                           cache->getMemort<char>(subTreeMemoryId),
                            cache->stockSize * dateSize * sizeof(float));
                 } else {
                     childMemoryIds[i] = cache->nodeRes[childId].get();
                 }
-                childMemory[i] = cache->result->getCacheMemory(childMemoryIds[i]).cache;
+                childMemory[i] = cache->getMemort<char>(childMemoryIds[i]);
             }
             //cout<<nodeList_[nodeId].getElement()->getParNum()<<" " << nodeList_[nodeId].getChildNum()<<endl;
             for (int i = 0; i < nodeList_[nodeId].getElement()->getParNum() - nodeList_[nodeId].getChildNum(); ++i) {
-                int newMemId = cache->result->useCacheMemory();
+                int newMemId = cache->useMemory();
                 childMemoryIds[i + nodeList_[nodeId].getChildNum()] = newMemId;
-                childMemory[i + nodeList_[nodeId].getChildNum()] = cache->result->getCacheMemory(newMemId).cache;
+                childMemory[i + nodeList_[nodeId].getChildNum()] = cache->getMemort<char>(newMemId);
             }
 
             nodeList_[nodeId].getElement()->cast(childMemory, nodeList_[nodeId].getCoff(coffList_), dateSize,
@@ -519,7 +630,7 @@ protected:
             //回收内存
             for (int i = 0; i < nodeList_[nodeId].getElement()->getParNum(); ++i) {
                 if (i != nodeList_[nodeId].getElement()->getOutParIndex()) {
-                    cache->result->releaseCacheMemory(childMemoryIds[i]);
+                    cache->releaseMemory(childMemoryIds[i]);
                 } else {
                     outMemoryId = childMemoryIds[i];
                 }
@@ -547,9 +658,9 @@ protected:
 
 
     void flagAllNode(AlphaCache *cache) {
-        int dateSize = GET_ELEMEMT_SIZE(getMaxHistoryDays(), cache->isSign() ? cache->signHistoryDays : cache->sampleDays);
+        int dateSize = GET_ELEMEMT_SIZE(getMaxHistoryDays(), cache->getAlphaDays());
         memset(cache->dayFlag, 0, dateSize * nodeList_.getSize() * sizeof(CacheFlag));
-        for (size_t dayIndex = 0; dayIndex < cache->sampleDays; ++dayIndex) {
+        for (size_t dayIndex = 0; dayIndex < cache->getAlphaDays(); ++dayIndex) {
             for (auto i = 0; i < subtreeList_.getSize(); ++i) {
                 int curIndex = dayIndex + getMaxHistoryDays() - 1;
                 flagNodeDay(subtreeList_[i].rootId, curIndex, dateSize, cache);

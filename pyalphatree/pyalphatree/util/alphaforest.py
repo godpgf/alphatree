@@ -129,7 +129,7 @@ class AlphaForest(object):
         return alphatree.optimizeAlpha(alphatree_id, cache_id, c_char_p(root_name), daybefore, sample_size, self.code_cache, stock_size, c_float(exploteRatio), errTryTime)
 
     def get_root_alpha(self, alphatree_id, root_name, cache_id, sample_size):
-        data_size = alphatree.getRootAlpha(alphatree_id, c_char_p(root_name), cache_id, self.alpha_cache)
+        data_size = alphatree.getAlpha(alphatree_id, c_char_p(root_name), cache_id, self.alpha_cache)
         stock_size = data_size / sample_size
         return self._read_alpha(sample_size, stock_size)
 

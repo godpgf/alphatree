@@ -19,7 +19,6 @@
 #include "../base/hashmap.h"
 #include "../db/stockdes.h"
 #include "../db/stockcache.h"
-#include "../db/featureiterator.h"
 using namespace std;
 
 //返回中间结果和取样数据所需要考虑的所有天数,比如delate(close,3)取样5天,就返回3+5-1天的数据,这些天以外的数据计算时不会涉及到的.

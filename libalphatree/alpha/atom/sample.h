@@ -30,7 +30,7 @@ void* amplitudeSample(void** pars, float coff, size_t historySize, size_t stockS
         }
     }
     //控制中立数据比例
-    moreCoffCnt /= 1.8f;
+    moreCoffCnt /= 2.0f;
 
     if(lessCoffCnts[7] <= moreCoffCnt){
         for(size_t i = 0; i < historySize; ++i) {

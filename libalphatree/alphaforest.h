@@ -106,6 +106,16 @@ public:
         return getAlphaTree(alphaTreeId)->getAlpha(rootName, curCache);
     }
 
+    const float *getAlphaSum(int alphaTreeId, const char *rootName, int cacheId){
+        auto curCache = alphaCache_->getCacheMemory(cacheId);
+        return getAlphaTree(alphaTreeId)->getAlphaSum(rootName, curCache);
+    }
+
+    void getAlphaSmooth(int alphaTreeId, const char *rootName, int cacheId, int smoothNum, float* smooth){
+        auto curCache = alphaCache_->getCacheMemory(cacheId);
+        return getAlphaTree(alphaTreeId)->getAlphaSmooth(rootName, curCache, smoothNum, smooth);
+    }
+
     const char* getProcess(int alphaTreeId, const char *rootName, int cacheId){
         auto curCache = alphaCache_->getCacheMemory(cacheId);
         return getAlphaTree(alphaTreeId)->getProcess(rootName, curCache);
@@ -121,68 +131,68 @@ public:
     }
 
 
-    int summarySubAlphaTree(const int *alphatreeIds, int len, int minDepth, char *subAlphatreeStr) {
-        set<const char *, ptrCmp> substrSet;
-        char subAlphaTreeStrList[MAX_SUB_ALPHATREE_STR_NUM * MAX_NODE_STR_LEN];
-        int curSubAlphaTreeIndex = 0;
-        char cmpLine[MAX_NODE_STR_LEN];
-        int allNum = 0;
-        for (auto i = 0; i < len; ++i) {
-            for (int j = 0; j < getAlphaTree(alphatreeIds[i])->getSubtreeSize(); ++j) {
-                getAlphaTree(alphatreeIds[i])->encode(getAlphaTree(alphatreeIds[i])->getSubtreeName(j), cmpLine);
-                for (int k = 0; k < len; ++k) {
-                    int minTime = 1;
-                    for (int l = 0; l < getAlphaTree(alphatreeIds[k])->getSubtreeSize(); ++l) {
-                        if (i == k && j == l) {
-                            minTime = 2;
-                        }
-                        int num = getAlphaTree(alphatreeIds[k])->searchPublicSubstring(
-                                getAlphaTree(alphatreeIds[k])->getSubtreeName(l), cmpLine,
-                                subAlphaTreeStrList + curSubAlphaTreeIndex, minTime, minDepth);
-                        while (num-- > 0) {
-                            curSubAlphaTreeIndex += strlen(subAlphaTreeStrList + curSubAlphaTreeIndex) + 1;
-                            ++allNum;
-                        }
-                    }
-
-                }
-            }
-
-        }
-        //去重
-        curSubAlphaTreeIndex = 0;
-        while (allNum-- > 0) {
-            //注意子树中不能包含indneutralize
-            if (!strstr(subAlphaTreeStrList + curSubAlphaTreeIndex, "indneutralize")) {
-                auto it = substrSet.find(subAlphaTreeStrList + curSubAlphaTreeIndex);
-                if (it == substrSet.end()) {
-                    substrSet.insert(subAlphaTreeStrList + curSubAlphaTreeIndex);
-                }
-            }
-            curSubAlphaTreeIndex += strlen(subAlphaTreeStrList + curSubAlphaTreeIndex) + 1;
-        }
-        //写回
-        allNum = 0;
-        char *curSubAlphatreeStr = subAlphatreeStr;
-        for (auto it = substrSet.begin(); it != substrSet.end(); ++it) {
-            strcpy(curSubAlphatreeStr, *it);
-            curSubAlphatreeStr += (strlen(*it) + 1);
-            ++allNum;
-        }
-        return allNum;
-    }
-
-    //学习用来过滤信号的随机森林
-    int learnFilterForest(int alphatree, int cacheId, const char *features, size_t featureSize, size_t treeSize = 20,
-                          size_t iteratorNum = 2, float gamma = 0.001f, float lambda = 1.0f, size_t maxDepth = 16,
-                          size_t maxLeafSize = 1024, size_t maxAdjWeightTime = 4, float adjWeightRule = 0.2f,
-                          size_t maxBarSize = 16, float mergeBarPercent = 0.016f, float subsample = 0.6f,
-                          float colsampleBytree = 0.75f, const char *buySign = "buy", const char *sellSign = "sell",
-                          const char *targetValue = "target") {
-
-
-
-    }
+//    int summarySubAlphaTree(const int *alphatreeIds, int len, int minDepth, char *subAlphatreeStr) {
+//        set<const char *, ptrCmp> substrSet;
+//        char subAlphaTreeStrList[MAX_SUB_ALPHATREE_STR_NUM * MAX_NODE_STR_LEN];
+//        int curSubAlphaTreeIndex = 0;
+//        char cmpLine[MAX_NODE_STR_LEN];
+//        int allNum = 0;
+//        for (auto i = 0; i < len; ++i) {
+//            for (int j = 0; j < getAlphaTree(alphatreeIds[i])->getSubtreeSize(); ++j) {
+//                getAlphaTree(alphatreeIds[i])->encode(getAlphaTree(alphatreeIds[i])->getSubtreeName(j), cmpLine);
+//                for (int k = 0; k < len; ++k) {
+//                    int minTime = 1;
+//                    for (int l = 0; l < getAlphaTree(alphatreeIds[k])->getSubtreeSize(); ++l) {
+//                        if (i == k && j == l) {
+//                            minTime = 2;
+//                        }
+//                        int num = getAlphaTree(alphatreeIds[k])->searchPublicSubstring(
+//                                getAlphaTree(alphatreeIds[k])->getSubtreeName(l), cmpLine,
+//                                subAlphaTreeStrList + curSubAlphaTreeIndex, minTime, minDepth);
+//                        while (num-- > 0) {
+//                            curSubAlphaTreeIndex += strlen(subAlphaTreeStrList + curSubAlphaTreeIndex) + 1;
+//                            ++allNum;
+//                        }
+//                    }
+//
+//                }
+//            }
+//
+//        }
+//        //去重
+//        curSubAlphaTreeIndex = 0;
+//        while (allNum-- > 0) {
+//            //注意子树中不能包含indneutralize
+//            if (!strstr(subAlphaTreeStrList + curSubAlphaTreeIndex, "indneutralize")) {
+//                auto it = substrSet.find(subAlphaTreeStrList + curSubAlphaTreeIndex);
+//                if (it == substrSet.end()) {
+//                    substrSet.insert(subAlphaTreeStrList + curSubAlphaTreeIndex);
+//                }
+//            }
+//            curSubAlphaTreeIndex += strlen(subAlphaTreeStrList + curSubAlphaTreeIndex) + 1;
+//        }
+//        //写回
+//        allNum = 0;
+//        char *curSubAlphatreeStr = subAlphatreeStr;
+//        for (auto it = substrSet.begin(); it != substrSet.end(); ++it) {
+//            strcpy(curSubAlphatreeStr, *it);
+//            curSubAlphatreeStr += (strlen(*it) + 1);
+//            ++allNum;
+//        }
+//        return allNum;
+//    }
+//
+//    //学习用来过滤信号的随机森林
+//    int learnFilterForest(int alphatree, int cacheId, const char *features, size_t featureSize, size_t treeSize = 20,
+//                          size_t iteratorNum = 2, float gamma = 0.001f, float lambda = 1.0f, size_t maxDepth = 16,
+//                          size_t maxLeafSize = 1024, size_t maxAdjWeightTime = 4, float adjWeightRule = 0.2f,
+//                          size_t maxBarSize = 16, float mergeBarPercent = 0.016f, float subsample = 0.6f,
+//                          float colsampleBytree = 0.75f, const char *buySign = "buy", const char *sellSign = "sell",
+//                          const char *targetValue = "target") {
+//
+//
+//
+//    }
 
 protected:
     AlphaForest(int cacheSize) : threadPool_(cacheSize) {
