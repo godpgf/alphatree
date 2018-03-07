@@ -2,7 +2,6 @@
 # author=godpgf
 from ctypes import *
 from pyalphatree.libalphatree import alphatree
-from .alphatree import AlphaNode, AlphaTree
 from stdb import *
 import numpy as np
 import math
@@ -13,14 +12,9 @@ class AlphaForest(object):
     def __init__(self, cache_size=4, max_stock_num=4096, max_day_num=4096, max_feature_size=2048):
         alphatree.initializeAlphaforest(cache_size)
 
-        # self.max_sample_size = 0
-        # self.max_stoct_size = 0
         self.code_cache = (c_char * (max_stock_num * 64))()
         self.alpha_cache = (c_float * (max_stock_num * max_day_num))()
         self.feature_cache = (c_char * (max_feature_size * 64))()
-        # self.max_alpha_tree_size = 0
-        # self.check_alpha_size(2500, 3600)
-        # self.check_tree_size(1024)
 
         self.max_alpha_tree_str_len = 4096;
         self.sub_alphatree_str_cache = (c_char * (self.max_alpha_tree_str_len * 1024))()
@@ -29,26 +23,15 @@ class AlphaForest(object):
         self.encode_cache = (c_char * self.max_alpha_tree_str_len)()
         self.process_cache = (c_char * (4096 * 64))()
 
-    # def check_alpha_size(self, sample_size, stock_size):
-    #     is_resize_alpha = False
-    #     if sample_size > self.max_sample_size:
-    #         self.max_sample_size = sample_size
-    #         self.sample_flag_cache = (c_bool * self.max_sample_size)
-    #         is_resize_alpha = True
-    #     if stock_size > self.max_stoct_size:
-    #         self.max_stoct_size = stock_size
-    #         self.code_cache = (c_char * (self.max_stoct_size * 64))()
-    #         is_resize_alpha = True
-    #     if is_resize_alpha:
-    #         self.alpha_cache = (c_float * (self.max_stoct_size * self.max_sample_size))()
-
-    # def check_tree_size(self, alpha_tree_size):
-    #     if alpha_tree_size > self.max_alpha_tree_size:
-    #         self.max_alpha_tree_size = alpha_tree_size
-    #         self.alphatree_id_cache = (c_int * self.max_alpha_tree_size)()
 
     def __del__(self):
         alphatree.releaseAlphaforest()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
 
     def create_alphatree(self):
         return alphatree.createAlphatree()
@@ -75,9 +58,6 @@ class AlphaForest(object):
 
     def get_sign_num(self, day_before, sample_days, sign_name):
         return alphatree.getSignNum(day_before, sample_days, c_char_p(sign_name))
-
-    def optimize_alphatree(self):
-        pass
 
     #将某个公式的计算结果保持在文件
     def cache_alpha(self, name, line):
@@ -145,15 +125,6 @@ class AlphaForest(object):
         alphatree.getRootProcess(alphatree_id, c_char_p(process_name), cache_id, self.process_cache)
         return self._read_str(self.process_cache)
 
-    def summary_sub_alphatree(self, alphatree_list, min_depth=3):
-        self._write_alphatree_ids(alphatree_list)
-        sub_alphatree_num = alphatree.summarySubAlphaTree(self.alphatree_id_cache, len(alphatree_list), min_depth,
-                                                          self.sub_alphatree_str_cache)
-        sub_alphatree_list = self._read_str_list(self.sub_alphatree_str_cache, sub_alphatree_num)
-        # 按照长度从大到小返回
-        sub_alphatree_list.sort(key=lambda x: -len(x))
-        return sub_alphatree_list
-
     def _read_alpha(self, sample_size, stock_size):
         alpha_list = list()
         cur_alpha_index = 0
@@ -188,22 +159,6 @@ class AlphaForest(object):
             str_list.append("".join(code))
         return str_list;
 
-    @classmethod
-    def _write_data(cls, open, high, low, close, volume, vwap, returns, bar, start_index):
-        for id, v in enumerate(bar["open"]):
-            open[start_index + id] = v
-        for id, v in enumerate(bar["high"]):
-            high[start_index + id] = v
-        for id, v in enumerate(bar["low"]):
-            low[start_index + id] = v
-        for id, v in enumerate(bar["close"]):
-            close[start_index + id] = v
-        for id, v in enumerate(bar["volume"]):
-            volume[start_index + id] = v
-        for id, v in enumerate(bar["vwap"]):
-            vwap[start_index + id] = v
-        for id, v in enumerate(bar["rise"]):
-            returns[start_index + id] = v
 
     @classmethod
     def _read_str(cls, str_cache):
@@ -246,77 +201,5 @@ class AlphaForest(object):
             self.feature_cache[cur_feature_index] = '\0'
             cur_feature_index += 1
 
-    def _write_alphatree_ids(self, alphatree_list):
-        cur_index = 0
-        for id in alphatree_list:
-            self.alphatree_id_cache[cur_index] = id
-            cur_index += 1
 
-    def _add_stock(self, code, market, industry, concept, data, open, high, low, close, volume, vwap, returns, totals):
-        startIndex = 0
-        while data[startIndex][5] == 0:
-            startIndex += 1
 
-        length = len(data) - startIndex
-        if length > 1:
-            for i in xrange(startIndex, len(data)):
-                open[i - startIndex] = data[i][1]
-                high[i - startIndex] = data[i][2]
-                low[i - startIndex] = data[i][3]
-                close[i - startIndex] = data[i][4]
-                volume[i - startIndex] = data[i][5]
-                vwap[i - startIndex] = data[i][6]
-                returns[i - startIndex] = data[i][7]
-            # print "open(%.4f~%.4f) volume(%.4f~%.4f) vwap(%.4f~%.4f) returns(%.4f~%.4f)"%(data[startIndex][1],data[-1][1],data[startIndex][5],data[-1][5],data[startIndex][6],data[-1][6],data[startIndex][7],data[-1][7])
-            alphatree.addStock(c_char_p(code), c_char_p(market), c_char_p(industry), c_char_p(concept),
-                               open, high, low, close, volume, vwap, returns, length, totals)
-            return True
-        return False
-
-    # todo delete later
-    # 加载树的结构。如果sample_size==0表示不计算经过各个节点的均值和标准差
-    def load_alphatree(self, alphatree_id, day_before=0, sample_size=0):
-        if sample_size > 0:
-            histort_num = alphatree.getHistoryDays(alphatree_id)
-            future_num = alphatree.getFutureDays(alphatree_id)
-            stock_size = alphatree.getCodes(day_before, future_num, histort_num, sample_size, self.code_cache)
-            cache_id = alphatree.useCacheMemory()
-            flag_id = alphatree.useFlagCache()
-            alphatree.calAlpha(alphatree_id, cache_id, flag_id, day_before, sample_size, self.code_cache, stock_size,
-                               c_void_p(0))
-            root = self._load_alphatree_node(alphatree_id, sample_size=sample_size, cache_id=cache_id,
-                                             stock_size=stock_size)
-            alphatree.releaseCacheMemory(cache_id)
-            alphatree.releaseFlagCache(flag_id)
-        else:
-            root = self._load_alphatree_node(alphatree_id)
-        return AlphaTree(root)
-
-    def _load_alphatree_node(self, alphatree_id, node_id=None, sample_size=0, cache_id=None, stock_size=None):
-        if node_id is None:
-            node_id = alphatree.getRoot(alphatree_id)
-        child_num = alphatree.getNodeDes(alphatree_id, node_id, self.name_cache, self.coff_cache, self.children_cache)
-
-        # 计算流过此节点的数据特征
-        avg = 0
-        std = 0
-        if sample_size > 0:
-            alphatree.getAlpha(alphatree_id, node_id, cache_id, sample_size, stock_size, self.alpha_cache)
-            alpha = np.array(self._read_alpha(sample_size, stock_size))
-            alpha.reshape(-1)
-            avg = alpha.mean()
-            std = alpha.std()
-            if math.isnan(std) or math.isinf(std) or std < 0:
-                print "alphatreeId:%d nodeId:%d" % (alphatree_id, node_id)
-                raise "计算错误!"
-
-        name = self._read_str(self.name_cache)
-        coff = self._read_str(self.coff_cache)
-        node = AlphaNode(name, coff, avg, std)
-        leftId = self.children_cache[0] if child_num > 0 else None
-        rightId = self.children_cache[1] if child_num > 1 else None
-        if leftId is not None:
-            node.add_child(self._load_alphatree_node(alphatree_id, leftId, sample_size, cache_id, stock_size))
-        if rightId is not None:
-            node.add_child(self._load_alphatree_node(alphatree_id, rightId, sample_size, cache_id, stock_size))
-        return node

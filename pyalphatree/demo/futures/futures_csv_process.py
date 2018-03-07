@@ -3,7 +3,7 @@
 # 将期货csv处理成可以本系统可以使用的文件格式
 import os
 from pyalphatree import *
-
+from futures_des import *
 
 def _avg(value_list):
     sum = 0
@@ -177,7 +177,8 @@ if __name__ == "__main__":
     # af.csv2binary("../../cffex_if", "bidprice")
     # af.csv2binary("../../cffex_if", "bidvolume")
     # af.cache_alpha("returns", "((close - delay(close, 1)) / delay(close, 1))")
-    af.cache_sign("filter","((product(volume, 6) > 0) & amplitude_sample(returns, 0.0002))")
+    af.cache_sign("filter", get_sign_des())
+    #af.cache_sign("filter2", "((product(volume, 6) > 0)")
     print "finish"
     # af.cache_sign("test_filter","(returns < 0)")
     # af.cache_sign("test_filter","(delay(returns, 2) < 0)")

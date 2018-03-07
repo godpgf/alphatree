@@ -1,9 +1,15 @@
 #coding=utf-8
 #author=godpgf
-import math
-import numpy as np
 from pyalphatree import *
-from sda import *
+
+def get_min_wave():
+    return 0.0002
+
+def get_stop_loss():
+    return 0.002
+
+def get_sign_des():
+    return "((product(volume, 6) > 0) & amplitude_sample(returns, %.4f))"%get_min_wave()
 
 
 def get_feature_des():
@@ -43,8 +49,8 @@ def get_feature_des():
 def get_target_des():
     formula_list = [
         "return_ = returns",
-        "t1 = ((return_ < -0.0002) ? 1 : 0)",
-        "t3 = ((return_ > 0.0002) ? 1 : 0)",
+        "t1 = ((return_ < -%.4f) ? 1 : 0)"%get_min_wave(),
+        "t3 = ((return_ > %.4f) ? 1 : 0)"%get_min_wave(),
         "t2 = ((1 - t1) & (1 - t3))"
     ]
     column_list = ["t1", "t2", "t3"]
@@ -60,7 +66,6 @@ def get_sign_data(sign_name, day_before, sample_num):
 
 def get_seq_data(code_name, day_before, sample_num):
     formula_list_f, column_list_f = get_feature_des()
-    formula_list_t, column_list_t = get_target_des()
     return AlphaArray(code_name, formula_list_f, column_list_f, day_before, sample_num, False), \
-           AlphaArray(code_name, formula_list_t, column_list_t, day_before, sample_num, False)
+           AlphaArray(code_name, ["close_ = delay(close, 1)", "returns_ = returns"], ["close_", "returns_"], day_before, sample_num, False)
 

@@ -3,6 +3,7 @@
 //
 
 #include "alphaforest.h"
+#include "alphatransaction.h"
 #include <iostream>
 
 using namespace std;
@@ -268,5 +269,38 @@ int getNodeAlpha(int alphaTreeId, int nodeId, int cacheId, float *alpha) {
 //int summarySubAlphaTree(const int *alphatreeIds, int len, int minDepth, char *subAlphatreeStr) {
 //    return AlphaForest::getAlphaforest()->summarySubAlphaTree(alphatreeIds, len, minDepth, subAlphatreeStr);
 //}
+
+//回测-------------------------------------------------------------------------------------------
+void initializeAlphaTransaction() {
+    AlphaTransaction::initialize();
+}
+
+void releaseAlphaTransaction() {
+    AlphaTransaction::release();
+}
+
+int useTransaction(float remain, float fee){
+    return AlphaTransaction::getAlphatransaction()->useTransaction(remain, fee);
+}
+
+void releaseTransaction(int tid){
+    AlphaTransaction::getAlphatransaction()->releaseTransaction(tid);
+}
+
+void buyStock(int tid, int stockIndex, float price, float weight){
+    AlphaTransaction::getAlphatransaction()->buyStock(tid, stockIndex, price, weight);
+}
+
+void shortStock(int tid, int stockIndex, float price, float weight){
+    AlphaTransaction::getAlphatransaction()->shortStock(tid, stockIndex, price, weight);
+}
+
+void sellStock(int tid, int stockIndex, float price, float weight, bool isSellBuy){
+    AlphaTransaction::getAlphatransaction()->sellStock(tid, stockIndex, price, weight, isSellBuy);
+}
+
+float getBalance(int tid, float* price){
+    return AlphaTransaction::getAlphatransaction()->getBalance(tid, price);
+}
 
 }

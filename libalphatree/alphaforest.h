@@ -11,6 +11,7 @@
 #include "base/dcache.h"
 #include "base/threadpool.h"
 #include "alpha/alphadb.h"
+#include "alpha/alphabacktrace.h"
 #include "base/hashmap.h"
 #include <set>
 #include <vector>
@@ -81,7 +82,7 @@ public:
         getAlphaTree(alphaTreeId)->calAlpha(&alphaDataBase_, dayBefore, sampleSize, codes, stockSize, alphaCache_->getCacheMemory(cacheId), &threadPool_);
     }
 
-    void calAlpha(int alphaTreeId, int cacheId, size_t dayBefore, size_t sampleSize, size_t startIndex, size_t signNum, size_t  signHistoryDays, const char* signName){
+    const void calAlpha(int alphaTreeId, int cacheId, size_t dayBefore, size_t sampleSize, size_t startIndex, size_t signNum, size_t  signHistoryDays, const char* signName){
         getAlphaTree(alphaTreeId)->calAlpha(&alphaDataBase_, dayBefore, sampleSize, startIndex, signNum, signHistoryDays, signName, alphaCache_->getCacheMemory(cacheId), &threadPool_);
     }
 
@@ -201,6 +202,7 @@ protected:
         alphaTreeCache_ = DCache<AlphaTree>::create();
         //申请中间结果的内存,有多少个cacheSize就可以同时计算几个alphatree
         alphaCache_ = Cache<AlphaCache>::create(cacheSize);
+
         char *p = alphaCache_->getBuff();
         for (auto i = 0; i != alphaCache_->getMaxCacheSize(); ++i) {
             new(p)AlphaCache();
@@ -213,12 +215,12 @@ protected:
         //    alphaTreeCache_->getCacheMemory(i)->~AlphaTree();
         DCache<AlphaTree>::release(alphaTreeCache_);
 
-        cout << "release alphatree" << endl;
+//        cout << "release alphatree" << endl;
         for (auto i = 0; i != alphaCache_->getMaxCacheSize(); ++i)
             alphaCache_->getCacheMemory(i)->~AlphaCache();
         Cache<AlphaCache>::release(alphaCache_);
+//        cout << "release alphacache" << endl;
 
-        cout << "release alphacache" << endl;
     }
 
     void initAlphaElement() {

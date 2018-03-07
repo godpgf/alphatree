@@ -7,7 +7,7 @@ from sda import *
 from bp_softmax import *
 import tensorflow as tf
 import os
-from futures_iter import *
+from futures_des import *
 
 
 def smooth(low_list, high_list, max_len, value):
@@ -41,6 +41,10 @@ def write_array(f, data):
     for v in data:
         data_str.append("%.16f" % v)
     f.write(" ".join(data_str) + '\n')
+
+def read_array(f):
+    data_str = f.readline()[:-1].split(' ')
+    return np.array([float(d) for d in data_str])
 
 
 def train(sample_days = 250, before_days = 50,  training_epochs = 64, sign_ratio = 0.002, path = "save/model.ckpt", time_offset = 0, batch_size = 4096):
@@ -120,8 +124,92 @@ def train(sample_days = 250, before_days = 50,  training_epochs = 64, sign_ratio
             write_array(f, high)
             write_array(f,[low_list[-1], high_list[-1]])
 
+def back_trace(sample_days = 50, before_days = 0,  path = "save/model.ckpt", time_offset = 0, batch_size = 4096):
+    scale = 1 if time_offset == 2 else (6 if time_offset == 1 else 60)
+    back_x, back_y = get_seq_data("IF", before_days * 4 * 60 * scale, sample_days * 4 * 60 * scale)
 
+    fileName = path.split('/')[-1]
+    with open(path.replace(fileName, "config.txt"), 'r') as f:
+        avg = read_array(f)
+        std = read_array(f)
+        low = read_array(f)
+        high = read_array(f)
+        low_high = read_array(f)
 
+    with AlphaTransaction():
+        transaction = Transaction(100000, 0.0002, 1)
+        with tf.Session() as sess:
+            bp = BPSoftmax(35,[18], 3)
+            saver = tf.train.Saver()
+            saver.restore(sess, path)
+
+            start_index = 0
+            data_num = len(back_y)
+            #统计胜率
+            all_down_cnt = 0
+            real_down_cnt = 0
+            all_up_cnt = 0
+            real_up_cnt = 0
+            #-1做空，0空仓，1做多
+            state = 0
+            #之前持仓的最高价
+            last_act_money = None
+            #之前最高价
+            pre_max_money = 0
+            #最大回撤
+            max_drop_down = 0
+            while start_index < data_num:
+                data_size = min(data_num - start_index, batch_size)
+                x = back_x[start_index:start_index + data_size]
+                y = back_y[start_index:start_index + data_size]
+                pred = bp.predict(sess, (np.minimum(np.maximum(x, low), high) - avg) / std)
+
+                for i in xrange(data_size):
+                    money = transaction.get_balance([y[i][0]])
+                    #if pred[i][2] > low_high[1]:
+                    #    print "%.4f %.4f %.4f %.4f"%(pred[i][0], low_high[0], pred[i][2], low_high[1])
+                    if pred[i][0] > low_high[0]:
+                        if state != -1:
+                            if state == 1:
+                                transaction.sell_stock(0, y[i][0], True)
+                            #做空
+                            transaction.short_stock(0, y[i][0])
+                            state = -1
+                            #统计
+                            all_down_cnt += 1
+                            #print "down %.4f"% y[i][1]
+                            if y[i][1] < 0:
+                            #if y[i][1] <= -get_min_wave():
+                            #    print y[i][1]
+                                real_down_cnt += 1
+                        last_act_money = money
+                    elif pred[i][2] > low_high[1]:
+                        if state != 1:
+                            if state == -1:
+                                transaction.sell_stock(0, y[i][0], False)
+                            #做多
+                            transaction.buy_stock(0, y[i][0])
+                            state = 1
+                            #统计
+                            all_up_cnt += 1
+                            #print "up %.4f"% y[i][1]
+                            if y[i][1] > 0:
+                            #if y[i][1] >= get_min_wave():
+                                #print y[i][1]
+                                real_up_cnt += 1
+                        last_act_money = money
+                    else:
+                        if state != 0:
+                            #止损
+                            last_act_money = max(last_act_money, money)
+                            if (money - last_act_money) / last_act_money < -get_stop_loss():
+                                transaction.sell_stock(0, y[i][0], (state == 1))
+                                state = 0
+
+                    pre_max_money = max(pre_max_money, money)
+                    max_drop_down = max((pre_max_money - money) / pre_max_money, max_drop_down)
+                print "账户余额：%.4f，最大回撤：%.4f，做多胜率%.4f，做空胜率%.4f"%(money, max_drop_down, real_up_cnt / float(max(all_up_cnt,1)), real_down_cnt/float(max(all_down_cnt, 1)))
+                start_index += data_size
 # def back_trace(test_days = 50, before_days = 0, test_batch = 100, path = "save/model.ckpt", reduce_returns = -0.0002, empty_returns = -0.002, time_offset = 0):
 #     fileName = path.split('/')[-1]
 #     scale = 1 if time_offset == 2 else (6 if time_offset == 1 else 60)
@@ -211,10 +299,8 @@ def train(sample_days = 250, before_days = 50,  training_epochs = 64, sign_ratio
 
 
 if __name__ == '__main__':
-    af = AlphaForest()
-    af.load_db("../../cffex_if")
-
-    train(training_epochs=129)
-    # test(test_days=50, before_days=0, time_offset=0)
-    #back_trace(test_days=50, before_days=0, time_offset=0, empty_returns=-0.002)
+    with AlphaForest() as af:
+        af.load_db("../../cffex_if")
+        train(training_epochs=16)
+        #back_trace()
 
