@@ -9,14 +9,29 @@ import math
 class AlphaArray(object):
 
     def __init__(self, name, formula_list, data_column, day_before, sample_days, is_sign = False):
+        if is_sign:
+            #信号名字只能是字符串
+            assert isinstance(name, str)
         cur_code_index = 0
-        self.code_cache = (c_char * 64)()
-        code_list = list(name)
-        for c in code_list:
-            self.code_cache[cur_code_index] = c
-            cur_code_index += 1
-        self.code_cache[cur_code_index] = '\0'
+        if isinstance(name, list) or isinstance(name, np.ndarray):
+            self.code_cache = (c_char * (len(name) * 64))()
+            cur_code_index = 0
+            for code in name:
+                code_list = list(code)
+                for c in code_list:
+                    self.code_cache[cur_code_index] = c
+                    cur_code_index += 1
+                self.code_cache[cur_code_index] = '\0'
+                cur_code_index += 1
+        else:
+            code_list = list(name)
+            self.code_cache = (c_char * (len(code_list) + 1))()
+            for c in code_list:
+                self.code_cache[cur_code_index] = c
+                cur_code_index += 1
+            self.code_cache[cur_code_index] = '\0'
 
+        self.name = name
         self.formula_list = formula_list
         self.data_column = data_column
         self.day_before = day_before
@@ -38,41 +53,76 @@ class AlphaArray(object):
 
     def __getitem__(self, item):
         if isinstance(item, int):
-            alpha_cache = (c_float * (1))()
-            if self.is_sign:
-                alphatree.calSignAlpha(self.alphatree_id, self.cache_id, self.day_before, self.sample_days, item, 1, 1, self.code_cache)
+            if isinstance(self.name, list) or isinstance(self.name, np.ndarray):
+                alpha_cache = (c_float * len(self.name))
+                alphatree.calAlpha(self.alphatree_id, self.cache_id, self.day_before + self.sample_days - 1 - item, 1, self.code_cache, len(self.name))
+
+                if isinstance(self.data_column, list):
+                    data = []
+                    for root_name in self.data_column:
+                        alphatree.getAlpha(self.alphatree_id, c_char_p(root_name), self.cache_id, alpha_cache)
+                        data.append([alpha_cache[i] for i in xrange(len(self.name))])
+                    return np.array(data)
+                else:
+                    alphatree.getAlpha(self.alphatree_id, c_char_p(self.data_column), self.cache_id, alpha_cache)
+                    return np.array([alpha_cache[i] for i in xrange(len(self.name))])
             else:
-                alphatree.calAlpha(self.alphatree_id, self.cache_id, self.day_before + self.sample_days - 1 - item, 1, self.code_cache, 1)
-            data = []
-            if isinstance(self.data_column, list):
-                for root_name in self.data_column:
-                    alphatree.getAlpha(self.alphatree_id, c_char_p(root_name), self.cache_id, alpha_cache)
-                    data.append(alpha_cache[0])
-                return np.array(data)
-            else:
-                alphatree.getAlpha(self.alphatree_id, c_char_p(self.data_column), self.cache_id, alpha_cache)
-                return alpha_cache[0]
+                alpha_cache = (c_float * (1))()
+                if self.is_sign:
+                    alphatree.calSignAlpha(self.alphatree_id, self.cache_id, self.day_before, self.sample_days, item, 1, 1, self.code_cache)
+                else:
+                    alphatree.calAlpha(self.alphatree_id, self.cache_id, self.day_before + self.sample_days - 1 - item, 1, self.code_cache, 1)
+                if isinstance(self.data_column, list):
+                    data = []
+                    for root_name in self.data_column:
+                        alphatree.getAlpha(self.alphatree_id, c_char_p(root_name), self.cache_id, alpha_cache)
+                        data.append(alpha_cache[0])
+                    return np.array(data)
+                else:
+                    alphatree.getAlpha(self.alphatree_id, c_char_p(self.data_column), self.cache_id, alpha_cache)
+                    return alpha_cache[0]
         elif isinstance(item, slice):
             stop = item.stop if item.stop is not None else len(self)
             start = item.start if item.start is not None else 0
-            alpha_cache = (c_float * (stop - start))()
-            if self.is_sign:
-                alphatree.calSignAlpha(self.alphatree_id, self.cache_id, self.day_before, self.sample_days, start, stop - start, 1, self.code_cache)
-            else:
-                alphatree.calAlpha(self.alphatree_id, self.cache_id, self.day_before + self.sample_days - 1 - start, stop - start, self.code_cache, 1)
-            data_list = [[] for i in xrange(stop - start)]
-            if isinstance(self.data_column, list):
-                for root_name in self.data_column:
-                    alphatree.getAlpha(self.alphatree_id, c_char_p(root_name), self.cache_id, alpha_cache)
+            stop = len(self) + stop if stop < 0 else stop
+            start = len(self) + start if start < 0 else start
+            if isinstance(self.name, list) or isinstance(self.name, np.ndarray):
+                alpha_cache = (c_float * ((stop - start) * len(self.name)))()
+                alphatree.calAlpha(self.alphatree_id, self.cache_id, self.day_before + self.sample_days - stop, stop - start, self.code_cache, len(self.name))
+                if isinstance(self.data_column, list):
+                    #天、列、股票
+                    data_list = [[[] for j in xrange(len(self.data_column))] for i in xrange(stop - start)]
+                    for id, root_name in enumerate(self.data_column):
+                        alphatree.getAlpha(self.alphatree_id, c_char_p(root_name), self.cache_id, alpha_cache)
+                        for i in xrange(stop - start):
+                            data_list[i][id].extend([alpha_cache[i * len(self.name) + j] for j in xrange(len(self.name))])
+                    return np.array(data_list)
+                else:
+                    data_list = []
+                    alphatree.getAlpha(self.alphatree_id, c_char_p(self.data_column), self.cache_id, alpha_cache)
                     for i in xrange(stop - start):
-                        data_list[i].append(alpha_cache[i])
+                        data_list.append([alpha_cache[i * len(self.name) + j] for j in xrange(len(self.name))])
+                    return np.array(data_list)
             else:
-                alphatree.getAlpha(self.alphatree_id, c_char_p(self.data_column), self.cache_id, alpha_cache)
-                for i in xrange(stop - start):
-                    data_list.append(alpha_cache[i])
-            return np.array(data_list)
+                alpha_cache = (c_float * (stop - start))()
+                if self.is_sign:
+                    alphatree.calSignAlpha(self.alphatree_id, self.cache_id, self.day_before, self.sample_days, start, stop - start, 1, self.code_cache)
+                else:
+                    alphatree.calAlpha(self.alphatree_id, self.cache_id, self.day_before + self.sample_days - stop, stop - start, self.code_cache, 1)
+
+                if isinstance(self.data_column, list):
+                    data_list = [[] for i in xrange(stop - start)]
+                    for root_name in self.data_column:
+                        alphatree.getAlpha(self.alphatree_id, c_char_p(root_name), self.cache_id, alpha_cache)
+                        for i in xrange(stop - start):
+                            data_list[i].append(alpha_cache[i])
+                    return np.array(data_list)
+                else:
+                    alphatree.getAlpha(self.alphatree_id, c_char_p(self.data_column), self.cache_id, alpha_cache)
+                    return np.array([alpha_cache[i] for i in xrange(stop - start)])
 
     def normalize(self, batch_size = 4096):
+        assert self.is_sign
         alpha_cache = (c_float * (2))()
         start_index = 0
         if isinstance(self.data_column, list):
@@ -84,10 +134,7 @@ class AlphaArray(object):
         data_len = len(self)
         while start_index < data_len:
             data_size = min(data_len - start_index, batch_size)
-            if self.is_sign:
-                alphatree.calSignAlpha(self.alphatree_id, self.cache_id, self.day_before, self.sample_days, start_index, data_size, 1, self.code_cache)
-            else:
-                alphatree.calAlpha(self.alphatree_id, self.cache_id, self.day_before + self.sample_days - 1 - start_index, data_size, self.code_cache)
+            alphatree.calSignAlpha(self.alphatree_id, self.cache_id, self.day_before, self.sample_days, start_index, data_size, 1, self.code_cache)
             if isinstance(self.data_column, list):
                 for id, root_name in enumerate(self.data_column):
                     alphatree.getAlphaSum(self.alphatree_id, c_char_p(root_name), self.cache_id, alpha_cache)
@@ -108,6 +155,7 @@ class AlphaArray(object):
         return avg, std
 
     def smooth(self, ratio = 0.001, batch_size = 4096):
+        assert self.is_sign
         smooth_num = int(len(self) * ratio)
         start_index = 0
         alpha_cache = (c_float * (smooth_num * 2))()
@@ -120,10 +168,7 @@ class AlphaArray(object):
         data_len = len(self)
         while start_index < data_len:
             data_size = min(data_len - start_index, batch_size)
-            if self.is_sign:
-                alphatree.calSignAlpha(self.alphatree_id, self.cache_id, self.day_before, self.sample_days, start_index, data_size, 1, self.code_cache)
-            else:
-                alphatree.calAlpha(self.alphatree_id, self.cache_id, self.day_before + self.sample_days - 1 - start_index, data_size, self.code_cache)
+            alphatree.calSignAlpha(self.alphatree_id, self.cache_id, self.day_before, self.sample_days, start_index, data_size, 1, self.code_cache)
             if isinstance(self.data_column, list):
                 for id, root_name in enumerate(self.data_column):
                     alphatree.getAlphaSmooth(self.alphatree_id, c_char_p(root_name), self.cache_id, smooth_num, alpha_cache)

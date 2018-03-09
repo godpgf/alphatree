@@ -131,9 +131,11 @@ def conbine_csv(rootdir, topath, time_offset = 0):
                     date_num += 1
                 #data_list.insert(0, data)
                 last_date = str(long(data_list[0][0])-1)
-                assert data_list[0][0][:8] in path
-                assert data_list[0][-1][:8] in path
+                #assert data_list[0][0][:8] in path
+                #assert data_list[-1][0][:8] in path
                 for data in data_list:
+                    if data[0][:8] not in path:
+                        continue
                     if data[0] < last_date:
                         print data[0]
                         print last_date
@@ -161,22 +163,22 @@ if __name__ == "__main__":
     #         line = rf.readline()
     #         lnum += 1
 
-    # conbine_csv("/home/godpgf/data/CFFEX_IF", "../../cffex_if/IF.csv", 0)
+    conbine_csv("/home/godpgf/data/CFFEX_IF", "../../cffex_if/IF.csv", 6)
 
     af = AlphaForest()
     af.load_db("../../cffex_if")
-    # af.csv2binary("../../cffex_if", "date")
-    # af.csv2binary("../../cffex_if", "open")
-    # af.csv2binary("../../cffex_if", "high")
-    # af.csv2binary("../../cffex_if", "low")
-    # af.csv2binary("../../cffex_if", "close")
-    # af.csv2binary("../../cffex_if", "volume")
-    # af.csv2binary("../../cffex_if", "amount")
-    # af.csv2binary("../../cffex_if", "askprice")
-    # af.csv2binary("../../cffex_if", "askvolume")
-    # af.csv2binary("../../cffex_if", "bidprice")
-    # af.csv2binary("../../cffex_if", "bidvolume")
-    # af.cache_alpha("returns", "((close - delay(close, 1)) / delay(close, 1))")
+    af.csv2binary("../../cffex_if", "date")
+    af.csv2binary("../../cffex_if", "open")
+    af.csv2binary("../../cffex_if", "high")
+    af.csv2binary("../../cffex_if", "low")
+    af.csv2binary("../../cffex_if", "close")
+    af.csv2binary("../../cffex_if", "volume")
+    af.csv2binary("../../cffex_if", "amount")
+    af.csv2binary("../../cffex_if", "askprice")
+    af.csv2binary("../../cffex_if", "askvolume")
+    af.csv2binary("../../cffex_if", "bidprice")
+    af.csv2binary("../../cffex_if", "bidvolume")
+    af.cache_alpha("returns", "((close - delay(close, 1)) / delay(close, 1))")
     af.cache_sign("filter", get_sign_des())
     #af.cache_sign("filter2", "((product(volume, 6) > 0)")
     print "finish"

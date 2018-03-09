@@ -39,7 +39,7 @@ public:
         transactionsShort_.resize(0);
         holdBuySize_ = 0;
         holdShortSize_ = 0;
-        fee_ = fee;
+        fee = fee;
     }
 
     //买入股票,weight表示以余额的多少买入，fee表示手续费
@@ -60,9 +60,9 @@ public:
         transactionsBuy_[tid].stockIndex = stockIndex;
         transactionsBuy_[tid].price = price;
         transactionsBuy_[tid].isSell = false;
-        float money = getCanUseMoney() * weight * (1 - fee_);
+        float money = getCanUseMoney() * weight * (1 - fee);
         transactionsBuy_[tid].stockNum = (int)(money / price);
-        remain_ -= (transactionsBuy_[tid].stockNum * price) * (1 + fee_);
+        remain_ -= (transactionsBuy_[tid].stockNum * price) * (1 + fee);
         //cout<<"买多"<<transactionsBuy_[tid].stockNum<<"价格"<<price<<endl;
     }
 
@@ -84,10 +84,10 @@ public:
         transactionsShort_[tid].stockIndex = stockIndex;
         transactionsShort_[tid].price = price;
         transactionsShort_[tid].isSell = false;
-        float money = getCanUseMoney() * weight * (1 - fee_);
+        float money = getCanUseMoney() * weight * (1 - fee);
         transactionsShort_[tid].stockNum = (int)(money / price);
         //把股票借来卖掉所产生的交易费用
-        remain_ -= (transactionsShort_[tid].stockNum * price) * (fee_);
+        remain_ -= (transactionsShort_[tid].stockNum * price) * (fee);
         //卖出借来的股票需要支付的押金，付出押金得到的抵押物就是股票
         reserve_ += (transactionsShort_[tid].stockNum * price);
         //cout<<"买空"<<transactionsShort_[tid].stockNum<<" 价格"<<price<<" 保证金"<<reserve_<<" 交易号"<<tid<<endl;
@@ -206,12 +206,12 @@ protected:
     inline pair<float,float> getSellReward(int sellNum, float price, DArray<TransactionSign, MAX_TRANSACTION_NUM>& transactions, long lastIndex, bool isSellBuy){
         //cout<<"尝试平仓 "<<isSellBuy<<" "<<sellNum<<endl;
         if(isSellBuy){
-            return pair<float, float>(sellNum * price * (1 - fee_),0);
+            return pair<float, float>(sellNum * price * (1 - fee),0);
         } else {
             float reward = 0;
             float reserve = 0;
             //先要把之前做空的股票以当前价格买回来
-            reward -= sellNum * price * (1 + fee_);
+            reward -= sellNum * price * (1 + fee);
 
             //找到最早的做空单据和平仓单据
             long sellIndex = transactions[lastIndex].isSell ? lastIndex : -1;
@@ -313,8 +313,9 @@ protected:
     float remain_;
     //预留资金，因为押了一部分钱去借股票又把借来的股票卖了，必须预留部分钱将来把股票再买回来
     float reserve_;
+public:
     //手续费
-    float fee_;
+    float fee;
 };
 
 #endif //ALPHATREE_ALPHABACKTRACE_H

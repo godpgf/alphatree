@@ -3,7 +3,7 @@
 from pyalphatree import *
 
 def get_min_wave():
-    return 0.0002
+    return 0.0004
 
 def get_stop_loss():
     return 0.002

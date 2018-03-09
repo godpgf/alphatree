@@ -51,7 +51,8 @@ def train(sample_days = 250, before_days = 50,  training_epochs = 64, sign_ratio
     scale = 1 if time_offset == 2 else (6 if time_offset == 1 else 60)
 
     train_x, train_y = get_sign_data("filter", before_days * 4 * 60 * scale, sample_days * 4 * 60 * scale)
-    test_x, test_y = get_sign_data("filter", 0, before_days * 4 * 60 * scale)
+    #训练数据后1/4样本做测试
+    test_x, test_y = get_sign_data("filter", (before_days - sample_days / 4) * 4 * 60 * scale, sample_days * 60 * scale)
 
     #统计样本
     cnt_1, cnt_0_5, cnt_0 = 0, 0, 0
@@ -124,9 +125,11 @@ def train(sample_days = 250, before_days = 50,  training_epochs = 64, sign_ratio
             write_array(f, high)
             write_array(f,[low_list[-1], high_list[-1]])
 
-def back_trace(sample_days = 50, before_days = 0,  path = "save/model.ckpt", time_offset = 0, batch_size = 4096):
+def back_trace(sample_days = 50, before_days = 0,  path = "save/model.ckpt", time_offset = 0, batch_size = 4096, poundage = 0.0001):
     scale = 1 if time_offset == 2 else (6 if time_offset == 1 else 60)
     back_x, back_y = get_seq_data("IF", before_days * 4 * 60 * scale, sample_days * 4 * 60 * scale)
+    DAY_SECOND = 4 * 60 * scale
+    print "测试天数 %d"%(len(back_y) / DAY_SECOND)
 
     fileName = path.split('/')[-1]
     with open(path.replace(fileName, "config.txt"), 'r') as f:
@@ -136,8 +139,7 @@ def back_trace(sample_days = 50, before_days = 0,  path = "save/model.ckpt", tim
         high = read_array(f)
         low_high = read_array(f)
 
-    with AlphaTransaction():
-        transaction = Transaction(100000, 0.0002, 1)
+    if True:
         with tf.Session() as sess:
             bp = BPSoftmax(35,[18], 3)
             saver = tf.train.Saver()
@@ -158,57 +160,95 @@ def back_trace(sample_days = 50, before_days = 0,  path = "save/model.ckpt", tim
             pre_max_money = 0
             #最大回撤
             max_drop_down = 0
+            #上次收盘
+            last_close = 0
+            #资金
+            money = 100000
+            #估计收益
+            eval_returns = 1
+            #信号发出数
+            sign_num = 0
+            #日期序号
+            day_index = 0
+            #日期内秒数据
+            second_index = 0
+
+            last_day_index = -1
             while start_index < data_num:
                 data_size = min(data_num - start_index, batch_size)
                 x = back_x[start_index:start_index + data_size]
                 y = back_y[start_index:start_index + data_size]
+                assert len(x) == data_size
                 pred = bp.predict(sess, (np.minimum(np.maximum(x, low), high) - avg) / std)
-
+                #assert second_index % data_size == 0
                 for i in xrange(data_size):
-                    money = transaction.get_balance([y[i][0]])
-                    #if pred[i][2] > low_high[1]:
-                    #    print "%.4f %.4f %.4f %.4f"%(pred[i][0], low_high[0], pred[i][2], low_high[1])
+
+                    #控制一天只能交易一笔
+                    second_index += 1
+                    day_index = second_index / DAY_SECOND
+
+                    cur_close = y[i][0]
                     if pred[i][0] > low_high[0]:
                         if state != -1:
+                            #平仓，不用考虑日期
                             if state == 1:
-                                transaction.sell_stock(0, y[i][0], True)
-                            #做空
-                            transaction.short_stock(0, y[i][0])
-                            state = -1
-                            #统计
-                            all_down_cnt += 1
-                            #print "down %.4f"% y[i][1]
-                            if y[i][1] < 0:
-                            #if y[i][1] <= -get_min_wave():
-                            #    print y[i][1]
-                                real_down_cnt += 1
-                        last_act_money = money
+                                money *= ((cur_close - last_close) / last_close + 1 - poundage)
+                                state = 0
+                                last_act_money = money
+                                #sign_num += 1
+                                last_day_index = day_index
+                            elif last_day_index < day_index:
+                                #做空
+                                last_close = cur_close
+                                state = -1
+                                last_day_index = day_index
+                                #统计
+                                all_down_cnt += 1
+                                if y[i][1] < 0:
+                                    real_down_cnt += 1
+                                last_act_money = money
+                                sign_num += 1
                     elif pred[i][2] > low_high[1]:
                         if state != 1:
                             if state == -1:
-                                transaction.sell_stock(0, y[i][0], False)
-                            #做多
-                            transaction.buy_stock(0, y[i][0])
-                            state = 1
-                            #统计
-                            all_up_cnt += 1
-                            #print "up %.4f"% y[i][1]
-                            if y[i][1] > 0:
-                            #if y[i][1] >= get_min_wave():
-                                #print y[i][1]
-                                real_up_cnt += 1
-                        last_act_money = money
+                                money *= ((last_close - cur_close) / cur_close + 1 - poundage)
+                                state = 0
+                                last_act_money = money
+                                #sign_num += 1
+                                last_day_index = day_index
+                            elif last_day_index < day_index:
+                                #做多
+                                last_close = cur_close
+                                state = 1
+                                last_day_index = day_index
+                                #统计
+                                all_up_cnt += 1
+                                if y[i][1] > 0:
+                                    real_up_cnt += 1
+                                last_act_money = money
+                                sign_num += 1
                     else:
                         if state != 0:
                             #止损
-                            last_act_money = max(last_act_money, money)
+                            if state == 1:
+                                eval_returns = ((cur_close - last_close) / last_close + 1)
+                            else:
+                                eval_returns = ((last_close - cur_close) / cur_close + 1)
+                            last_act_money = max(last_act_money, money * eval_returns)
                             if (money - last_act_money) / last_act_money < -get_stop_loss():
-                                transaction.sell_stock(0, y[i][0], (state == 1))
+                                #sign_num += 1
+                                if state == 1:
+                                    money *= ((cur_close - last_close) / last_close + 1 - poundage)
+                                else:
+                                    money *= ((last_close - cur_close) / cur_close + 1 - poundage)
+                                last_close = cur_close
                                 state = 0
+                                last_day_index = day_index
+
 
                     pre_max_money = max(pre_max_money, money)
                     max_drop_down = max((pre_max_money - money) / pre_max_money, max_drop_down)
-                print "账户余额：%.4f，最大回撤：%.4f，做多胜率%.4f，做空胜率%.4f"%(money, max_drop_down, real_up_cnt / float(max(all_up_cnt,1)), real_down_cnt/float(max(all_down_cnt, 1)))
+                print "账户余额：%.4f，最大回撤：%.4f，做多胜率%.4f，做空胜率%.4f，信号数量%d"%(money, max_drop_down, real_up_cnt / float(max(all_up_cnt,1)), real_down_cnt/float(max(all_down_cnt, 1)), sign_num)
                 start_index += data_size
 # def back_trace(test_days = 50, before_days = 0, test_batch = 100, path = "save/model.ckpt", reduce_returns = -0.0002, empty_returns = -0.002, time_offset = 0):
 #     fileName = path.split('/')[-1]
@@ -301,6 +341,8 @@ def back_trace(sample_days = 50, before_days = 0,  path = "save/model.ckpt", tim
 if __name__ == '__main__':
     with AlphaForest() as af:
         af.load_db("../../cffex_if")
-        train(training_epochs=16)
-        #back_trace()
+        #training_epochs=64, sign_ratio=0.00032 poundage=0.0002 20%
+        index = 4
+        #train(sample_days=200, before_days=250 - 50 * index,training_epochs=64, sign_ratio=0.0006)
+        back_trace(sample_days=50, before_days=200 - 50 * index, poundage=0.0001)
 
