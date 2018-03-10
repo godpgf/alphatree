@@ -90,6 +90,14 @@ inline void _reduce(float* dst, float src, size_t size){
     for(size_t i = 0; i < size; ++i) dst[i] -= src;
 }
 
+inline void _preRise(float* dst,const float* src, size_t size){
+    for(size_t i = 0; i < size; ++i) dst[i] = (dst[i] - src[i]) / dst[i];
+}
+
+inline void _rise(float* dst,const float* src, size_t size){
+    for(size_t i = 0; i < size; ++i) dst[i] = (dst[i] - src[i]) / src[i];
+}
+
 inline void _divNoZero(float *dst, const float *src, size_t size){
     for(size_t i = 0; i < size; ++i){
         if(abs(src[i]) > 0.0001f){
@@ -387,9 +395,10 @@ inline void _tsMinIndex(float *dst, const float *src, size_t historySize, size_t
     for(size_t i = 1; i < historySize; ++i) {
         for (size_t j = 0; j < elementSize; ++j) {
             size_t lastId = (size_t) dst[(i - 1) * elementSize + j];
+            //如果出现相等的情况，后面的id优先
             if (lastId + range >= i) {
                 //上一个元素记录的最小值在自己的视野内
-                dst[i * elementSize + j] = (src[i * elementSize + j] < src[lastId * elementSize + j]) ? i : lastId;
+                dst[i * elementSize + j] = (src[i * elementSize + j] <= src[lastId * elementSize + j]) ? i : lastId;
             } else {
                 size_t minId = i;
                 for (size_t k = 1; k <= range; k++) {
@@ -406,14 +415,14 @@ inline void _tsMaxIndex(float *dst, const float *src, size_t historySize, size_t
     for(size_t i = 1; i < historySize; ++i) {
         for (size_t j = 0; j < elementSize; ++j) {
             size_t lastId = (size_t) dst[(i - 1) * elementSize + j];
-
+            //如果出现相等的情况，后面的id优先
             if (lastId + range >= i) {
                 //上一个元素记录的最大值在自己的视野内
-                dst[i * elementSize + j] = (src[i * elementSize + j] > src[lastId * elementSize + j]) ? i : lastId;
+                dst[i * elementSize + j] = (src[i * elementSize + j] >= src[lastId * elementSize + j]) ? i : lastId;
             } else {
                 int maxId = i;
                 for (size_t k = 1; k <= range; ++k) {
-                    if (src[(i - k) * elementSize + j] >= src[maxId * elementSize + j])
+                    if (src[(i - k) * elementSize + j] > src[maxId * elementSize + j])
                         maxId = i - k;
                 }
                 dst[i * elementSize + j] = maxId;

@@ -99,6 +99,36 @@ void* delta(void** pars, float coff, size_t historySize, size_t stockSize, Cache
     return pout;
 }
 
+void* preRise(void** pars, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag){
+    size_t d = (size_t)roundf(coff);
+    float* pout = (float*)pars[0];
+    for(size_t i = historySize-1; i >= d; --i) {
+        if(pflag[i] == CacheFlag::NEED_CAL){
+            //memcpy(pout + i * stockSize, pleft + i * stockSize, stockSize * sizeof(float));
+            _preRise(pout + i * stockSize, pout + (i - d) * stockSize, stockSize);
+        }
+        //else {
+        //    memset(pout + i * stockSize, 0, stockSize * sizeof(float));
+        //}
+    }
+    return pout;
+}
+
+void* rise(void** pars, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag){
+    size_t d = (size_t)roundf(coff);
+    float* pout = (float*)pars[0];
+    for(size_t i = historySize-1; i >= d; --i) {
+        if(pflag[i] == CacheFlag::NEED_CAL){
+            //memcpy(pout + i * stockSize, pleft + i * stockSize, stockSize * sizeof(float));
+            _rise(pout + i * stockSize, pout + (i - d) * stockSize, stockSize);
+        }
+        //else {
+        //    memset(pout + i * stockSize, 0, stockSize * sizeof(float));
+        //}
+    }
+    return pout;
+}
+
 void* meanRise(void** pars, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag){
     float* pout = (float*)pars[0];
     coff = roundf(coff);
@@ -328,6 +358,7 @@ void* mid(void** pars, float coff, size_t historySize, size_t stockSize, CacheFl
 
 //标准差相关------------------------------------------
 void* calStddevData(void** pars, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, int dataType){
+
     float* pmean = (float*)pars[1];
     float* pout = pmean;
     float* pleft = (float*)pars[0];
@@ -527,6 +558,48 @@ void* correlation(void** pars, float coff, size_t historySize, size_t stockSize,
     return pout;
 }
 
+void* covariance(void** pars, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag) {
+    float* pout = (float*)(pars[2]);
+    float* pleft = (float*)(pars[0]);
+    float* pright = (float*)(pars[1]);
+
+    for(size_t i = 0; i < historySize; ++i) {
+        if(pflag[i] == CacheFlag::NEED_CAL) {
+            memcpy(pout + i * stockSize, pleft + i * stockSize, stockSize * sizeof(float));
+            _mul((pout + i * stockSize), (pright + i * stockSize), stockSize);
+        }
+    }
+    void *childMemory[1];
+    childMemory[0] = pout;
+    sum(childMemory, coff, historySize, stockSize, pflag);
+    childMemory[0] = pleft;
+    sum(childMemory, coff, historySize, stockSize, pflag);
+    childMemory[0] = pright;
+    sum(childMemory, coff, historySize, stockSize, pflag);
+    for(size_t i = 0; i < historySize; ++i) {
+        if(pflag[i] == CacheFlag::NEED_CAL){
+            _div(pout + i * stockSize, roundf(coff) + 1, stockSize);
+            _div(pleft + i * stockSize, roundf(coff) + 1, stockSize);
+            _div(pright + i * stockSize, roundf(coff) + 1, stockSize);
+        }
+    }
+
+    for(size_t i = 0; i < historySize; ++i) {
+        if(pflag[i] == CacheFlag::NEED_CAL) {
+            _mul((pleft + i * stockSize), (pright + i * stockSize), stockSize);
+        }
+    }
+
+    for(size_t i = 0; i < historySize; ++i) {
+        if(pflag[i] == CacheFlag::NEED_CAL) {
+            //memcpy(pout + i * stockSize, pleft + i * stockSize, stockSize * sizeof(float));
+            _reduce((pout + i * stockSize), (pleft + i * stockSize), stockSize);
+        }
+    }
+
+    return pout;
+}
+
 void* scale(void** pars, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag) {
     float* pout = (float*)(pars[0]);
     //float* pleft = (float*)(pars[0]);
@@ -665,6 +738,7 @@ void* maxTo(void** pars, float coff, size_t historySize, size_t stockSize, Cache
     return pout;
 }
 
+//返回最小元素的下标，当前元素的下标是0,上一个元素下标是1
 void* tsArgMin(void** pars, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag){
     float* pout = (float*)(pars[1]);
     float* pleft = (float*)(pars[0]);
@@ -674,9 +748,9 @@ void* tsArgMin(void** pars, float coff, size_t historySize, size_t stockSize, Ca
         for(size_t j = 0; j < stockSize; ++j){
             int minId = (int)pout[i * stockSize + j];
             if(minId + d >= i)
-                pout[i * stockSize + j] = minId + d - i;
+                pout[i * stockSize + j] = i - minId;
             else
-                pout[i * stockSize + j] = 0;
+                pout[i * stockSize + j] = d;
         }
     }
     return pout;
@@ -691,9 +765,9 @@ void* tsArgMax(void** pars, float coff, size_t historySize, size_t stockSize, Ca
         for(size_t j = 0; j < stockSize; ++j){
             int maxId = (int)pout[i * stockSize + j];
             if(maxId + d >= i)
-                pout[i * stockSize + j] = maxId + d - i;
+                pout[i * stockSize + j] = i - maxId;
             else
-                pout[i * stockSize + j] = 0;
+                pout[i * stockSize + j] = d;
         }
     }
     return pout;
