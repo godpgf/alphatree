@@ -64,8 +64,9 @@ public:
         return signNum;
     }
 
-    void fill(float* dst, size_t dayBefore, size_t daySize, size_t historyDays, size_t startIndex, size_t signNum, const char* signName, const char* featureName){
-        fill_(dayBefore, daySize, historyDays, startIndex, signNum, signName, featureName,[dst](int index, float value){
+    //注意，信号填写不考虑补缺失数据，因为数据如果有缺损就不应该发出信号！
+    void fill(float* dst, size_t dayBefore, size_t daySize, int historyDays, int futureDays, size_t startIndex, size_t signNum, const char* signName, const char* featureName){
+        fill_(dayBefore, daySize, historyDays, futureDays, startIndex, signNum, signName, featureName,[dst](int index, float value){
             dst[index] = value;
         });
     }
@@ -89,7 +90,7 @@ public:
 
     template<class T>
     void invFill2File(const float* cache, size_t dayBefore, size_t daySize, const char* code, const char* featureName, size_t offset, size_t stockNum, ofstream* file,
-                      size_t dayFeature = 0, bool isWritePreData = false){
+                      bool isWritePreData = false, bool isWriteLastData = false){
         StockFeature<long> *date = date_ ? date_ : new StockFeature<long>(feature2path_("date").c_str());
 
         auto mainStockMeta = des_->stockMetas[des_->mainStock];
@@ -148,15 +149,21 @@ public:
         size_t curIndex = 0;
         for(size_t i = startIndex; i < daySize; ++i){
             if(*curDateIter == *mainDateIter){
-                curIndex = i + dayFeature;
+                curIndex = i;
                 //(*file) << cache[i * stockNum + offset];
-                T value = curIndex < daySize ? (T)cache[curIndex * stockNum + offset] : 0;
-                (*file).write( reinterpret_cast<const char* >( &value ), sizeof( T ) );
+
                // if(strcmp(code,"0603156") == 0)
                //     cout<<":"<<cache[i * stockNum + offset]<<endl;
                 ++curDateIter;
             }
             ++mainDateIter;
+        }
+
+        if(isWriteLastData){
+            while (*curDateIter){
+                (*file).write( reinterpret_cast<const char* >( &cache[curIndex * stockNum + offset] ), sizeof( T ) );
+                ++curDateIter;
+            }
         }
     }
 
@@ -371,9 +378,9 @@ protected:
     HashMap<StockFeature<float>*> feature_;
     HashMap<StockSign*> sign_;
 
-    //在dayBefore前的daySize天取样信号，向前取信号发生时特征(featureName)的historyDays条数据
+    //在dayBefore前的daySize天取样信号，向前取信号发生时特征(featureName)的historyDays条数据,向后取-futureDays的数据（不考虑数据缺失！）
     template <class F>
-    void fill_(size_t dayBefore, size_t daySize, size_t historyDays, size_t startIndex, size_t signNum, const char* signName, const char* featureName, F&& f){
+    void fill_(size_t dayBefore, size_t daySize, int historyDays, int futureDays, size_t startIndex, size_t signNum, const char* signName, const char* featureName, F&& f){
         StockFeature<float> *ft = nullptr;
         auto** pHashNameNode = feature_.find(featureName);
         if(*pHashNameNode == nullptr){
@@ -402,7 +409,7 @@ protected:
             size_t offset = *curSignIter;
             curFeatureIter.skip(offset - (historyDays - 1), false);
             ++curSignIter;
-            for(size_t i = 0; i < historyDays; ++i){
+            for(size_t i = 0; i < historyDays - futureDays; ++i){
 //                if(*curFeatureIter <= 0)
 //                    cout<<*curFeatureIter<<endl;
                 //cout<<i * signNum + curIndex<<" "<<*curFeatureIter<<endl;

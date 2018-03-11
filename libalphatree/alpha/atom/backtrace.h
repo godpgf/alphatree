@@ -7,8 +7,8 @@
 
 #include "alpha.h"
 
-void* ftSharp(void** pars, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag){
-    //size_t dataSize = historySize*stockSize;
+void* ftSharp(void** pars, float coff, int historySize, int stockSize, CacheFlag* pflag){
+    //int dataSize = historySize*stockSize;
 
     float* pout = (float*)pars[2];
     float* sign = (float*)pars[0];
@@ -20,15 +20,15 @@ void* ftSharp(void** pars, float coff, size_t historySize, size_t stockSize, Cac
     float maxPrice = 0;
     float meanDropdown = 0;
     float sumSqrDropdown = 0;
-    size_t signCount = 0;
-    for(size_t j = 0; j < stockSize; ++j){
-        for(size_t i = 0; i < historySize; ++i){
+    int signCount = 0;
+    for(int j = 0; j < stockSize; ++j){
+        for(int i = 0; i < historySize; ++i){
             if(pflag[i] == CacheFlag::NEED_CAL){
                 curIndex = i * stockSize + j;
                 if(sign[curIndex] > 0 ){
                     maxPrice = close[curIndex];
                     maxDropdown = 0;
-                    for(size_t k = 1; k <= sign[curIndex]; ++k){
+                    for(int k = 1; k <= sign[curIndex]; ++k){
                         maxPrice = max(close[curIndex + k * stockSize],maxPrice);
                         maxDropdown = max((maxPrice - close[curIndex + k * stockSize]) / maxPrice, maxDropdown);
                     }
@@ -40,8 +40,8 @@ void* ftSharp(void** pars, float coff, size_t historySize, size_t stockSize, Cac
         }
     }
     meanDropdown /= signCount;
-    for(size_t j = 0; j < stockSize; ++j){
-        for(size_t i = 0; i < historySize; ++i){
+    for(int j = 0; j < stockSize; ++j){
+        for(int i = 0; i < historySize; ++i){
             if(pflag[i] == CacheFlag::NEED_CAL){
                 curIndex = i * stockSize + j;
                 if(sign[curIndex] > 0 ){
@@ -52,8 +52,8 @@ void* ftSharp(void** pars, float coff, size_t historySize, size_t stockSize, Cac
     }
     //dropdown的不确定性
     float std = sqrtf(sumSqrDropdown / signCount);
-    for(size_t j = 0; j < stockSize; ++j){
-        for(size_t i = 0; i < historySize; ++i){
+    for(int j = 0; j < stockSize; ++j){
+        for(int i = 0; i < historySize; ++i){
             if(pflag[i] == CacheFlag::NEED_CAL){
                 curIndex = i * stockSize + j;
                 if(sign[curIndex] > 0 ){
@@ -67,7 +67,7 @@ void* ftSharp(void** pars, float coff, size_t historySize, size_t stockSize, Cac
 }
 
 
-void* resEratio(void** pars, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag){
+void* resEratio(void** pars, float coff, int historySize, int stockSize, CacheFlag* pflag){
     float* buy = (float*)pars[0];
     float* close = (float*)pars[1];
     float* atr = (float*)pars[2];
@@ -83,9 +83,9 @@ void* resEratio(void** pars, float coff, size_t historySize, size_t stockSize, C
     float maxPrice = 0;
     float minPrice = FLT_MAX;
 
-    for(size_t i = 0; i < historySize; ++i){
+    for(int i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL){
-            for(size_t j = 0; j < stockSize; ++j){
+            for(int j = 0; j < stockSize; ++j){
                 auto curIndex = i * stockSize + j;
                 if(buy[curIndex] > 0){
                     int buyDay = (int)buy[curIndex];
@@ -135,7 +135,7 @@ void* resEratio(void** pars, float coff, size_t historySize, size_t stockSize, C
     return pout;
 }
 
-void* optShape(void** pars, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag){
+void* optShape(void** pars, float coff, int historySize, int stockSize, CacheFlag* pflag){
     float* buy = (float*)pars[0];
     float* close = (float*)pars[1];
     float* pout = (float*)pars[0];
@@ -148,9 +148,9 @@ void* optShape(void** pars, float coff, size_t historySize, size_t stockSize, Ca
     float maxPrice = 0;
     float minPrice = FLT_MAX;
 
-    for(size_t i = 0; i < historySize; ++i){
+    for(int i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL){
-            for(size_t j = 0; j < stockSize; ++j){
+            for(int j = 0; j < stockSize; ++j){
                 auto curIndex = i * stockSize + j;
                 if(buy[curIndex] > 0){
                     int buyDay = (int)buy[curIndex];
@@ -171,9 +171,9 @@ void* optShape(void** pars, float coff, size_t historySize, size_t stockSize, Ca
 
     float s = (returns / signCounts) / sqrtf(returnsSqr / signCounts - powf(returns / signCounts, 2));
 
-    for(size_t i = 0; i < historySize; ++i){
+    for(int i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL){
-            size_t curIndex = i * stockSize;
+            int curIndex = i * stockSize;
             pout[curIndex] = s;
         }
     }

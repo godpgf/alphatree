@@ -150,40 +150,8 @@ class SubTreeDes{
 public:
     char name[MAX_NODE_NAME_LEN];
     int rootId;
-    //是否是局部的(不需要输出只作为中间结果)
-    //bool isLocal;
+
 };
-
-//后处理,在树计算完成后的结果上再做处理
-/*class AlphaProcessNode{
-    public:
-        void setup(const char* name, IAlphaProcess* process){
-            strcpy(this->name, name);
-            process_ = process;
-            chilIndex.resize(0);
-            childRes.resize(0);
-            coff.resize(0);
-        }
-
-        ~AlphaProcessNode(){
-            chilIndex.clear();
-            childRes.clear();
-            coff.clear();
-        }
-
-        IAlphaProcess* getProcess(){
-            return process_;
-        }
-
-        char name[MAX_NODE_NAME_LEN];
-        //引用的子树
-        DArray<int, MAX_PROCESS_BLOCK> chilIndex;
-        DArray<const float*, MAX_PROCESS_BLOCK> childRes;
-        DArray<char[MAX_PROCESS_COFF_STR_LEN],MAX_PROCESS_BLOCK> coff;
-    protected:
-        IAlphaProcess* process_ = {nullptr};
-};*/
-
 
 //仅仅负责树的构造,不负责运算
 class BaseAlphaTree{
@@ -249,12 +217,12 @@ public:
     }
 
 
-    int searchPublicSubstring(const char* rootName, const char* line, char* pout, int minTime = 1, int minDepth = 3){
-        int curIndex = 0;
-        //缓存编码出来的字符串,*2是因为字符串包括编码成符号的
-        char normalizeLine[MAX_NODE_STR_LEN * 2];
-        return searchPublicSubstring(getSubtreeRootId(rootName), getSubtreeIndex(rootName), line, normalizeLine, curIndex, pout, minTime, minDepth);
-    }
+//    int searchPublicSubstring(const char* rootName, const char* line, char* pout, int minTime = 1, int minDepth = 3){
+//        int curIndex = 0;
+//        //缓存编码出来的字符串,*2是因为字符串包括编码成符号的
+//        char normalizeLine[MAX_NODE_STR_LEN * 2];
+//        return searchPublicSubstring(getSubtreeRootId(rootName), getSubtreeIndex(rootName), line, normalizeLine, curIndex, pout, minTime, minDepth);
+//    }
 protected:
     int decode(const char* line, HashMap<IAlphaElement*>& alphaElementMap, int l, int r, int* outCache, char* optCache, const char* parDataClass = nullptr){
         converter_.decode(line, l, r, outCache);
@@ -475,38 +443,34 @@ protected:
 
 
     //搜索某个节点下所有子串是否在line中出现minTime以上(包括minTime),限制节点的最小深度minDepth
-    int searchPublicSubstring(int nodeId, int subtreeSize, const char* line, char* encodeCache, int& curIndex, char* pout, int minTime = 1, int minDepth = 3){
-        if(getDepth(nodeId, subtreeSize) < minDepth)
-            return 0;
-        int encodeIndex = 0;
-        encode(encodeCache, nodeId, encodeIndex, subtreeSize);
-        encodeCache[encodeIndex] = 0;
-        char* realSubstring = encodeCache + (encodeIndex+1);
-        converter_.function2operator(encodeCache, realSubstring);
-
-        int count = 0;
-        const char* subline = strstr(line, realSubstring);
-        while (subline){
-            ++count;
-            subline += 1;
-            subline = strstr(subline, realSubstring);
-        }
-
-        if(count >= minTime){
-            strcpy(pout + curIndex, realSubstring);
-            curIndex += (strlen(realSubstring) + 1);
-            return 1;
-        }
-
-        count = 0;
-        for(int i = 0;i < nodeList_[nodeId].getChildNum(); ++i)
-            count += searchPublicSubstring(nodeList_[nodeId].childIds[i], subtreeSize, line, encodeCache, curIndex, pout, minTime, minDepth);
-        //if(nodeList_[nodeId].getChildNum() > 0)
-        //    count += searchPublicSubstring(nodeList_[nodeId].leftId, subtreeSize, line, encodeCache, curIndex, pout, minTime, minDepth);
-        //if(nodeList_[nodeId].getChildNum() > 1)
-        //    count += searchPublicSubstring(nodeList_[nodeId].rightId, subtreeSize, line, encodeCache, curIndex, pout, minTime, minDepth);
-        return count;
-    }
+//    int searchPublicSubstring(int nodeId, int subtreeSize, const char* line, char* encodeCache, int& curIndex, char* pout, int minTime = 1, int minDepth = 3){
+//        if(getDepth(nodeId, subtreeSize) < minDepth)
+//            return 0;
+//        int encodeIndex = 0;
+//        encode(encodeCache, nodeId, encodeIndex, subtreeSize);
+//        encodeCache[encodeIndex] = 0;
+//        char* realSubstring = encodeCache + (encodeIndex+1);
+//        converter_.function2operator(encodeCache, realSubstring);
+//
+//        int count = 0;
+//        const char* subline = strstr(line, realSubstring);
+//        while (subline){
+//            ++count;
+//            subline += 1;
+//            subline = strstr(subline, realSubstring);
+//        }
+//
+//        if(count >= minTime){
+//            strcpy(pout + curIndex, realSubstring);
+//            curIndex += (strlen(realSubstring) + 1);
+//            return 1;
+//        }
+//
+//        count = 0;
+//        for(int i = 0;i < nodeList_[nodeId].getChildNum(); ++i)
+//            count += searchPublicSubstring(nodeList_[nodeId].childIds[i], subtreeSize, line, encodeCache, curIndex, pout, minTime, minDepth);
+//        return count;
+//    }
 
     int getDepth(int nodeId, int subtreeSize = -1){
         if(nodeList_[nodeId].getChildNum() == 0 || getSubtreeRootName(nodeId, subtreeSize) != nullptr)

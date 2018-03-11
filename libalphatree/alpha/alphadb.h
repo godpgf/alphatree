@@ -22,7 +22,7 @@
 using namespace std;
 
 //返回中间结果和取样数据所需要考虑的所有天数,比如delate(close,3)取样5天,就返回3+5-1天的数据,这些天以外的数据计算时不会涉及到的.
-#define GET_ELEMEMT_SIZE(historyDays, sampleDays) (historyDays + (sampleDays) - 1)
+#define GET_HISTORY_SIZE(historyDays, sampleDays) (historyDays + (sampleDays) - 1)
 
 
 class AlphaDB{
@@ -106,27 +106,27 @@ class AlphaDB{
             return codeNum;
         }
 
-        //得到所有股票数据
-        float* getStock(size_t dayBefore, size_t historyNum, size_t sampleNum, size_t stockNum, const char* name, const char* leafDataClass,
+        //得到所有股票数据，注意futureNum<=0
+        float* getStock(size_t dayBefore, int historyNum, int futureNum, size_t sampleNum, size_t stockNum, const char* name, const char* leafDataClass,
                         float* dst, const char* codes){
             const char* curCode = codes;
-            size_t dayNum = GET_ELEMEMT_SIZE(historyNum, sampleNum);
+            size_t dayNum = GET_HISTORY_SIZE(historyNum, sampleNum);
             size_t needDay = dayBefore + dayNum;
-            if(needDay > des_->stockMetas[des_->mainStock].days)
+            if(needDay > des_->stockMetas[des_->mainStock].days || dayBefore < (size_t)-futureNum)
                 return nullptr;
 
             for(size_t i = 0; i < stockNum; ++i){
                 const char* code = getCode(curCode, leafDataClass);
-                cache_->fill(dst, dayBefore, dayNum, code, name, i, stockNum);
+                cache_->fill(dst, dayBefore + futureNum, dayNum - futureNum, code, name, i, stockNum);
                 curCode = curCode + strlen(curCode) + 1;
             }
             return dst;
         }
 
         //得到信号发生时的股票数据
-        float* getStock(size_t dayBefore, size_t historyNum, size_t sampleNum, size_t signHistoryDays, size_t startIndex, size_t signNum, const char* name, const char* signName, float* dst){
-            size_t dayNum = GET_ELEMEMT_SIZE(historyNum, signHistoryDays);
-            cache_->fill(dst, dayBefore, sampleNum, dayNum, startIndex, signNum, signName, name);
+        float* getStock(size_t dayBefore, int historyNum, int futureNum, size_t sampleNum, size_t signHistoryDays, size_t startIndex, size_t signNum, const char* name, const char* signName, float* dst){
+            int dayNum = GET_HISTORY_SIZE(historyNum, signHistoryDays);
+            cache_->fill(dst, dayBefore, sampleNum, dayNum, futureNum, startIndex, signNum, signName, name);
             return dst;
         }
 
@@ -139,7 +139,7 @@ class AlphaDB{
 //        void fillFeature(size_t dayBefore, size_t historyNum, size_t sampleNum, size_t stockNum, const char* name, const char* leafDataClass,
 //                         const float* sign, Iterator<float>& featureOut, const char* codes){
 //            const char* curCode = codes;
-//            size_t dayNum = GET_ELEMEMT_SIZE(historyNum, sampleNum);
+//            size_t dayNum = GET_HISTORY_SIZE(historyNum, sampleNum);
 //            //size_t needDay = dayBefore + dayNum;
 //
 //            for(size_t i = 0; i < stockNum; ++i){
@@ -151,7 +151,7 @@ class AlphaDB{
 //
 //        void fillFeature(size_t historyNum, size_t sampleNum, size_t stockNum, const float* sign,
 //                         Iterator<float>& featureOut, size_t sampleSize, float* feature){
-//            size_t dayNum = GET_ELEMEMT_SIZE(historyNum, sampleNum);
+//            size_t dayNum = GET_HISTORY_SIZE(historyNum, sampleNum);
 //            for(size_t i = 0; i < stockNum; ++i){
 //                for(size_t j = 0; j < dayNum; ++j){
 //                    size_t index = j * stockNum + i;
@@ -169,9 +169,9 @@ class AlphaDB{
 
         template<class T>
         void invFill2File(const float* cache, size_t dayBefore, size_t daySize, const char* featureName, ofstream* file,
-                          size_t dayFuture = 0,bool isWritePreData = false){
+                          bool isWritePreData = false, bool isWriteLastData = false){
             for(int i = 0; i < des_->stockMetas.getSize(); ++i)
-                cache_->invFill2File<T>(cache, dayBefore, daySize, des_->stockMetas[i].code, featureName, i, des_->stockMetas.getSize(), file, dayFuture, isWritePreData);
+                cache_->invFill2File<T>(cache, dayBefore, daySize, des_->stockMetas[i].code, featureName, i, des_->stockMetas.getSize(), file, isWritePreData, isWriteLastData);
         }
 
         void invFill2Sign(const float* cache, size_t daySize, const char* featureName, ofstream* file, size_t& preDayNum, size_t& preSignCnt){

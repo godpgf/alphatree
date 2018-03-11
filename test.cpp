@@ -97,23 +97,23 @@ class B{
 
 int main() {
     AlphaForest::initialize(4);
-    {
-        AlphaForest::getAlphaforest()->getAlphaDataBase()->loadDataBase("pyalphatree/cffex_if");
-        int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
-        int cacheId = AlphaForest::getAlphaforest()->useCache();
-        AlphaForest::getAlphaforest()->decode(alphatreeId, "return_", "returns");
-        AlphaForest::getAlphaforest()->decode(alphatreeId, "t1", "((return_ < -0.0004) ? 1 : 0)");
-        AlphaForest::getAlphaforest()->decode(alphatreeId, "t3", "((return_ > 0.0004) ? 1 : 0)");
-        AlphaForest::getAlphaforest()->decode(alphatreeId, "t2", "((1 - t1) & (1 - t3))");
-        AlphaForest::getAlphaforest()->calAlpha(alphatreeId, cacheId, 720000, 3600000, 0, 4096, 1, "filter");
-        const float* alpha = AlphaForest::getAlphaforest()->getAlpha(alphatreeId, "t3", cacheId);
-        int c = 0;
-        for(int i = 0; i < 4096; ++i)
-            if(alpha[i] > 0)
-                ++c;
-        cout<<c<<endl;
-        cout<<"finish\n";
-    }
+//    {
+//        AlphaForest::getAlphaforest()->getAlphaDataBase()->loadDataBase("pyalphatree/cffex_if");
+//        int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
+//        int cacheId = AlphaForest::getAlphaforest()->useCache();
+//        AlphaForest::getAlphaforest()->decode(alphatreeId, "return_", "returns");
+//        AlphaForest::getAlphaforest()->decode(alphatreeId, "t1", "((return_ < -0.0004) ? 1 : 0)");
+//        AlphaForest::getAlphaforest()->decode(alphatreeId, "t3", "((return_ > 0.0004) ? 1 : 0)");
+//        AlphaForest::getAlphaforest()->decode(alphatreeId, "t2", "((1 - t1) & (1 - t3))");
+//        AlphaForest::getAlphaforest()->calAlpha(alphatreeId, cacheId, 720000, 3600000, 0, 4096, 1, "filter");
+//        const float* alpha = AlphaForest::getAlphaforest()->getAlpha(alphatreeId, "t3", cacheId);
+//        int c = 0;
+//        for(int i = 0; i < 4096; ++i)
+//            if(alpha[i] > 0)
+//                ++c;
+//        cout<<c<<endl;
+//        cout<<"finish\n";
+//    }
     {
 //        AlphaForest::getAlphaforest()->getAlphaDataBase()->loadDataBase("pyalphatree/cffex_if");
 //        {
@@ -204,6 +204,15 @@ int main() {
         }*/
     }
     AlphaForest::getAlphaforest()->getAlphaDataBase()->loadDataBase("pyalphatree/data");
+    {
+        int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
+        int cacheId = AlphaForest::getAlphaforest()->useCache();
+        AlphaForest::getAlphaforest()->decode(alphatreeId, "r", "sum(high, -2)");
+        char codes[8 * 4096];
+        size_t stockNum = AlphaForest::getAlphaforest()->getAlphaDataBase()->getStockCodes(codes);
+        AlphaForest::getAlphaforest()->calAlpha(alphatreeId, cacheId, 2, 2, codes, stockNum);
+        const float* t = AlphaForest::getAlphaforest()->getAlpha(alphatreeId, "r", cacheId);
+    }
     {
         int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
         int cacheId = AlphaForest::getAlphaforest()->useCache();

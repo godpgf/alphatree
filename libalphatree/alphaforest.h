@@ -86,8 +86,8 @@ public:
         getAlphaTree(alphaTreeId)->calAlpha(&alphaDataBase_, dayBefore, sampleSize, startIndex, signNum, signHistoryDays, signName, alphaCache_->getCacheMemory(cacheId), &threadPool_);
     }
 
-    const void cacheAlpha(int alphaTreeId, int cacheId, const char* featureName, size_t dayFuture = 0) {
-        getAlphaTree(alphaTreeId)->cacheAlpha<float>(&alphaDataBase_, alphaCache_->getCacheMemory(cacheId), &threadPool_, featureName, dayFuture);
+    const void cacheAlpha(int alphaTreeId, int cacheId, const char* featureName) {
+        getAlphaTree(alphaTreeId)->cacheAlpha<float>(&alphaDataBase_, alphaCache_->getCacheMemory(cacheId), &threadPool_, featureName);
     }
 
     const void cacheSign(int alphaTreeId, int cacheId, const char* featureName){
@@ -117,10 +117,10 @@ public:
         return getAlphaTree(alphaTreeId)->getAlphaSmooth(rootName, curCache, smoothNum, smooth);
     }
 
-    const char* getProcess(int alphaTreeId, const char *rootName, int cacheId){
-        auto curCache = alphaCache_->getCacheMemory(cacheId);
-        return getAlphaTree(alphaTreeId)->getProcess(rootName, curCache);
-    }
+//    const char* getProcess(int alphaTreeId, const char *rootName, int cacheId){
+//        auto curCache = alphaCache_->getCacheMemory(cacheId);
+//        return getAlphaTree(alphaTreeId)->getProcess(rootName, curCache);
+//    }
 
     const float *getAlpha(int alphaTreeId, int nodeId, int cacheId) {
         auto curCache = alphaCache_->getCacheMemory(cacheId);

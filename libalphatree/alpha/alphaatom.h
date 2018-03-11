@@ -36,9 +36,9 @@ class IAlphaElement{
         //返回最小需要考虑的历史天数
         //virtual int getMinHistoryDays(){ return 0;}
         //传入左右孩子的参数,系数,输出内存块   得到运算结果
-        //virtual const float* cast(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout, int* sign) = 0;
+        //virtual const float* cast(const float* pleft, const float* pright, float coff, int historySize, int stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout, int* sign) = 0;
         //传入孩子的内存和给自己分配的内存，返回结果内存
-        virtual void* cast(void** pars, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag) = 0;
+        virtual void* cast(void** pars, float coff, int historySize, int stockSize, CacheFlag* pflag) = 0;
         //得到系数类型
         virtual CoffUnit getCoffUnit() { return CoffUnit::COFF_NONE;}
         //得到计算天数
@@ -57,7 +57,7 @@ class AlphaAtom: public IAlphaElement{
     public:
         AlphaAtom(
                 const char* name,
-                void* (*opt) (void** pars, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag),
+                void* (*opt) (void** pars, float coff, int historySize, int stockSize, CacheFlag* pflag),
                 int parNum = 1,
                 int outParIndex = 0,
                 CoffUnit coffUnit = CoffUnit::COFF_NONE,
@@ -88,7 +88,7 @@ class AlphaAtom: public IAlphaElement{
 
 
 
-        virtual void* cast(void** pars, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag){
+        virtual void* cast(void** pars, float coff, int historySize, int stockSize, CacheFlag* pflag){
             return opt_(pars, coff, historySize, stockSize, pflag);
         }
 
@@ -105,7 +105,7 @@ class AlphaAtom: public IAlphaElement{
 
     private:
         const char* name_;
-        void* (*opt_) (void** pars, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag);
+        void* (*opt_) (void** pars, float coff, int historySize, int stockSize, CacheFlag* pflag);
         int parNum_;
         int outParIndex_;
         float minCoff_, maxCoff_;
@@ -210,7 +210,7 @@ AlphaAtom AlphaAtom::alphaAtomList[] = {
 
         virtual const char* getName(){ return name_;}
 
-        virtual const float* cast(const float* pleft, const float* pright, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
+        virtual const float* cast(const float* pleft, const float* pright, float coff, int historySize, int stockSize, CacheFlag* pflag, bool* pStockFlag, float* pout){
             return pleft;
         }
 

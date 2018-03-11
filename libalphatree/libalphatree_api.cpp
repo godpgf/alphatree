@@ -171,7 +171,6 @@ void calSignAlpha(int alphaTreeId, int cacheId, int dayBefore, int sampleSize, i
 }
 
 void cacheAlpha(int alphaTreeId, int cacheId, const char* featureName) {
-    cout<<featureName<<endl;
     AlphaForest::getAlphaforest()->cacheAlpha(alphaTreeId, cacheId, featureName);
 }
 
@@ -236,7 +235,14 @@ float optimizeAlpha(int alphaTreeId, int cacheId, const char *rootName, int dayB
 int getAlpha(int alphaTreeId, const char *rootName, int cacheId, float *alpha) {
     const float *res = AlphaForest::getAlphaforest()->getAlpha(alphaTreeId, rootName, cacheId);
     auto *cache = AlphaForest::getAlphaforest()->getCache(cacheId);
-    int dataSize = (cache->isSign() ? cache->signHistoryDays : cache->sampleDays) * cache->stockSize;
+    int dataSize = cache->getAlphaDays() * cache->stockSize;
+    float a = 0;
+    for(int i = 0; i < dataSize; ++i){
+        a += res[i];
+    }
+    for(int i = 0; i < dataSize; ++i){
+        alpha[i] = 0;
+    }
     memcpy(alpha, res, dataSize * sizeof(float));
     return dataSize;
 }
@@ -250,10 +256,10 @@ void getAlphaSmooth(int alphaTreeId, const char *rootName, int cacheId, int smoo
     return AlphaForest::getAlphaforest()->getAlphaSmooth(alphaTreeId, rootName, cacheId, smoothNum, smooth);
 }
 
-void getRootProcess(int alphatreeId, const char *rootName, int cacheId, char* process){
+/*void getRootProcess(int alphatreeId, const char *rootName, int cacheId, char* process){
     const char* rootProcess = AlphaForest::getAlphaforest()->getProcess(alphatreeId, rootName, cacheId);
     strcpy(process,rootProcess);
-}
+}*/
 
 /*
 int getNodeAlpha(int alphaTreeId, int nodeId, int cacheId, float *alpha) {

@@ -8,14 +8,14 @@
 #include "alpha.h"
 
 //振幅取样，保证2/3是数据振幅超过coff，1/3数据是振幅不超过coff的，这样保证数据在正负样本和中立样本的无偏性
-void* amplitudeSample(void** pars, float coff, size_t historySize, size_t stockSize, CacheFlag* pflag){
+void* amplitudeSample(void** pars, float coff, int historySize, int stockSize, CacheFlag* pflag){
     float* pout = (float*)pars[0];
     float* pleft = (float*)pars[0];
     int curIndex = 0;
     int moreCoffCnt = 0;
     int lessCoffCnts[] = {0,0,0,0,0,0,0,0};
-    for(size_t i = 0; i < historySize; ++i) {
-        for(size_t j = 0; j < stockSize; ++j){
+    for(int i = 0; i < historySize; ++i) {
+        for(int j = 0; j < stockSize; ++j){
             curIndex = i * stockSize + j;
             float a = abs(pleft[curIndex]);
             if(a > coff)
@@ -33,8 +33,8 @@ void* amplitudeSample(void** pars, float coff, size_t historySize, size_t stockS
     moreCoffCnt /= 2.0f;
 
     if(lessCoffCnts[7] <= moreCoffCnt){
-        for(size_t i = 0; i < historySize; ++i) {
-            for(size_t j = 0; j < stockSize; ++j){
+        for(int i = 0; i < historySize; ++i) {
+            for(int j = 0; j < stockSize; ++j){
                 curIndex = i * stockSize + j;
                 pout[curIndex] = 1;
             }
@@ -51,8 +51,8 @@ void* amplitudeSample(void** pars, float coff, size_t historySize, size_t stockS
         }
 
         srand((unsigned)time(0));
-        for(size_t i = 0; i < historySize; ++i) {
-            for(size_t j = 0; j < stockSize; ++j){
+        for(int i = 0; i < historySize; ++i) {
+            for(int j = 0; j < stockSize; ++j){
                 curIndex = i * stockSize + j;
                 float v = abs(pleft[curIndex]);
                 if(v > coff){
