@@ -204,14 +204,54 @@ int main() {
         }*/
     }
     AlphaForest::getAlphaforest()->getAlphaDataBase()->loadDataBase("pyalphatree/data");
+    /*{
+        char codes[8 * 4096];
+        size_t stockNum = AlphaForest::getAlphaforest()->getAlphaDataBase()->getStockCodes(codes);
+
+        int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
+        int cacheId = AlphaForest::getAlphaforest()->useCache();
+        AlphaForest::getAlphaforest()->decode(alphatreeId, "atr15", "mean(max(((high - low) / low), max(((high - delay(close, 1)) / delay(close, 1)), ((delay(close, 1) - low)) / low)), 14)");
+        AlphaForest::getAlphaforest()->cacheAlpha(alphatreeId, cacheId, "atr15");
+        AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
+        AlphaForest::getAlphaforest()->releaseCache(cacheId);
+
+        alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
+        cacheId = AlphaForest::getAlphaforest()->useCache();
+        AlphaForest::getAlphaforest()->decode(alphatreeId, "atr15_5", "delay(atr15, -5)");
+        AlphaForest::getAlphaforest()->cacheAlpha(alphatreeId, cacheId, "atr15_5");
+        AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
+        AlphaForest::getAlphaforest()->releaseCache(cacheId);
+
+        alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
+        cacheId = AlphaForest::getAlphaforest()->useCache();
+        AlphaForest::getAlphaforest()->decode(alphatreeId, "mfe_5", "(((delay(ts_max(high, 4), -5) - close) / close) / atr15_5)");
+        //AlphaForest::getAlphaforest()->calAlpha(alphatreeId, cacheId, 20, 4, codes, stockNum);
+        //AlphaForest::getAlphaforest()->getAlpha(alphatreeId, "mfe5", cacheId);
+        AlphaForest::getAlphaforest()->cacheAlpha(alphatreeId, cacheId, "mfe_5");
+        AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
+        AlphaForest::getAlphaforest()->releaseCache(cacheId);
+
+        alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
+        cacheId = AlphaForest::getAlphaforest()->useCache();
+        AlphaForest::getAlphaforest()->decode(alphatreeId, "mae_5", "(((close - delay(ts_min(low, 4), -5)) / delay(ts_min(low, 4), -5)) / atr15_5)");
+        //AlphaForest::getAlphaforest()->calAlpha(alphatreeId, cacheId, 20, 4, codes, stockNum);
+        //AlphaForest::getAlphaforest()->getAlpha(alphatreeId, "mae5", cacheId);
+        AlphaForest::getAlphaforest()->cacheAlpha(alphatreeId, cacheId, "mae_5");
+        AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
+        AlphaForest::getAlphaforest()->releaseCache(cacheId);
+    }*/
     {
         int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
         int cacheId = AlphaForest::getAlphaforest()->useCache();
-        AlphaForest::getAlphaforest()->decode(alphatreeId, "r", "sum(high, -2)");
+        AlphaForest::getAlphaforest()->decode(alphatreeId, "_process", "noise_valid(ts_argmin(sign(delta(close, 1)), 14), mfe_5, mae_5, 64)");
+        //AlphaForest::getAlphaforest()->cacheAlpha(alphatreeId, cacheId, "mfe5");
+        //AlphaForest::getAlphaforest()->decode(alphatreeId, "_process", "(mfe5 / mae5)");
         char codes[8 * 4096];
         size_t stockNum = AlphaForest::getAlphaforest()->getAlphaDataBase()->getStockCodes(codes);
-        AlphaForest::getAlphaforest()->calAlpha(alphatreeId, cacheId, 2, 2, codes, stockNum);
-        const float* t = AlphaForest::getAlphaforest()->getAlpha(alphatreeId, "r", cacheId);
+        AlphaForest::getAlphaforest()->calAlpha(alphatreeId, cacheId, 10, 20, codes, stockNum);
+        const float* t = AlphaForest::getAlphaforest()->getAlpha(alphatreeId, "_process", cacheId);
+//        for(int i = 0; i < stockNum; ++i)
+//            cout<<t[i]<<endl;
     }
     {
         int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();

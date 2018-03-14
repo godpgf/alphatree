@@ -151,6 +151,8 @@ public:
             if(*curDateIter == *mainDateIter){
                 curIndex = i;
                 //(*file) << cache[i * stockNum + offset];
+                T value = (T)cache[curIndex * stockNum + offset];
+                (*file).write( reinterpret_cast<const char* >( &value ), sizeof( T ) );
 
                // if(strcmp(code,"0603156") == 0)
                //     cout<<":"<<cache[i * stockNum + offset]<<endl;
@@ -160,7 +162,7 @@ public:
         }
 
         if(isWriteLastData){
-            while (*curDateIter){
+            while (curDateIter.isValid()){
                 (*file).write( reinterpret_cast<const char* >( &cache[curIndex * stockNum + offset] ), sizeof( T ) );
                 ++curDateIter;
             }

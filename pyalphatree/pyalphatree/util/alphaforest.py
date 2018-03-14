@@ -13,6 +13,7 @@ class AlphaForest(object):
         alphatree.initializeAlphaforest(cache_size)
 
         self.code_cache = (c_char * (max_stock_num * 64))()
+        self.cur_stock_size = 0
         self.alpha_cache = (c_float * (max_stock_num * max_day_num))()
         self.feature_cache = (c_char * (max_feature_size * 64))()
 
@@ -32,6 +33,54 @@ class AlphaForest(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         pass
+
+
+    # 读取数据
+    def load_db(self, path):
+        alphatree.loadDataBase(c_char_p(path))
+
+    def csv2binary(self, path, feature_name):
+        alphatree.csv2binary(c_char_p(path), c_char_p(feature_name))
+
+    #将某个公式的计算结果保持在文件
+    def cache_alpha(self, name, line):
+        alphatree_id = self.create_alphatree()
+        cache_id = self.use_cache()
+        self.decode_alphatree(alphatree_id, name, line)
+        alphatree.cacheAlpha(alphatree_id, cache_id, c_char_p(name))
+        self.release_cache(cache_id)
+        self.release_alphatree(alphatree_id)
+
+    #将某个信号保存在文件
+    def cache_sign(self, name, line):
+        alphatree_id = self.create_alphatree()
+        cache_id = self.use_cache()
+        self.decode_alphatree(alphatree_id, name, line)
+        alphatree.cacheSign(alphatree_id, cache_id, c_char_p(name))
+        self.release_cache(cache_id)
+        self.release_alphatree(alphatree_id)
+
+    def cache_feature(self, feature_name):
+        alphatree.cacheFeature(c_char_p(feature_name))
+
+    def get_stock_codes(self):
+        stock_size = alphatree.getStockCodes(self.code_cache)
+        return np.array(self._read_str_list(self.code_cache, stock_size))
+
+    def fill_codes(self, codes):
+        self.cur_stock_size = len(codes)
+        self._write_codes(codes)
+
+    def process_alpha(self, line, daybefore, sample_size):
+        print line
+        alphatree_id = alphatree.createAlphatree()
+        alphatree.decodeAlphatree(alphatree_id, c_char_p("_process"), c_char_p(line))
+        cache_id = alphatree.useCache()
+        alphatree.calAlpha(alphatree_id, cache_id, daybefore, sample_size, self.code_cache, self.cur_stock_size)
+        alphatree.getAlpha(alphatree_id, c_char_p("_process"), cache_id, self.alpha_cache)
+        alphatree.releaseAlphatree(alphatree_id)
+        alphatree.releaseCache(cache_id)
+        return self.alpha_cache[0]
 
     def create_alphatree(self):
         return alphatree.createAlphatree()
@@ -59,38 +108,9 @@ class AlphaForest(object):
     def get_sign_num(self, day_before, sample_days, sign_name):
         return alphatree.getSignNum(day_before, sample_days, c_char_p(sign_name))
 
-    #将某个公式的计算结果保持在文件
-    def cache_alpha(self, name, line):
-        alphatree_id = self.create_alphatree()
-        cache_id = self.use_cache()
-        self.decode_alphatree(alphatree_id, name, line)
-        alphatree.cacheAlpha(alphatree_id, cache_id, c_char_p(name))
-        self.release_cache(cache_id)
-        self.release_alphatree(alphatree_id)
-
-    #将某个信号保存在文件
-    def cache_sign(self, name, line):
-        alphatree_id = self.create_alphatree()
-        cache_id = self.use_cache()
-        self.decode_alphatree(alphatree_id, name, line)
-        alphatree.cacheSign(alphatree_id, cache_id, c_char_p(name))
-        self.release_cache(cache_id)
-        self.release_alphatree(alphatree_id)
-
-    # 读取数据
-    def load_db(self, path):
-        alphatree.loadDataBase(c_char_p(path))
-
-    def csv2binary(self, path, feature_name):
-        alphatree.csv2binary(c_char_p(path), c_char_p(feature_name))
-
-    def cache_feature(self, feature_name):
-        alphatree.cacheFeature(c_char_p(feature_name))
 
 
-    def get_stock_codes(self):
-        stock_size = alphatree.getStockCodes(self.code_cache)
-        return np.array(self._read_str_list(self.code_cache, stock_size))
+
 
 
     def cal_alpha(self, alphatree_id, cache_id, daybefore, sample_size, codes):

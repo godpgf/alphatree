@@ -39,7 +39,8 @@ void* sum(void** pars, float coff, int historySize, int stockSize, CacheFlag* pf
         for(int i = historySize - 2; i >= 0; --i){
             _add((pout + i * stockSize),(pout + (i+1)*stockSize), stockSize);
         }
-        for(int i = 0; i < historySize - d; ++i){
+
+        for(int i = 0; i < historySize + d; ++i){
             _reduce((pout + i * stockSize), (pout + (i - d) * stockSize), stockSize);
         }
     }

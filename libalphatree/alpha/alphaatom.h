@@ -7,6 +7,7 @@
 
 #include "alphadb.h"
 #include "atom/alpha.h"
+#include "atom/optimizealpha.h"
 #include "atom/sample.h"
 #include "atom/backtrace.h"
 
@@ -187,6 +188,9 @@ AlphaAtom AlphaAtom::alphaAtomList[] = {
         AlphaAtom("if_to", ifCondTo, 1, 0, CoffUnit::COFF_CONST),
 
         AlphaAtom("indneutralize", indneutralize, 1, 0, CoffUnit::COFF_INDCLASS),
+        AlphaAtom("noise_valid", noiseValid, 4, 3, CoffUnit::COFF_CONST),
+        AlphaAtom("alpha_correlation", alphaCorrelation, 2, 0, CoffUnit::COFF_NONE),
+
         AlphaAtom("kd", kd, 2, 1, CoffUnit::COFF_NONE, DateRange::CUR_AND_BEFORE_DAY),
         AlphaAtom("cross", cross, 2, 0, CoffUnit::COFF_DAY, DateRange::CUR_AND_BEFORE_DAY),
         AlphaAtom("cross_from", crossFrom, 1, 0, CoffUnit::COFF_DAY, DateRange::CUR_AND_BEFORE_DAY),

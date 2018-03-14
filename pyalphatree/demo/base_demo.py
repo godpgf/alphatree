@@ -78,6 +78,16 @@ def csv_2_binary(af):
 def test_base_cal(data_proxy, codes):
     float_equal = lambda x, y: math.fabs(x - y) < 0.01
 
+    print "sum(high, -2)"
+    alpha = AlphaArray(codes, ["s = sum(high, -2)"], "s", 2, 2)
+    # 今天、昨天、前天数据一共3天
+    data = alpha[:]
+    for id, code in enumerate(codes):
+        print code
+        assert float_equal(data_proxy.get_all_Data(code)[-1][2] + data_proxy.get_all_Data(code)[-2][2] +
+                           data_proxy.get_all_Data(code)[-3][2], data[-1][id])
+        assert float_equal(data_proxy.get_all_Data(code)[-2][2] + data_proxy.get_all_Data(code)[-3][2] +
+                           data_proxy.get_all_Data(code)[-4][2], data[-2][id])
 
     print "test target"
     alpha = AlphaArray(codes[0], ["close_ = delay(close, 1)", "returns_ = returns"], ["close_", "returns_"], 9, 22)
@@ -88,18 +98,20 @@ def test_base_cal(data_proxy, codes):
         assert float_equal(data[i][0], data_proxy.get_all_Data(codes[0])[-31 + i][4])
         assert float_equal(data[i][1], data_proxy.get_all_Data(codes[0])[-30 + i][7])
 
-    print "test returns"
-    alpha = AlphaArray(codes, ["r=returns"], "r", 2, 2)
+    print "test delay(returns, -2)"
+    alpha = AlphaArray(codes, ["r=delay(returns, -2)"], "r", 2, 2)
     data = alpha[:]
     for id, code in enumerate(codes):
-        assert float_equal(data[0][id], data_proxy.get_all_Data(code)[-4][7])
-        assert float_equal(data[1][id], data_proxy.get_all_Data(code)[-3][7])
+        assert float_equal(data[0][id], data_proxy.get_all_Data(code)[-2][7])
+        assert float_equal(data[1][id], data_proxy.get_all_Data(code)[-1][7])
 
     print "sum(high, -2)"
     alpha = AlphaArray(codes, ["s = sum(high, -2)"], "s", 2, 2)
     # 今天、昨天、前天数据一共3天
-    data = alpha[1:]
+    data = alpha[:]
     for id, code in enumerate(codes):
+        print code
+        print data[-1][id], data[-2][id],data_proxy.get_all_Data(code)[-1][2] + data_proxy.get_all_Data(code)[-2][2] + data_proxy.get_all_Data(code)[-3][2],data_proxy.get_all_Data(code)[-2][2] + data_proxy.get_all_Data(code)[-3][2] + data_proxy.get_all_Data(code)[-4][2]
         assert float_equal(data_proxy.get_all_Data(code)[-1][2] + data_proxy.get_all_Data(code)[-2][2] +
                            data_proxy.get_all_Data(code)[-3][2], data[-1][id])
         assert float_equal(data_proxy.get_all_Data(code)[-2][2] + data_proxy.get_all_Data(code)[-3][2] +
@@ -589,22 +601,78 @@ def test_base_cal(data_proxy, codes):
 
 def test_cache(af, data_proxy, codes):
     float_equal = lambda x, y: math.fabs(x - y) < 0.01
-    af.cache_alpha("atr15", "mean(max((high - low), max((high - delay(close, 1)), (delay(close, 1) - low))), 14)")
-    alpha = AlphaArray(codes, ["s = atr15"], "s", 0, 1)
-    data = alpha[:]
-    for index, code in enumerate(codes):
-        close = data_proxy.get_all_Data(code)[-16][4]
-        if data_proxy.get_all_Data(code)[-1][5] >= 0:
+
+    # print "test atr15"
+    af.cache_alpha("atr15",
+                   "mean(max(max(((high - low) / low), ((high - delay(close, 1)) / delay(close, 1))), ((delay(close, 1) - low)/ low)), 14)")
+    # alpha = AlphaArray(codes, ["s = delay(atr, -5)"], "s", 10, 2)
+    # data = alpha[:]
+    # for index, code in enumerate(codes):
+    #     print code
+    #     close = data_proxy.get_all_Data(code)[-21][4]
+    #     if data_proxy.get_all_Data(code)[-1][5] == 0:
+    #         continue
+    #     sum = 0
+    #     for i in xrange(15):
+    #         tr = max((data_proxy.get_all_Data(code)[-15 + i][2] - data_proxy.get_all_Data(code)[-15 + i][3]) /
+    #                  data_proxy.get_all_Data(code)[-15 + i][3],
+    #                  (data_proxy.get_all_Data(code)[-15 + i][2] - close) / close,
+    #                  (close - data_proxy.get_all_Data(code)[-15 + i][3]) / data_proxy.get_all_Data(code)[-15 + i][3])
+    #         sum += tr
+    #         close = data_proxy.get_all_Data(code)[-15 + i][4]
+    #
+    #     print sum/15, data[-1][index]
+    #     assert float_equal(sum / 15, data[-1][index])
+
+    print "test mfe_5 mae_5"
+    af.cache_alpha("mfe_5", "(((delay(ts_max(high, 4), -5) - close) / close) / delay(atr15, -5))")
+    af.cache_alpha("mae_5", "(((close - delay(ts_min(low, 4), -5)) / close) / delay(atr15, -5))")
+    mfe_alpha = AlphaArray(codes, ["s = mfe_5"], "s", 10, 2)
+    mae_alpha = AlphaArray(codes, ["s = mae_5"], "s", 10, 2)
+    data_mfe = mfe_alpha[:]
+    data_mae = mae_alpha[:]
+    for id, code in enumerate(codes):
+        has_loss = False
+        for i in xrange(22):
+            if data_proxy.get_all_Data(code)[-1 - i][5] == 0:
+                has_loss = True
+                break
+        if has_loss:
             continue
+        print code
+        close_10 = data_proxy.get_all_Data(code)[-11][4]
+        close_11 = data_proxy.get_all_Data(code)[-12][4]
+
+        close = data_proxy.get_all_Data(code)[-21][4]
         sum = 0
         for i in xrange(15):
-            tr = max((data_proxy.get_all_Data(code)[-15 + i][2] - data_proxy.get_all_Data(code)[-15 + i][3]),
-                     (data_proxy.get_all_Data(code)[-15 + i][2] - close),
-                     (close - data_proxy.get_all_Data(code)[-15 + i][3]))
+            tr = max((data_proxy.get_all_Data(code)[-20 + i][2] - data_proxy.get_all_Data(code)[-20 + i][3]) /
+                     data_proxy.get_all_Data(code)[-20 + i][3],
+                     (data_proxy.get_all_Data(code)[-20 + i][2] - close) / close,
+                     (close - data_proxy.get_all_Data(code)[-20 + i][3]) / data_proxy.get_all_Data(code)[-20 + i][3])
             sum += tr
-            close = data_proxy.get_all_Data(code)[-15 + i][4]
+            close = data_proxy.get_all_Data(code)[-20 + i][4]
+        tr = sum / 15
+        mfe5 = max([(data_proxy.get_all_Data(code)[-10 + i][2] - close_10) / close_10 for i in xrange(5)])
+        mae5 = max([(close_10 - data_proxy.get_all_Data(code)[-10 + i][3]) / close_10 for i in xrange(5)])
+        #print mfe5, tr, mfe5/tr, data_mfe[-1][id]
+        assert float_equal(mfe5 / tr, data_mfe[-1][id])
+        assert float_equal(mae5 / tr, data_mae[-1][id])
 
-        assert float_equal(sum / 15, data[-1][index])
+        close = data_proxy.get_all_Data(code)[-22][4]
+        sum = 0
+        for i in xrange(15):
+            tr = max((data_proxy.get_all_Data(code)[-21 + i][2] - data_proxy.get_all_Data(code)[-21 + i][3]) /
+                     data_proxy.get_all_Data(code)[-21 + i][3],
+                     (data_proxy.get_all_Data(code)[-21 + i][2] - close) / close,
+                     (close - data_proxy.get_all_Data(code)[-21 + i][3]) / data_proxy.get_all_Data(code)[-21 + i][3])
+            sum += tr
+            close = data_proxy.get_all_Data(code)[-21 + i][4]
+        tr = sum / 15
+        mfe5 = max([(data_proxy.get_all_Data(code)[-11 + i][2] - close_11) / close_11 for i in xrange(5)])
+        mae5 = max([(close_11 - data_proxy.get_all_Data(code)[-11+ i][3]) / close_11 for i in xrange(5)])
+        assert float_equal(mfe5 / tr, data_mfe[-2][id])
+        assert float_equal(mae5 / tr, data_mae[-2][id])
 
 
 if __name__ == "__main__":
@@ -614,5 +682,5 @@ if __name__ == "__main__":
 
         codes = af.get_stock_codes()
         data_proxy = LocalDataProxy(cache_path="../data", is_offline=True)
-        test_base_cal(data_proxy, codes)
         test_cache(af, data_proxy, codes)
+        test_base_cal(data_proxy, codes)

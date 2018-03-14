@@ -282,7 +282,7 @@ public:
 
             if(isLastWrite)
                 break;
-            if(dayBefore + maxFutureDays < sampleDays)
+            if(dayBefore < sampleDays - maxFutureDays)
                 sampleDays = dayBefore + maxFutureDays;
             dayBefore -= sampleDays;
         }
@@ -678,8 +678,8 @@ protected:
     }
 
     void flagAllNode(AlphaCache *cache) {
-        int dateSize = GET_HISTORY_SIZE(getMaxHistoryDays(), cache->getAlphaDays());
-        memset(cache->dayFlag, 0, (dateSize - getMaxFutureDays()) * nodeList_.getSize() * sizeof(CacheFlag));
+        int dateSize = GET_HISTORY_SIZE(getMaxHistoryDays(), cache->getAlphaDays()) - getMaxFutureDays();
+        memset(cache->dayFlag, 0, dateSize * nodeList_.getSize() * sizeof(CacheFlag));
         for (size_t dayIndex = 0; dayIndex < cache->getAlphaDays(); ++dayIndex) {
             for (auto i = 0; i < subtreeList_.getSize(); ++i) {
                 int curIndex = dayIndex + getMaxHistoryDays() - 1;
