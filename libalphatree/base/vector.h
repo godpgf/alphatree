@@ -11,7 +11,7 @@
 template <class T>
 class IVector: public IteratorClient<T>{
 public:
-    virtual Iterator<T> iter(){ return Iterator<T>(this);};
+    //virtual Iterator<T>&& iter(){ return Iterator<T>(this);};
     virtual const char* getName() = 0;
     virtual T& operator[](int index) = 0;
     virtual size_t getSize() = 0;
@@ -31,8 +31,8 @@ public:
     }
 
     virtual void initialize(T data){
-        for(auto it = this->iter(); it.isValid(); ++it)
-            (*it) = data;
+        for(size_t i = 0; i < size_; ++i)
+            memory_[i] = data;
     }
 
     virtual ~Vector(){
@@ -53,7 +53,7 @@ public:
     }
 
     virtual BaseIterator<T>* createIter(){
-        return new MemoryIterator<T>(memory_, size_);
+        return (IBaseIterator<T>*)(new MemoryIterator<T>(memory_, size_));
     }
 protected:
 

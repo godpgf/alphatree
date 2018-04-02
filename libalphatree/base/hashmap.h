@@ -16,7 +16,18 @@ class HashMap : protected HashName<HASH_TABLE_LENGTH, HASH_NAME_BLOCK_SIZE>{
                 T value;
         };
 
-        void add(const char* name, T& value){
+        void add(const char* name, const T& value){
+            auto** pHashNameNode = find(name);
+            if(*pHashNameNode == nullptr){
+                (*pHashNameNode) = new HashMapNode();
+                char* newName = new char[strlen(name)+1];
+                strcpy(newName, name);
+                (*pHashNameNode)->id = HashName<HASH_TABLE_LENGTH, HASH_NAME_BLOCK_SIZE>::nameTable_.add(newName);
+            }
+            (*pHashNameNode)->value = value;
+        }
+
+        void add(const char* name, T&& value){
             auto** pHashNameNode = find(name);
             if(*pHashNameNode == nullptr){
                 (*pHashNameNode) = new HashMapNode();

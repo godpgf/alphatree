@@ -64,8 +64,11 @@ public:
                 int depth = 1;
                 int leftId = curIndex-1;
                 while(depth != 0){
-                    if(leftId < 0)
+                    if(leftId < 0){
+                        cout<<"can't find left";
                         throw "can't find left";
+                    }
+
                     if(pout[leftId] == '(')
                         --depth;
                     else if(pout[leftId] == ')')
@@ -209,14 +212,19 @@ protected:
 
         //全部读取完毕
         if(l > r) {
-            if (depth != 0)
+            if (depth != 0){
+                cout<<"depth need equal 0!\n";
                 throw "depth need equal 0!";
+            }
             return;
         }
 
         //操作数后必须紧跟'('
-        if(line[l] != '(')
+        if(line[l] != '('){
+            cout<<"'(' must after opt!\n";
             throw "'(' must after opt!";
+        }
+
         ++l;
         ++depth;
 
@@ -226,8 +234,11 @@ protected:
                 --depth;
             --r;
             //深度等于0时才可以结束
-            if(r < l)
+            if(r < l){
+                cout<<"deth must equal 0!\n";
                 throw "deth must equal 0!";
+            }
+
             if(depth == 0)
                 break;
         }
@@ -253,8 +264,11 @@ protected:
             //将最后一段做成孩子（不以','结尾）
             if(id == r){
                 //深度等于0时才可以结束
-                if(depth != 0)
+                if(depth != 0){
+                    cout<<"deth must equal 0!\n";
                     throw "deth must equal 0!";
+                }
+
                 while(line[l] == ' ') ++l;
                 pout[curIndex++] = l;
                 pout[curIndex++] = r;

@@ -291,11 +291,11 @@ public:
     }
 
     //将信号存在文件中
-    void cacheSign(AlphaDB *alphaDataBase, AlphaCache *cache, ThreadPool *threadPool, const char* featureName){
+    void cacheSign(AlphaDB *alphaDataBase, AlphaCache *cache, ThreadPool *threadPool, const char* featureName, const char* codes = nullptr, int codesNum = 0){
         maxHistoryDay_ = -1;
         maxFutureDay_ = 1;
-        int maxHistoryDays = getMaxHistoryDays();
-        int maxFutureDays = getMaxFutureDays();
+        size_t maxHistoryDays = getMaxHistoryDays();
+        size_t maxFutureDays = getMaxFutureDays();
         size_t days = alphaDataBase->getDays();
         size_t sampleDays = alphaDataBase->getDays() - maxHistoryDays + 1;
         if(sampleDays > 1024)
@@ -310,6 +310,13 @@ public:
         for(preDayNum = 0; preDayNum < maxHistoryDays-1; ++preDayNum){
             file->write(reinterpret_cast<const char* >( &preSignCnt ), sizeof(size_t));
         }
+
+        bool* stockFlag = nullptr;
+        if(codes != nullptr){
+            stockFlag = new bool[stockSize];
+            alphaDataBase->getCodesFlag(stockFlag, codes, codesNum);
+        }
+
         while (true){
             cache->initialize(nodeList_.getSize(), maxHistoryDays, maxFutureDays, dayBefore, sampleDays, sampleDays, stockSize);
             //重新标记所有节点
@@ -319,7 +326,7 @@ public:
 
             //写入计算结果
             const float* alpha = getAlpha(featureName, cache);
-            alphaDataBase->invFill2Sign(alpha, sampleDays, featureName, file, preDayNum, preSignCnt);
+            alphaDataBase->invFill2Sign(alpha, sampleDays, featureName, file, preDayNum, preSignCnt, stockFlag);
 
             if(dayBefore == 0)
                 break;
@@ -328,20 +335,23 @@ public:
             dayBefore -= sampleDays;
         }
         alphaDataBase->releaseCacheFile(file);
+        if(stockFlag){
+            delete []stockFlag;
+        }
     }
 
     //test---------------------------------------
     void testCacheSign(AlphaDB *alphaDataBase, AlphaCache *cache, ThreadPool *threadPool, const char* featureName, const char* testFeatureName){
         maxHistoryDay_ = -1;
         maxFutureDay_ = 1;
-        int maxHistoryDays = getMaxHistoryDays();
-        int maxFutureDays = getMaxFutureDays();
-        size_t days = alphaDataBase->getDays();
-        size_t sampleDays = alphaDataBase->getDays() - maxHistoryDays + 1;
+        size_t maxHistoryDays = getMaxHistoryDays();
+        size_t maxFutureDays = getMaxFutureDays();
+        int days = alphaDataBase->getDays();
+        int sampleDays = alphaDataBase->getDays() - maxHistoryDays + 1;
         if(sampleDays > 1024)
             sampleDays = 1024;
 
-        size_t dayBefore = days - GET_HISTORY_SIZE(maxHistoryDays, sampleDays);
+        int dayBefore = days - GET_HISTORY_SIZE(maxHistoryDays, sampleDays);
         size_t stockSize = alphaDataBase->getAllCodes(cache->codes);
 
         ofstream* file = alphaDataBase->createCacheFile(featureName);
@@ -362,7 +372,7 @@ public:
             const float* testAlpha = getAlpha(testFeatureName, cache);
 
             for(int l = 1; l < sampleDays; ++l){
-                for(int k = 0; k < stockSize; ++k){
+                for(size_t k = 0; k < stockSize; ++k){
                     if(alpha[l * stockSize + k] > 0){
                         if(testAlpha[l * stockSize + k] < 0)
                             cout<<alpha[l * stockSize + k]<<" "<<alphaDataBase->testGetCode(k)<<" "<<testAlpha[l * stockSize + k]<<endl;
@@ -584,35 +594,39 @@ protected:
         int outMemoryId = 0;
         if (nodeList_[nodeId].getChildNum() == 0) {
             outMemoryId = cache->useMemory();
-            if(cache->isSign()){
-                alphaDataBase->getStock(cache->dayBefore,
-                                        getMaxHistoryDays(),
-                                        getMaxFutureDays(),
-                                        cache->sampleDays,
-                                        cache->getAlphaDays(),
-                                        cache->startSignIndex,
-                                        cache->stockSize,
-                                        nodeList_[nodeId].getName(),
-                                        cache->signName,
-                                        cache->getMemort<float>(outMemoryId));
-            } else {
-                alphaDataBase->getStock(cache->dayBefore,
-                                        getMaxHistoryDays(),
-                                        getMaxFutureDays(),
-                                        cache->sampleDays,
-                                        cache->stockSize,
-                                        nodeList_[nodeId].getName(),
-                                        nodeList_[nodeId].getWatchLeafDataClass(),
-                                        cache->getMemort<float>(outMemoryId),
-                                        cache->codes);
+            //如果是变量，不需要初始化
+            if(!nodeList_[nodeId].isEmpty()){
+                if(cache->isSign()){
+                    alphaDataBase->getStock(cache->dayBefore,
+                                            getMaxHistoryDays(),
+                                            getMaxFutureDays(),
+                                            cache->sampleDays,
+                                            cache->getAlphaDays(),
+                                            cache->startSignIndex,
+                                            cache->stockSize,
+                                            nodeList_[nodeId].getName(),
+                                            cache->signName,
+                                            cache->getMemort<float>(outMemoryId));
+                } else {
+                    alphaDataBase->getStock(cache->dayBefore,
+                                            getMaxHistoryDays(),
+                                            getMaxFutureDays(),
+                                            cache->sampleDays,
+                                            cache->stockSize,
+                                            nodeList_[nodeId].getName(),
+                                            nodeList_[nodeId].getWatchLeafDataClass(),
+                                            cache->getMemort<float>(outMemoryId),
+                                            cache->codes);
+                }
             }
+
 
         } else {
             int childMemoryIds[MAX_CHILD_NUM];
             void *childMemory[MAX_CHILD_NUM];
             for (int i = 0; i < nodeList_[nodeId].getChildNum(); ++i) {
                 int childId = nodeList_[nodeId].childIds[i];
-                if (nodeList_[childId].isRoot()) {
+                if (!nodeList_[childId].isEmpty() && nodeList_[childId].isRoot()) {
 
                     //不能修改子树结果
                     childMemoryIds[i] = cache->useMemory();
@@ -640,7 +654,9 @@ protected:
             //回收内存
             for (int i = 0; i < nodeList_[nodeId].getElement()->getParNum(); ++i) {
                 if (i != nodeList_[nodeId].getElement()->getOutParIndex()) {
-                    cache->releaseMemory(childMemoryIds[i]);
+                    //仅仅自己输出的和作为变量的内存不用回收
+                    if(!nodeList_[nodeId].isEmpty())
+                        cache->releaseMemory(childMemoryIds[i]);
                 } else {
                     outMemoryId = childMemoryIds[i];
                 }

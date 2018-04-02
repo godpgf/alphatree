@@ -47,6 +47,10 @@ public:
 
     float getStartCoff(){ return startCoff_;}
 
+    bool isEmpty(){
+        return this->dataName_[0] == 0 && this->element_ == nullptr;
+    }
+
     //得到分类
     const char* getWatchLeafDataClass(){return dataClass_[0] == 0 ? nullptr : dataClass_;}
     //得到系数
@@ -81,11 +85,12 @@ public:
 
 
     void setup(IAlphaElement* element, int elementId, DArray<AlphaCoff, MAX_NODE_BLOCK>& coffList, float coff = 0, const char* watchLeafDataClass = nullptr){
-        CHECK(element != nullptr, "err");
+        //CHECK(element != nullptr, "err");
         externalCoffIndex_ = -1;
         setup(nullptr, watchLeafDataClass);
         element_ = element;
-        if(element->getCoffUnit() != CoffUnit::COFF_INDCLASS
+        if(element != nullptr
+           && element->getCoffUnit() != CoffUnit::COFF_INDCLASS
            && element->getCoffUnit() != CoffUnit::COFF_NONE
            && element->getCoffUnit() != CoffUnit::COFF_CONST){
             externalCoffIndex_ = coffList.getSize();
@@ -225,6 +230,8 @@ public:
 //    }
 protected:
     int decode(const char* line, HashMap<IAlphaElement*>& alphaElementMap, int l, int r, int* outCache, char* optCache, const char* parDataClass = nullptr){
+        if(strlen(line) == 0)
+            return createNode(nullptr,nullptr);//创建一个空节点，可以用来作为变量
         converter_.decode(line, l, r, outCache);
         const char* opt = converter_.readOpt(line, outCache, optCache);
         //cout<<"Start "<<opt<<endl;
@@ -309,6 +316,7 @@ protected:
                     dataClass = curDataClass;
                     break;
                 default:
+                    cout<<"coff error\n";
                     throw "coff error!";
             }
         }
@@ -341,6 +349,11 @@ protected:
             return;
         }
         AlphaNode* node = &nodeList_[nodeId];
+
+        //这个节点如果只作为变量，什么不用做。
+        if(node->isEmpty())
+            return;
+
         name = node->getName();
         int nameLen = strlen(name);
 

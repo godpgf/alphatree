@@ -73,6 +73,8 @@ class AlphaAtom: public IAlphaElement{
                     minCoff_ = 0;
                     maxCoff_ = 1;
                     break;
+                default:
+                    break;
             }
         }
 
@@ -188,6 +190,8 @@ AlphaAtom AlphaAtom::alphaAtomList[] = {
         AlphaAtom("if_to", ifCondTo, 1, 0, CoffUnit::COFF_CONST),
 
         AlphaAtom("indneutralize", indneutralize, 1, 0, CoffUnit::COFF_INDCLASS),
+        AlphaAtom("lstsq", lstsq, 4, 0, CoffUnit::COFF_DAY),
+        AlphaAtom("wait", wait, 2, 1),
         AlphaAtom("noise_valid", noiseValid, 4, 3, CoffUnit::COFF_CONST),
         AlphaAtom("alpha_correlation", alphaCorrelation, 2, 0, CoffUnit::COFF_NONE),
 

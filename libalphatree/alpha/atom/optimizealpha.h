@@ -31,21 +31,29 @@ void* noiseValid(void** pars, float coff, int historySize, int stockSize, CacheF
         }
     }
     dataNum *= stockSize;
+    int realDataNum = 0;
     for(int i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL){
             int curIndex = i * stockSize;
             for(int j = 0; j < stockSize; ++j){
-                float data = src[curIndex + j];
-                sum += data / dataNum;
-                sumSqr += powf(data, 2.0f) / dataNum;
+                if(t0[curIndex + j] * t1[curIndex + j] > 0){
+                    float data = src[curIndex + j];
+                    sum += data / dataNum;
+                    sumSqr += powf(data, 2.0f) / dataNum;
+                    ++realDataNum;
+                }
             }
         }
     }
+    sum *= ((float)dataNum / (float)realDataNum);
+    sumSqr *= ((float)dataNum / (float)realDataNum);
+    dataNum = realDataNum;
+
     float avg = sum;
     float std = sqrtf(sumSqr  - avg * avg);
-    if(std == 0 || isnan(std)){
+    if(std == 0 || isnan(std) || isinf(std)){
         cout<<"数据居然全部一样！\n";
-        for(int i = 0; i < historySize; ++i){
+        /*for(int i = 0; i < historySize; ++i){
             if(pflag[i] == CacheFlag::NEED_CAL){
                 int curIndex = i * stockSize;
                 for(int j = 0; j < stockSize; ++j){
@@ -54,7 +62,9 @@ void* noiseValid(void** pars, float coff, int historySize, int stockSize, CacheF
             }
             cout<<endl;
         }
-        throw "err";
+        throw "err";*/
+        memset(pout,0,historySize * stockSize * sizeof(float));
+        return pout;
     }
     //初始化柱状图每个柱子的范围
     float stdScale =  normsinv(1.0 - 1.0 / barSize);
@@ -67,13 +77,15 @@ void* noiseValid(void** pars, float coff, int historySize, int stockSize, CacheF
         if(pflag[i] == CacheFlag::NEED_CAL){
             int curIndex = i * stockSize;
             for(int j = 0; j < stockSize; ++j){
-                int index = src[curIndex + j] < startValue ? 0 : std::min((int)((src[curIndex + j] - startValue) / deltaStd) + 1, barSize - 1);
-                //cout<<t0[curIndex + j]<<" "<<t1[curIndex + j]<<endl;
-                t0_out[index] += t0[curIndex + j];
-                t1_out[index] += t1[curIndex + j];
-                cnt_out[index] += 1;
-                avg_t0 += t0[curIndex + j] / dataNum;
-                avg_t1 += t1[curIndex + j] / dataNum;
+                //保证未来数据不缺失并且有上下波动
+                if(t0[curIndex + j] * t1[curIndex + j] > 0){
+                    int index = src[curIndex + j] < startValue ? 0 : std::min((int)((src[curIndex + j] - startValue) / deltaStd) + 1, barSize - 1);
+                    t0_out[index] += t0[curIndex + j];
+                    t1_out[index] += t1[curIndex + j];
+                    cnt_out[index] += 1;
+                    avg_t0 += t0[curIndex + j] / dataNum;
+                    avg_t1 += t1[curIndex + j] / dataNum;
+                }
             }
         }
     }
@@ -82,7 +94,7 @@ void* noiseValid(void** pars, float coff, int historySize, int stockSize, CacheF
     float stdValue = 0;
     for(int i = 0; i < barSize; ++i){
         float curValue = abs(t1_out[i]) < 0.0001 ? avgValue : t0_out[i] / t1_out[i];
-        //cout<<curValue<<" "<<cnt_out[i]<<endl;
+        //cout<<curValue<<" "<<cnt_out[i]<<" "<<t0_out[i]<<" "<<t1_out[i]<<endl;
         stdValue += (curValue - avgValue) * (curValue - avgValue) * cnt_out[i] / dataNum;
     }
 

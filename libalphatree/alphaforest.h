@@ -11,7 +11,6 @@
 #include "base/dcache.h"
 #include "base/threadpool.h"
 #include "alpha/alphadb.h"
-#include "alpha/alphabacktrace.h"
 #include "base/hashmap.h"
 #include <set>
 #include <vector>
@@ -90,8 +89,8 @@ public:
         getAlphaTree(alphaTreeId)->cacheAlpha<float>(&alphaDataBase_, alphaCache_->getCacheMemory(cacheId), &threadPool_, featureName);
     }
 
-    const void cacheSign(int alphaTreeId, int cacheId, const char* featureName){
-        getAlphaTree(alphaTreeId)->cacheSign(&alphaDataBase_, alphaCache_->getCacheMemory(cacheId), &threadPool_, featureName);
+    const void cacheSign(int alphaTreeId, int cacheId, const char* featureName, const char* codes = nullptr, int codesNum = 0){
+        getAlphaTree(alphaTreeId)->cacheSign(&alphaDataBase_, alphaCache_->getCacheMemory(cacheId), &threadPool_, featureName, codes, codesNum);
     }
 
     const void testCacheSign(int alphaTreeId, int cacheId, const char* featureName, const char* testFeatureName){
@@ -251,4 +250,75 @@ protected:
 };
 
 AlphaForest *AlphaForest::alphaForest_ = nullptr;
+
+
+class AlphaSignIterator : public IBaseIterator<float>{
+public:
+    AlphaSignIterator(AlphaForest* af, const char* rootName, const char* signName, int alphaTreeId, size_t daybefore, size_t sampleSize, size_t startIndex, size_t signNum, size_t cacheSize = 4096):
+            af_(af), alphaTreeId_(alphaTreeId), daybefore_(daybefore), sampleSize_(sampleSize), startIndex_(startIndex), signNum_(signNum), cacheSize_(min(cacheSize, signNum)), curBlockIndex_(signNum){
+        cache_ = new float[cacheSize];
+        rootName_ = new char[strlen(rootName) + 1];
+        signName_ = new char[strlen(signName) + 1];
+        strcpy(signName_, signName);
+        strcpy(rootName_, rootName);
+    }
+
+    virtual ~AlphaSignIterator(){
+        delete []cache_;
+        delete []signName_;
+        delete []rootName_;
+    }
+
+    virtual IBaseIterator<float>* clone(){
+        return new AlphaSignIterator(af_, rootName_, signName_, alphaTreeId_, daybefore_, sampleSize_, startIndex_, signNum_, cacheSize_);
+    }
+
+    virtual float&& getValue(){
+        if(curIndex_ < curBlockIndex_ || curIndex_ >= curBlockIndex_ + cacheSize_){
+            int cacheId = af_->useCache();
+            curBlockIndex_ = (curIndex_ / cacheSize_) * cacheSize_;
+            af_->calAlpha(alphaTreeId_, cacheId, daybefore_, sampleSize_, startIndex_ +  curBlockIndex_, min(cacheSize_, signNum_ - curBlockIndex_), 1, signName_);
+            const float* alpha = af_->getAlpha(alphaTreeId_, rootName_, cacheId);
+            memcpy(cache_, alpha, min(cacheSize_, signNum_ - curBlockIndex_) * sizeof(float));
+            af_->releaseCache(cacheId);
+        }
+        return std::move(cache_[curIndex_ % cacheSize_]);
+    }
+
+    virtual void operator++(){if(curIndex_ < signNum_)++curIndex_;}
+    //跳过指定位置，isRelative如果是false就是从起点开始计算，否则是从当前开始计算
+    virtual void skip(long size, bool isRelative = true){
+        if(isRelative){
+            curIndex_ += size;
+        } else {
+            curIndex_ = size;
+        }
+        if(curIndex_ > signNum_)
+            curIndex_ = signNum_;
+    }
+    virtual bool isValid(){
+        return curIndex_ < signNum_;
+    }
+    virtual long size(){
+        return signNum_;
+    }
+
+    int getAlphaTreeId(){
+        return alphaTreeId_;
+    }
+protected:
+    AlphaForest* af_;
+    char* rootName_;
+    char* signName_;
+    int alphaTreeId_;
+    size_t daybefore_;
+    size_t sampleSize_;
+    size_t startIndex_;
+    size_t signNum_;
+    size_t cacheSize_;
+    //当前数据块的开始位子
+    size_t curBlockIndex_;
+    size_t curIndex_ = {0};
+    float* cache_ = {nullptr};
+};
 #endif //ALPHATREE_ALPHAFOREST_H

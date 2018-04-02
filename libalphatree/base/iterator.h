@@ -26,6 +26,7 @@ class IBaseIterator : public BaseIterator<T>{
 public:
     virtual T&& operator*() { return getValue();}
     virtual T&& getValue() = 0;
+    virtual IBaseIterator<T>* clone() = 0;
 };
 
 //写数据访问器
@@ -34,6 +35,8 @@ class OBaseIterator : public BaseIterator<T>{
 public:
     virtual void setValue(T&& data) = 0;
     virtual void setValue(const T& data) = 0;
+    virtual void initialize(T&& data) = 0;
+    virtual void initialize(const T& data) = 0;
 };
 
 //有序只读数据访问器
@@ -47,17 +50,28 @@ public:
 };
 
 template <class T>
+class IOBaseIterator : public OrderIterator<T>, public OBaseIterator<T>{
+public:
+    virtual void operator++() = 0;
+    virtual void initialize(T&& data) = 0;
+    virtual void initialize(const T& data) = 0;
+    virtual void skip(long size, bool isRelative = true) = 0;
+    virtual bool isValid() = 0;
+};
+
+template <class T>
 class IteratorClient{
 public:
     virtual BaseIterator<T>* createIter() = 0;
     virtual void cleanIter(BaseIterator<T>* iter){delete iter;}
 };
 
+
 template <class T>
 class Iterator : public OrderIterator<T>{
 public:
     Iterator(IteratorClient<T>* owner):owner_(owner){
-        iter_ = owner->createIter();
+        iter_ = (IBaseIterator<T>*)owner->createIter();
     }
 
     Iterator(IBaseIterator<T> *iter):owner_(nullptr),iter_(iter){}
@@ -90,17 +104,22 @@ public:
     virtual long jumpTo(T value, long start, long length){
         return ((OrderIterator<T>*)iter_)->jumpTo(value, start, length);
     }
+
+    virtual IBaseIterator<T>* clone(){
+        return nullptr;
+    }
 protected:
     IteratorClient<T>* owner_;
     IBaseIterator<T> *iter_;
 };
 
 template <class T>
-class MemoryIterator : public OBaseIterator<T>,public OrderIterator<T>{
+class MemoryIterator : public IOBaseIterator<T>{
 public:
     MemoryIterator(T* curMemory, int size){
         curMemory_ = curMemory;
         endMemory_ = curMemory + size;
+        size_ = size;
     }
     virtual void operator++() {
         curMemory_ = curMemory_ + 1;
@@ -111,11 +130,31 @@ public:
         else
             curMemory_ = endMemory_ - this->size() + size;
     }
+
+    virtual void initialize(T&& data)
+    {
+        skip(0, false);
+        while (isValid()){
+            setValue(std::move(data));
+            skip(1);
+        }
+        skip(0, false);
+    }
+    virtual void initialize(const T& data){
+        skip(0, false);
+        while (isValid()){
+            setValue(data);
+            skip(1);
+        }
+        skip(0, false);
+    }
+
+
     virtual bool isValid(){ return curMemory_ < endMemory_;}
     virtual T&& getValue() { return std::move(*curMemory_);}
     virtual void setValue(T&& data){*curMemory_ = data;}
     virtual void setValue(const T& data){*curMemory_ = data;}
-    virtual long size(){ return endMemory_ - curMemory_;}
+    virtual long size(){ return size_;}
     virtual long jumpTo(T value, long start, long length){
         long dataNum = length;
         T* startMemory = endMemory_ - size() + start;
@@ -140,10 +179,11 @@ public:
         curMemory_ = startMemory + curId;
         return curId;
     }
-    //virtual Iterator<> clone(){ return MemoryIterator(curMemory_, size());}
+    virtual IBaseIterator<T>* clone(){ return new MemoryIterator<T>(endMemory_ - size(), size());}
 protected:
     T* curMemory_ = {nullptr};
     T* endMemory_ = {nullptr};
+    long size_;
 };
 
 template <class T>
@@ -164,10 +204,17 @@ public:
         }
         if(isValid_)
             ++(*this);
+
+        path_ = new char[strlen(path) + 1];
+        column_ = new char[strlen(column) + 1];
+        strcpy(path_, path);
+        strcpy(column_, column);
     }
 
     virtual ~CSVIterator(){
         inFile_.close();
+        delete []path_;
+        delete []column_;
     }
 
     virtual void operator++() {
@@ -190,6 +237,8 @@ public:
         return std::move(realData_);
     }
     virtual long size(){ return -1;}
+
+    virtual IBaseIterator<T>* clone(){ return new CSVIterator(path_, column_);}
 protected:
     void readData(long& data){
         data = atol(curData_.c_str());
@@ -206,6 +255,8 @@ protected:
     string curData_;
     T realData_;
     bool isValid_;
+    char* path_;
+    char* column_;
 };
 
 template <class T>
@@ -218,11 +269,16 @@ public:
         file_.read( reinterpret_cast< char* >( &realData_ ), sizeof( T ) );
         //if(start == 0)
         //cout<<path<<" "<<realData_<<endl;
+        path_ = new char[strlen(path) + 1];
+        strcpy(path_, path);
     }
 
     virtual ~BinaryRangeIterator(){
         file_.close();
+        delete []path_;
     }
+
+    virtual IBaseIterator<T>* clone(){ return new BinaryRangeIterator(path_, start_, size_);}
 
     virtual void operator++() {
         if(isValid()){
@@ -303,6 +359,7 @@ protected:
     long start_;
     long size_;
     ifstream file_;
+    char* path_;
 };
 
 template<class T>

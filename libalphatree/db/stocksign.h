@@ -28,10 +28,14 @@ public:
         //file_.read(reinterpret_cast< char* >( &curDataOffset_ ), sizeof( size_t ));
 
         size_ = allSize - preSize_;
+
+        path_ = new char[strlen(path) + 1];
+        strcpy(path_, path);
     }
 
     virtual ~BinarySignIterator(){
         file_.close();
+        delete []path_;
     }
 
     virtual void operator++() {
@@ -57,6 +61,10 @@ public:
         return std::move(curDataOffset_);
     }
     virtual long size(){ return size_;}
+
+    virtual IBaseIterator<size_t >* clone(){
+        return new BinarySignIterator(path_, dayBefore_, sampleDays_, allDays_);
+    }
 protected:
     size_t dayBefore_;
     size_t sampleDays_;
@@ -68,6 +76,7 @@ protected:
     size_t curDataOffset_;
     size_t size_;
     ifstream file_;
+    char* path_;
 };
 
 

@@ -58,6 +58,27 @@ class AlphaDB{
             return des_->stockMetas.getSize();
         }
 
+        void getCodesFlag(bool* flag, const char* codes, int stockNum){
+            struct comp{
+                bool operator()(const char* a, const char* b){
+                    return strcmp(a, b) < 0;
+                }
+            };
+            set<const char*, comp> stocks;
+            for(int i = 0; i < stockNum; ++i){
+                stocks.insert(codes);
+                codes += (strlen(codes) + 1);
+            }
+            for(int i = 0; i < des_->stockMetas.getSize(); ++i){
+                if(stocks.find(des_->stockMetas[i].code) != stocks.end()){
+                    //cout<<"match "<<des_->stockMetas[i].code<<endl;
+                    flag[i] = true;
+                } else {
+                    flag[i] = false;
+                }
+            }
+        }
+
         const char* testGetCode(int id){
             return des_->stockMetas[id].code;
         }
@@ -79,7 +100,7 @@ class AlphaDB{
         size_t getMarketCodes(const char* marketName, char* codes){
             char* curCode = codes;
             size_t codeNum = 0;
-            for(size_t i = 0; i < des_->stockMetas.getSize(); ++i){
+            for(int i = 0; i < des_->stockMetas.getSize(); ++i){
                 if(
                         (marketName != nullptr && des_->stockMetas[i].stockType == StockMeta::StockType::STOCK && strcmp(des_->stockMetas[i].marker, marketName) == 0) ||
                         (marketName == nullptr && des_->stockMetas[i].stockType == StockMeta::StockType::MARKET)){
@@ -94,7 +115,7 @@ class AlphaDB{
         size_t getIndustryCodes(const char* industryName, char* codes){
             char* curCode = codes;
             size_t codeNum = 0;
-            for(size_t i = 0; i < des_->stockMetas.getSize(); ++i){
+            for(int i = 0; i < des_->stockMetas.getSize(); ++i){
                 if(
                         (industryName != nullptr && des_->stockMetas[i].stockType == StockMeta::StockType::STOCK && strcmp(des_->stockMetas[i].industry, industryName) == 0) ||
                         (industryName == nullptr && des_->stockMetas[i].stockType == StockMeta::StockType::INDUSTRY)){
@@ -110,8 +131,8 @@ class AlphaDB{
         float* getStock(size_t dayBefore, int historyNum, int futureNum, size_t sampleNum, size_t stockNum, const char* name, const char* leafDataClass,
                         float* dst, const char* codes){
             const char* curCode = codes;
-            size_t dayNum = GET_HISTORY_SIZE(historyNum, sampleNum);
-            size_t needDay = dayBefore + dayNum;
+            int dayNum = GET_HISTORY_SIZE(historyNum, sampleNum);
+            int needDay = dayBefore + dayNum;
             if(needDay > des_->stockMetas[des_->mainStock].days || dayBefore < (size_t)-futureNum)
                 return nullptr;
 
@@ -130,8 +151,8 @@ class AlphaDB{
             return dst;
         }
 
-        size_t getSignNum(size_t dayBefore, size_t daySize, const char* signName){
-            return cache_->getSignNum(dayBefore, daySize, signName);
+        size_t getSignNum(size_t dayBefore, size_t sampleSize, const char* signName){
+            return cache_->getSignNum(dayBefore, sampleSize, signName);
         }
 
 
@@ -174,8 +195,8 @@ class AlphaDB{
                 cache_->invFill2File<T>(cache, dayBefore, daySize, des_->stockMetas[i].code, featureName, i, des_->stockMetas.getSize(), file, isWritePreData, isWriteLastData);
         }
 
-        void invFill2Sign(const float* cache, size_t daySize, const char* featureName, ofstream* file, size_t& preDayNum, size_t& preSignCnt){
-            cache_->invFill2Sign(cache, daySize, des_->stockMetas.getSize(), file, getDays(), preDayNum, preSignCnt);
+        void invFill2Sign(const float* cache, size_t daySize, const char* featureName, ofstream* file, size_t& preDayNum, size_t& preSignCnt, const bool* stockFlag = nullptr){
+            cache_->invFill2Sign(cache, daySize, des_->stockMetas.getSize(), file, getDays(), preDayNum, preSignCnt, stockFlag);
         }
 
         void testInvFill2Sign(const float* cache, const float* testCache, size_t daySize, const char* featureName, ofstream* file, size_t& preDayNum, size_t& preSignCnt){

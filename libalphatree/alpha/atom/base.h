@@ -490,7 +490,7 @@ inline void _tsMaxIndex(float *dst, const float *src, int historySize, int eleme
  * beta = sum(y) / n - alpha * sum(x) / n
  * alpha = ( n * sum( xy ) - sum( x ) * sum( y ) ) / ( n * sum( x^2 ) - sum(x) ^ 2 )
  * */
-void lstsq(const float* x, const float* y, int historySize, float& alpha, float& beta){
+void lstsq_(const float* x, const float* y, int historySize, float& alpha, float& beta){
     float sumx = 0.f;
     float sumy = 0.f;
     float sumxy = 0.f;
@@ -501,10 +501,11 @@ void lstsq(const float* x, const float* y, int historySize, float& alpha, float&
         sumxy += x[j] * y[j];
         sumxx += x[j] * x[j];
     }
-    beta = (historySize * sumxy - sumx * sumy) / (historySize * sumxx - sumx * sumx);
-    alpha = sumy / historySize - beta * sumx / historySize;
+    float tmp = (historySize * sumxx - sumx * sumx);
+    beta = abs(tmp) < 0.0001f ? 0 : (historySize * sumxy - sumx * sumy) / tmp;
+    alpha = abs(tmp) < 0.0001f ? 0 : sumy / historySize - beta * sumx / historySize;
 }
-void lstsq(float* x, float* y, int historySize, int elementSize, float* alpha, float* beta){
+void lstsq_(float* x, float* y, int historySize, int elementSize, float* alpha, float* beta){
     for(int i = 0; i < elementSize; ++i){
         float sumx = 0.f;
         float sumy = 0.f;
@@ -516,8 +517,9 @@ void lstsq(float* x, float* y, int historySize, int elementSize, float* alpha, f
             sumxy += x[j * elementSize + i] * y[j * elementSize + i];
             sumxx += x[j * elementSize + i] * x[j * elementSize + i];
         }
-        beta[i] = (historySize * sumxy - sumx * sumy) / (historySize * sumxx - sumx * sumx);
-        alpha[i] = sumy / historySize - beta[i] * sumx / historySize;
+        float tmp = (historySize * sumxx - sumx * sumx);
+        beta[i] = abs(tmp) < 0.0001f ? 0 : (historySize * sumxy - sumx * sumy) / tmp;
+        alpha[i] = abs(tmp) < 0.0001f ? 0 : sumy / historySize - beta[i] * sumx / historySize;
     }
 }
 

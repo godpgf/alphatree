@@ -641,26 +641,20 @@ void* covariance(void** pars, float coff, int historySize, int stockSize, CacheF
     float* pleft = (float*)(pars[0]);
     float* pright = (float*)(pars[1]);
 
+    memcpy(pout, pleft, historySize * stockSize * sizeof(float));
+
     for(int i = 0; i < historySize; ++i) {
-        if(pflag[i] == CacheFlag::NEED_CAL) {
-            memcpy(pout + i * stockSize, pleft + i * stockSize, stockSize * sizeof(float));
-            _mul((pout + i * stockSize), (pright + i * stockSize), stockSize);
-        }
+        _mul((pout + i * stockSize), (pright + i * stockSize), stockSize);
     }
     void *childMemory[1];
     childMemory[0] = pout;
-    sum(childMemory, coff, historySize, stockSize, pflag);
+    mean(childMemory, coff, historySize, stockSize, pflag);
+
     childMemory[0] = pleft;
-    sum(childMemory, coff, historySize, stockSize, pflag);
+    mean(childMemory, coff, historySize, stockSize, pflag);
+
     childMemory[0] = pright;
-    sum(childMemory, coff, historySize, stockSize, pflag);
-    for(int i = 0; i < historySize; ++i) {
-        if(pflag[i] == CacheFlag::NEED_CAL){
-            _div(pout + i * stockSize, roundf(coff) + 1, stockSize);
-            _div(pleft + i * stockSize, roundf(coff) + 1, stockSize);
-            _div(pright + i * stockSize, roundf(coff) + 1, stockSize);
-        }
-    }
+    mean(childMemory, coff, historySize, stockSize, pflag);
 
     for(int i = 0; i < historySize; ++i) {
         if(pflag[i] == CacheFlag::NEED_CAL) {
@@ -1120,7 +1114,50 @@ void* indneutralize(void** pars, float coff, int historySize, int stockSize, Cac
     return pars[0];
 }
 
+//线性回归
+void* lstsq(void** pars, float coff, int historySize, int stockSize, CacheFlag* pflag){
+    float* close = (float*)pars[0];
+    float* marketClose = (float*)pars[1];
+    float* alpha = (float*)pars[2];
+    float* beta = (float*)pars[3];
 
+    if(coff < 0){
+        for(int i = 0; i < historySize; ++i){
+            if(pflag[i] == CacheFlag::NEED_CAL){
+                int dayNum = min(-(int)coff, historySize - i - 1);
+                for(int j = 1; j <= dayNum; ++j){
+                    for(int k = 0; k < stockSize; ++k){
+                        beta[(i + j - 1) * stockSize + k] = close[(i + j) * stockSize + k] / max(close[i * stockSize + k], 0.0001f);
+                        alpha[(i + j - 1) * stockSize + k] = marketClose[(i + j) * stockSize + k] / max(marketClose[i * stockSize + k], 0.0001f);
+                    }
+                }
+                lstsq_(alpha + i * stockSize, beta + i * stockSize, dayNum, stockSize, alpha + i * stockSize, beta + i * stockSize);
+            }
+        }
+    } else {
+        for(int i = historySize - 1; i >= 0; --i){
+            if(pflag[i] == CacheFlag::NEED_CAL){
+                int dayNum = min(i, (int)coff);
+                for(int j = 1; j <= dayNum; ++j){
+                    for(int k = 0; k < stockSize; ++k){
+                        beta[(i - dayNum + j - 1) * stockSize + k] = close[(i - j) * stockSize + k] / max(close[i * stockSize + k], 0.0001f);
+                        alpha[(i - dayNum + j - 1) * stockSize + k] = marketClose[(i - j) * stockSize + k] / max(close[i * stockSize + k], 0.0001f);
+                    }
+                }
+                lstsq_(alpha + (i - dayNum) * stockSize, beta + (i - dayNum) * stockSize, dayNum, stockSize, alpha + i * stockSize, beta + i * stockSize);
+            }
+        }
+    }
+
+    return close;
+}
+
+void* wait(void** pars, float coff, int historySize, int stockSize, CacheFlag* pflag){
+    //等待waitValue完成返回returnValue
+    //float* waitValue = (float*)pars[0];
+    float* returnValue = (float*)pars[1];
+    return returnValue;
+}
 
 void* kd(void** pars, float coff, int historySize, int stockSize, CacheFlag* pflag) {
     float* pout = (float*)pars[0];

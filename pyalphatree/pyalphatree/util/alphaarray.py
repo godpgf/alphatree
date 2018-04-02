@@ -42,7 +42,7 @@ class AlphaArray(object):
         self.data_num = alphatree.getSignNum(day_before, sample_days, c_char_p(name)) if is_sign else sample_days
         for formula in self.formula_list:
             tmp = formula.split('=')
-            alphatree.decodeAlphatree(self.alphatree_id, tmp[0].lstrip().rstrip(), tmp[1].lstrip().rstrip())
+            alphatree.decodeAlphatree(self.alphatree_id, c_char_p(tmp[0].lstrip().rstrip()), c_char_p("" if len(tmp) == 1 else tmp[1].lstrip().rstrip()))
 
     def __del__(self):
         alphatree.releaseCache(self.cache_id)

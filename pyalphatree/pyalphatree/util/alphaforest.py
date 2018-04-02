@@ -26,13 +26,14 @@ class AlphaForest(object):
 
 
     def __del__(self):
-        alphatree.releaseAlphaforest()
+        pass
+        #alphatree.releaseAlphaforest()
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
+        alphatree.releaseAlphaforest()
 
 
     # 读取数据
@@ -51,12 +52,34 @@ class AlphaForest(object):
         self.release_cache(cache_id)
         self.release_alphatree(alphatree_id)
 
+    def cache_alpha_list(self, formula_list, name_list):
+        alphatree_id = self.create_alphatree()
+        cache_id = self.use_cache()
+        for formula in formula_list:
+            tmp = formula.split('=')
+            alphatree.decodeAlphatree(alphatree_id, c_char_p(tmp[0].lstrip().rstrip()), c_char_p("" if len(tmp) == 1 else tmp[1].lstrip().rstrip()))
+        for name in name_list:
+            alphatree.cacheAlpha(alphatree_id, cache_id, c_char_p(name))
+        self.release_cache(cache_id)
+        self.release_alphatree(alphatree_id)
+
     #将某个信号保存在文件
     def cache_sign(self, name, line):
         alphatree_id = self.create_alphatree()
         cache_id = self.use_cache()
         self.decode_alphatree(alphatree_id, name, line)
         alphatree.cacheSign(alphatree_id, cache_id, c_char_p(name))
+        self.release_cache(cache_id)
+        self.release_alphatree(alphatree_id)
+
+    #仅仅保存某些股票的信号
+    def cache_codes_sign(self, name, line, codes):
+        stock_size = len(codes)
+        self._write_codes(codes)
+        alphatree_id = self.create_alphatree()
+        cache_id = self.use_cache()
+        self.decode_alphatree(alphatree_id, name, line)
+        alphatree.cacheCodesSign(alphatree_id, cache_id, c_char_p(name), self.code_cache, stock_size)
         self.release_cache(cache_id)
         self.release_alphatree(alphatree_id)
 
@@ -67,12 +90,15 @@ class AlphaForest(object):
         stock_size = alphatree.getStockCodes(self.code_cache)
         return np.array(self._read_str_list(self.code_cache, stock_size))
 
+    def get_market_codes(self):
+        stock_size = alphatree.getMarketCodes(self.code_cache)
+        return np.array(self._read_str_list(self.code_cache, stock_size))
+
     def fill_codes(self, codes):
         self.cur_stock_size = len(codes)
         self._write_codes(codes)
 
     def process_alpha(self, line, daybefore, sample_size):
-        print line
         alphatree_id = alphatree.createAlphatree()
         alphatree.decodeAlphatree(alphatree_id, c_char_p("_process"), c_char_p(line))
         cache_id = alphatree.useCache()
