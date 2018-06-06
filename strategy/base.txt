@@ -1,3 +1,0 @@
-avg20 = mean(close, 19)
-atr14 = mean(max((high - low), max((high - delay(close, 1)), (delay(close, 1) - low))), 13)
-validflag = ((volume > 0) & ((returns < 0.09) & (atr14 > 0)))
