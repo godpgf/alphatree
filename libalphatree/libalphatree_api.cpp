@@ -3,8 +3,6 @@
 //
 
 #include "alphaforest.h"
-#include "alpharft.h"
-#include "alphagbdt.h"
 #include <iostream>
 
 using namespace std;
@@ -37,8 +35,32 @@ void csv2binary(const char *path, const char* featureName){
     AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary(path, featureName);
 }
 
-void cacheFeature(const char* featureName){
-    AlphaForest::getAlphaforest()->getAlphaDataBase()->cacheFeature(featureName);
+void cacheMiss(){
+    AlphaForest::getAlphaforest()->getAlphaDataBase()->miss2binary();
+}
+
+void cacheBoolHMM(const char* featureName, int hideStateNum, size_t seqLength, const char* codes, int codesNum, int epochNum = 8){
+    AlphaForest::getAlphaforest()->getAlphaDataBase()->boolhmm2binary(featureName, hideStateNum, seqLength, codes, codesNum, epochNum);
+}
+
+void loadFeature(const char* featureName){
+    AlphaForest::getAlphaforest()->getAlphaDataBase()->loadFeature(featureName);
+}
+
+void updateFeature(const char* featureName){
+    AlphaForest::getAlphaforest()->getAlphaDataBase()->updateFeature(featureName);
+}
+
+void releaseAllFeature(){
+    AlphaForest::getAlphaforest()->getAlphaDataBase()->releaseAllFeature();
+}
+
+void loadSign(const char* signName){
+    AlphaForest::getAlphaforest()->getAlphaDataBase()->loadSign(signName);
+}
+
+void releaseAllSign(){
+    AlphaForest::getAlphaforest()->getAlphaDataBase()->releaseAllSign();
 }
 
 int createAlphatree() {
@@ -68,6 +90,15 @@ void decodeAlphatree(int alphaTreeId, const char *rootName, const char *line) {
 
 int getStockCodes(char *codes) {
     return AlphaForest::getAlphaforest()->getAlphaDataBase()->getStockCodes(codes);
+}
+
+int getStockIds(int dayBefore, int sampleSize, const char* signName, int* dst){
+    return AlphaForest::getAlphaforest()->getAlphaDataBase()->getStockIds(dayBefore, sampleSize, signName, dst);
+}
+
+int getCode(int id, char* codes){
+    strcpy(codes, AlphaForest::getAlphaforest()->getAlphaDataBase()->getCode(id));
+    return strlen(codes);
 }
 
 int getMarketCodes(const char *marketName, char *codes) {
@@ -114,15 +145,19 @@ int getAlpha(int alphaTreeId, const char *rootName, int cacheId, float *alpha) {
     const float *res = AlphaForest::getAlphaforest()->getAlpha(alphaTreeId, rootName, cacheId);
     auto *cache = AlphaForest::getAlphaforest()->getCache(cacheId);
     int dataSize = cache->getAlphaDays() * cache->stockSize;
-    float a = 0;
+    /*float a = 0;
     for(int i = 0; i < dataSize; ++i){
         a += res[i];
     }
     for(int i = 0; i < dataSize; ++i){
         alpha[i] = 0;
-    }
+    }*/
     memcpy(alpha, res, dataSize * sizeof(float));
     return dataSize;
+}
+
+void synchroAlpha(int alphaTreeId, int cacheId){
+    AlphaForest::getAlphaforest()->synchroAlpha(alphaTreeId, cacheId);
 }
 
 void getAlphaSum(int alphaTreeId, const char *rootName, int cacheId, float* alpha){
@@ -132,78 +167,6 @@ void getAlphaSum(int alphaTreeId, const char *rootName, int cacheId, float* alph
 
 void getAlphaSmooth(int alphaTreeId, const char *rootName, int cacheId, int smoothNum, float* smooth){
     return AlphaForest::getAlphaforest()->getAlphaSmooth(alphaTreeId, rootName, cacheId, smoothNum, smooth);
-}
-
-//机器学习----------------------------------------------------------------------------------
-void initializeAlphaRFT(const char* alphatreeList, int alphatreeNum){
-    AlphaRFT::initialize(AlphaForest::getAlphaforest(), alphatreeList, alphatreeNum);
-}
-
-void releaseAlphaRFT(){
-    AlphaRFT::release();
-}
-
-void trainAlphaRFT(int daybefore, int sampleSize, int pruneDaybefore, int pruneSampleSize,const char* target, const char* signName,
-                float gamma, float lambda, float minWeight = 1024, int epochNum = 30000,
-                bool isConsiderRisk = false, int splitNum = 64, int cacheSize = 4096,
-                const char* lossFunName = "binary:logistic", int epochPerGC = 4096, float gcThreshold = 0.06f,
-                float corrOtherPercent = 0.32f, float corrAllPercent = 0.64f, float lr = 0.1f, float step = 0.8f, float tiredCoff = 0.016
-){
-    AlphaRFT::getAlphaRFT()->train(daybefore, sampleSize, pruneDaybefore, pruneSampleSize, target, signName, gamma, lambda, minWeight, epochNum, isConsiderRisk, splitNum, cacheSize, lossFunName, epochPerGC, gcThreshold, corrOtherPercent, corrAllPercent, lr, step, tiredCoff);
-}
-
-void evalAlphaRFT(int daybefore, int sampleSize, const char* target, const char* signName, int cacheSize){
-    AlphaRFT::getAlphaRFT()->eval(daybefore, sampleSize, target, signName, cacheSize);
-}
-
-void saveRFTModel(const char* path){
-    AlphaRFT::getAlphaRFT()->saveModel(path);
-}
-
-void loadRFTModel(const char* path){
-    AlphaRFT::getAlphaRFT()->loadModel(path);
-}
-
-void cleanAlphaRFT(float threshold, bool isConsiderRisk){
-    AlphaRFT::getAlphaRFT()->cleanTree(threshold, isConsiderRisk);
-}
-
-int alphaRFT2String(char* pout, bool isConsiderRisk){
-    return AlphaRFT::getAlphaRFT()->tostring(pout, isConsiderRisk);
-}
-
-void predAlphaRFT(int daybefore, float* predOut, const char *codes, int stockSize, bool isConsiderRisk){
-    AlphaRFT::getAlphaRFT()->pred(daybefore, predOut, codes, stockSize, isConsiderRisk);
-}
-
-
-void initializeAlphaGBDT(const char* alphatreeList, int alphatreeNum, float gamma, float lambda, int threadNum, const char* lossFunName = "binary:logistic") {
-    AlphaGBDT::initialize(AlphaForest::getAlphaforest(), alphatreeList, alphatreeNum, gamma, lambda, threadNum, lossFunName);
-}
-
-void releaseAlphaGBDT(){
-    AlphaGBDT::release();
-}
-
-void trainAlphaGBDT(int daybefore, int sampleSize, const char* target, const char* signName,
-                    int barSize, float minWeight, int maxDepth, int boostNum, float boostWeightScale, int cacheSize){
-    AlphaGBDT::getAlphaGBDT()->train(daybefore, sampleSize, target, signName, barSize, minWeight, maxDepth, boostNum, boostWeightScale, cacheSize);
-}
-
-void predAlphaGBDT(int daybefore, int sampleSize, const char* signName, float* predOut, int cacheSize){
-    AlphaGBDT::getAlphaGBDT()->pred(daybefore, sampleSize, signName, predOut, cacheSize);
-}
-
-void saveGBDTModel(const char* path){
-    AlphaGBDT::getAlphaGBDT()->saveModel(path);
-}
-
-void loadGBDTModel(const char* path){
-    AlphaGBDT::getAlphaGBDT()->loadModel(path);
-}
-
-int alphaGBDT2String(char* pout){
-    return AlphaGBDT::getAlphaGBDT()->tostring(pout);
 }
 
 }
