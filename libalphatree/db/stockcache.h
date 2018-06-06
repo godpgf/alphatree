@@ -8,32 +8,66 @@
 #include "../base/hashmap.h"
 #include "stockfeature.h"
 #include "stocksign.h"
+#include "../hmm/eventhmm.h"
 #include <map>
-
 
 class StockCache{
 public:
-    StockCache(const char* path, StockDes* des):path_(path), des_(des){
-
+    StockCache(const char* path, StockDes* des): des_(des){
+        path_ = new char[strlen(path) + 1];
+        strcpy(path_, path);
     }
 
     virtual ~StockCache(){
+        releaseFeatures();
+        releaseSigns();
+        delete []path_;
+    }
+
+    virtual void releaseFeatures(){
         if(date_)
             delete date_;
+        date_ = nullptr;
+        if(miss_)
+            delete miss_;
+        miss_ = nullptr;
         for(int i = 0 ;i < feature_.getSize(); ++i){
             delete feature_[i];
         }
+        feature_.clear();
     }
 
-    void cacheFeature(const char* featureName){
+    virtual void releaseSigns(){
+        for(int i = 0; i < feature_.getSize(); ++i){
+            delete sign_[i];
+        }
+        sign_.clear();
+    }
+
+    void loadFeature(const char* featureName){
         if(strcmp(featureName,"date") == 0){
             date_ = new StockFeature<long>(feature2path_(featureName).c_str(), des_->offset);
-        } else {
+        } else if(strcmp(featureName, "miss") == 0){
+            miss_ = new StockFeature<int>(feature2path_(featureName).c_str(), des_->offset);
+        }else{
             feature_[featureName] = new StockFeature<float>(feature2path_(featureName).c_str(), des_->offset);
         }
     }
 
-    void cacheSign(const char* signName){
+    void updateFeature(const char* featureName){
+        if(strcmp(featureName,"date") == 0){
+            delete date_;
+            date_ = new StockFeature<long>(feature2path_(featureName).c_str(), des_->offset);
+        } else if(strcmp(featureName, "miss") == 0){
+            delete miss_;
+            miss_ = new StockFeature<int>(feature2path_(featureName).c_str(), des_->offset);
+        }else{
+            delete feature_[featureName];
+            feature_[featureName] = new StockFeature<float>(feature2path_(featureName).c_str(), des_->offset);
+        }
+    }
+
+    void loadSign(const char* signName){
         sign_[signName] = new StockSign(feature2path_(signName).c_str(), des_->stockMetas[des_->mainStock].days, true);
     }
 
@@ -45,6 +79,25 @@ public:
 
     void releaseCacheFile(ofstream * file){
         file->close();
+    }
+
+    size_t getStockIds(size_t dayBefore, size_t sampleSize, const char* signName, int* dst){
+        size_t allDays = des_->stockMetas[des_->mainStock].days;
+        StockSign* ss = nullptr;
+        auto ** pSignHashNameNode = sign_.find(signName);
+        if(*pSignHashNameNode == nullptr){
+            ss = new StockSign(feature2path_(signName).c_str(), allDays, false);
+        } else {
+            ss = (*pSignHashNameNode)->value;
+        }
+        auto* iter = ss->createIter(dayBefore, sampleSize);
+        size_t cnt = 0;
+        while (iter->isValid()){
+            dst[cnt++] = des_->offset2index(**iter);
+            iter->skip(1);
+        }
+        delete iter;
+        return cnt;
     }
 
     size_t getSignNum(size_t dayBefore, size_t sampleSize, const char* signName){
@@ -76,16 +129,6 @@ public:
             dst[index] = value;
         });
     }
-
-//    void fill(Iterator<float>& target,const float* sign, size_t dayBefore, size_t daySize, const char* code, const char* featureName, size_t offset, size_t stockNum){
-//        Iterator<float>* ptarget = &target;
-//        fill_(dayBefore, daySize, code, featureName, offset, stockNum, [ptarget, sign](int index, float value){
-//           if(sign[index] > 0){
-//               *(*ptarget) = value;
-//               ++(*ptarget);
-//           }
-//        });
-//    }
 
 
     template<class T>
@@ -120,7 +163,7 @@ public:
             return;
         if(subSkip < 0){
             if(*curDateIter != *mainDateIter){
-                cout<<"不可能\n";
+                cout<<"缓存错误\n";
                 throw "不可能！";
             }
 
@@ -172,12 +215,13 @@ public:
         }
     }
 
+
     void invFill2Sign(const float* cache, size_t daySize, size_t stockNum, ofstream* file, size_t allDayNum, size_t& preDayNum, size_t& preSignCnt, const bool* stockFlag = nullptr){
         //cout<<"ssss1\n";
         StockFeature<long> *date = date_ ? date_ : new StockFeature<long>(feature2path_("date").c_str());
         auto mainStockMeta = des_->stockMetas[des_->mainStock];
         Iterator<long> mainDateIter(date->createIter(mainStockMeta.offset, mainStockMeta.days));
-        Iterator<long> allDateIter(date->createIter(0, des_->stockMetas[des_->stockMetas.getSize()-1].offset + des_->stockMetas[des_->stockMetas.getSize()-1].days));
+        Iterator<long> allDateIter(date->createIter(0, des_->offset));
 
         size_t lastId = 0;
         //包括今天在内，之前有多少信号
@@ -245,7 +289,8 @@ public:
                 //cout<<(*pStock2Offset)[stockIndex]<<endl;
                 (*pStock2LastDate)[stockIndex] = date;
             } else {
-                cout<<stockIndex<<" "<<date<<" "<<"我擦，居然没找到!\n";
+
+                cout<<stockIndex<<" "<<des->stockMetas[stockIndex].code<<" "<<date<<" "<<"我擦，居然没找到!\n";
             }
 
         });
@@ -269,7 +314,7 @@ public:
         StockFeature<long> *date = date_ ? date_ : new StockFeature<long>(feature2path_("date").c_str());
         auto mainStockMeta = des_->stockMetas[des_->mainStock];
         Iterator<long> mainDateIter(date->createIter(mainStockMeta.offset, mainStockMeta.days));
-        Iterator<long> allDateIter(date->createIter(0, des_->stockMetas[des_->stockMetas.getSize()-1].offset + des_->stockMetas[des_->stockMetas.getSize()-1].days));
+        Iterator<long> allDateIter(date->createIter(0, des_->offset));
 
         size_t lastId = 0;
         //包括今天在内，之前有多少信号
@@ -377,9 +422,10 @@ public:
 //    }
 
 protected:
-    const char* path_;
+    char* path_;
     StockDes* des_;
     StockFeature<long>* date_ = nullptr;
+    StockFeature<int>* miss_ = nullptr;
     HashMap<StockFeature<float>*> feature_;
     HashMap<StockSign*> sign_;
 
@@ -387,12 +433,16 @@ protected:
     template <class F>
     void fill_(size_t dayBefore, size_t daySize, int historyDays, int futureDays, size_t startIndex, size_t signNum, const char* signName, const char* featureName, F&& f){
         StockFeature<float> *ft = nullptr;
+
         auto** pHashNameNode = feature_.find(featureName);
         if(*pHashNameNode == nullptr){
             ft = new StockFeature<float>(feature2path_(featureName).c_str());
         } else {
             ft = (*pHashNameNode)->value;
         }
+
+        //必须有缺失数据描述才可以读取信号特征
+        StockFeature<int> *ms = miss_ == nullptr ? new StockFeature<int>(feature2path_("miss").c_str()) : miss_;
 
         size_t allDays = des_->stockMetas[des_->mainStock].days;
         StockSign* ss = nullptr;
@@ -403,7 +453,8 @@ protected:
             ss = (*pSignHashNameNode)->value;
         }
 
-        Iterator<float> curFeatureIter(ft->createIter(0, des_->stockMetas[des_->stockMetas.getSize()-1].offset + des_->stockMetas[des_->stockMetas.getSize()-1].days));
+        Iterator<float> curFeatureIter(ft->createIter(0, des_->offset));
+        Iterator<int> curMissIter(ms->createIter(0, des_->offset));
         Iterator<size_t> curSignIter(ss->createIter(dayBefore, daySize));
         size_t allSize = curSignIter.size();
         if(allSize < startIndex + signNum){
@@ -415,21 +466,84 @@ protected:
         curSignIter.skip(startIndex);
         while (curSignIter.isValid() && curIndex < signNum){
             size_t offset = *curSignIter;
-            curFeatureIter.skip(offset - (historyDays - 1), false);
-            ++curSignIter;
-            for(int i = 0; i < historyDays - futureDays; ++i){
-//                if(*curFeatureIter <= 0)
-//                    cout<<*curFeatureIter<<endl;
-                //cout<<i * signNum + curIndex<<" "<<*curFeatureIter<<endl;
-                f(i * signNum + curIndex, *curFeatureIter);
-                ++curFeatureIter;
+            curMissIter.skip(offset, false);
+            curFeatureIter.skip(offset, false);
+
+            int missFlag = *curMissIter;
+            //在信号发生当天之前，还需要signBeforeday这么多天的数据
+            int signBeforeday = historyDays - 1;
+            while (signBeforeday > 0 && missFlag != 0){
+                if(missFlag > 0){
+                    if(missFlag >= signBeforeday){
+                        offset -= signBeforeday;
+                        signBeforeday = 0;
+                    } else {
+                        offset -= missFlag;
+                        signBeforeday -= missFlag;
+                    }
+
+                } else{
+                    if(1 - missFlag > signBeforeday){
+                        break;
+                    } else {
+                        offset -= 1;
+                        signBeforeday -= (1 - missFlag);
+                    }
+                }
+                curMissIter.skip(offset, false);
+                curFeatureIter.skip(offset, false);
+                missFlag = *curMissIter;
             }
+
+            //先填写历史数据,迭代器最后
+            if(missFlag == 0){
+                //没有历史数据，用第一条数据补上
+                for(int i = 0; i <= signBeforeday; ++i){
+                    f(i * signNum + curIndex, *curFeatureIter);
+                }
+            } else if(missFlag < 0){
+                if(1 - missFlag <= signBeforeday){
+                    cout<<"miss文件有问题\n";
+                    throw "err";
+                }
+                curFeatureIter.skip(offset-1, false);
+                for(int i = 0; i < signBeforeday; ++i){
+                    f(i * signNum + curIndex, *curFeatureIter);
+                }
+                ++curFeatureIter;
+                f(signBeforeday * signNum + curIndex, *curFeatureIter);
+            } else {
+                f(signBeforeday * signNum + curIndex, *curFeatureIter);
+            }
+
+            //往后填写剩下的数据
+            int dayindex = signBeforeday + 1;
+            while (dayindex < historyDays - futureDays){
+                //定位当前的miss迭代器，方便得到当前缺失天数
+                ++curMissIter;
+                if(*curMissIter > 0){
+                    ++curFeatureIter;
+                } else {
+                    int missDays = -*curMissIter;
+                    for(int i = 0; i < missDays; ++i){
+                        f((dayindex + i)*signNum + curIndex, *curFeatureIter);
+                    }
+                    dayindex += missDays;
+                    ++curFeatureIter;
+                }
+                f(dayindex * signNum + curIndex, *curFeatureIter);
+                ++dayindex;
+            }
+
             ++curIndex;
+            ++curSignIter;
         }
         if(!ft->isCache())
             delete ft;
         if(!ss->isCache())
             delete ss;
+        if(!ms->isCache())
+            delete ms;
     }
 
     template <class F>
@@ -471,6 +585,9 @@ protected:
 
             if(curDateIter.isValid()){
                 if(*curDateIter < *mainDateIter){
+                    cout<<code<<endl;
+                    cout<<curStockMeta.offset<<" "<<curStockMeta.days<<endl;
+                    cout<<*curDateIter<<" "<<*mainDateIter<<endl;
                     cout<<"主要的股票有的数据丢失，这是不允许的！";
                     throw "main stock loss date!";
                 } else {
@@ -518,6 +635,172 @@ protected:
         return path;
     }
 public:
+    //将缺失数据描述写入文件，如果当前数据前n天的数据都是完整的，文件中特征就是n，如果缺失了m天，特征就是-m。如果是首个元素就是0
+    void miss2file(){
+        StockFeature<long> *date = date_ ? date_ : new StockFeature<long>(feature2path_("date").c_str());
+        auto mainStockMeta = des_->stockMetas[des_->mainStock];
+        Iterator<long> mainDateIter(date->createIter(mainStockMeta.offset, mainStockMeta.days));
+        Iterator<long> allDateIter(date->createIter(0, des_->offset));
+        ofstream file;
+        file.open(feature2path_("miss"), ios::binary | ios::out);
+        for(int i = 0; i < des_->stockMetas.getSize(); ++i){
+            auto meta = des_->stockMetas[i];
+            long start = meta.offset;
+            long end = start + meta.days;
+            int fullDataNum = 0;
+            file.write(reinterpret_cast< char* >( &fullDataNum ), sizeof( int ));
+            allDateIter.skip(start, false);
+            long lastDate = *allDateIter;
+            int mainOffset = mainDateIter.jumpTo(lastDate);
+            ++mainOffset;
+            if(mainOffset > 0)
+                ++mainDateIter;
+            if(*mainDateIter != lastDate){
+                cout<<"保存miss文件错误\n";
+                throw "err";
+            }
+
+            for(int j = 1; j < meta.days; ++j){
+                ++allDateIter;
+                ++mainDateIter;
+                ++mainOffset;
+                if(*mainDateIter == *allDateIter){
+                    ++fullDataNum;
+                    file.write(reinterpret_cast< char* >( &fullDataNum ), sizeof( int ));
+                } else {
+                    fullDataNum = 0;
+                    int skip = mainDateIter.jumpTo(*allDateIter, mainOffset, mainDateIter.size() - mainOffset);
+                    if(skip < 0){
+                        cout<<"保存miss文件错误\n";
+                        throw "err";
+                    }
+                    ++skip;
+                    ++mainDateIter;
+                    if(*mainDateIter != *allDateIter){
+                        cout<<"不可能\n";
+                        throw "err";
+                    }
+                    mainOffset += skip;
+                    skip = -skip;
+                    file.write(reinterpret_cast< char* >( &skip ), sizeof( int ));
+                }
+            }
+        }
+        file.close();
+    }
+
+    void boolhmm2binary(const char* featureName, int hideStateNum, size_t seqLength, bool* stockFlag, int epochNum = 8){
+        StockFeature<float> *ft = nullptr;
+        auto** pHashNameNode = feature_.find(featureName);
+        if(*pHashNameNode == nullptr){
+            ft = new StockFeature<float>(feature2path_(featureName).c_str());
+        } else {
+            ft = (*pHashNameNode)->value;
+        }
+
+        ofstream convertPercentFile;
+        string hmmConvName = string(featureName) + "_hmm_conv";
+        convertPercentFile.open(feature2path_(hmmConvName.c_str()), ios::binary | ios::out);
+
+        ofstream* hidePercentFiles = new ofstream[hideStateNum];
+        for(int i = 0; i < hideStateNum; ++i){
+            string hmmHideName = string(featureName) + "_hmm_" + to_string(i);
+            hidePercentFiles[i].open(feature2path_(hmmHideName.c_str()), ios::binary | ios::out);
+        }
+
+        EventHMM hmm(hideStateNum, 2, seqLength);
+
+        float* o = new float[seqLength];
+        float* curEvent = new float[hideStateNum];
+        float* curEventArgSortIndex = new float[hideStateNum];
+
+        int useBitSize = 64 / (hideStateNum * hideStateNum);//确定用多少bit去存转移概率
+        int useBitValue = (int)powf(2, useBitSize) - 1;
+
+        for(int i = 0; i < des_->stockMetas.getSize(); ++i){
+            if(stockFlag && stockFlag[i]){
+                Iterator<float> curIter(ft->createIter(des_->stockMetas[i].offset, des_->stockMetas[i].days));
+                long percentBatch = 0;
+                float hidePercent = 0;
+                int curDateIndex = 0;
+
+                //写入先前空缺的数据
+                while (curDateIndex < seqLength - 1 && curDateIndex < curIter.size()){
+                    o[curDateIndex++] = (*curIter) > 0 ? 1 : 0;
+                    ++curIter;
+                    convertPercentFile.write(reinterpret_cast< char* >( &percentBatch ), sizeof( long ));
+                    for(int j = 0; j < hideStateNum; ++j){
+                        hidePercentFiles[j].write(reinterpret_cast< char* >( &hidePercent ), sizeof( float ));
+                    }
+                }
+
+                //计算hmm
+                while (curDateIndex < curIter.size()){
+                    o[seqLength-1] = (*curIter) > 0 ? 1 : 0;
+                    ++curIter;
+                    ++curDateIndex;
+                    DMatrix<float> out(seqLength, 1, o);
+                    hmm.train(&out, epochNum);
+                    //写入结果
+                    for(int j = 0; j < hideStateNum; ++j){
+                        //上涨概率
+                        curEvent[j] = hmm.getB(j, 1);
+                    }
+                    //写入隐藏状态的概率
+                    _ranksort(curEventArgSortIndex, curEvent, hideStateNum);
+
+                    /*{
+                        for(int j = 0; j < hideStateNum; ++j){
+                            cout<<curEvent[j]<<" ";
+                        }
+                        cout<<endl;
+
+                        for(int j = 0; j < hideStateNum; ++j){
+                            cout<<curEventArgSortIndex[j]<<" ";
+                        }
+                        cout<<endl;
+                    }*/
+
+                    for(int j = 0; j < hideStateNum; ++j){
+                        hidePercent = hmm.getGamma((int)curEventArgSortIndex[j], seqLength-1);
+                        hidePercentFiles[j].write(reinterpret_cast< char* >( &hidePercent ), sizeof( float ));
+                    }
+                    //写入隐藏状态的转移概率
+                    percentBatch = 0;
+                    for(int j = 0; j < hideStateNum; ++j){
+                        for(int k = 0; k < hideStateNum; ++k){
+                            int v = hmm.getA((int)curEventArgSortIndex[j], (int)curEventArgSortIndex[k]) * useBitValue;
+                            percentBatch += v;
+                            percentBatch = (percentBatch << useBitSize);
+                        }
+                    }
+                    convertPercentFile.write(reinterpret_cast< char* >( &percentBatch ), sizeof( long ));
+
+                    for(int j = 0; j < seqLength - 1; ++j){
+                        o[j] = o[j + 1];
+                    }
+                }
+            } else {
+                for(int j = 0; j < hideStateNum; ++j){
+                    hidePercentFiles[j].seekp(des_->stockMetas[i].days * sizeof( float ), ios::cur);
+                }
+                convertPercentFile.seekp(des_->stockMetas[i].days * sizeof( long ), ios::cur);
+            }
+
+        }
+
+        delete []o;
+        delete []curEvent;
+        delete []curEventArgSortIndex;
+        if(ft && !ft->isCache())
+            delete ft;
+
+        convertPercentFile.close();
+        for(int i = 0; i < hideStateNum; ++i)
+            hidePercentFiles[i].close();
+        delete []hidePercentFiles;
+    }
+
     template <class T>
     static void csv2feature(const char* path, const char* featureName, StockDes* des){
         ofstream file;

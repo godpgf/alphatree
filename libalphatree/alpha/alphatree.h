@@ -100,8 +100,8 @@ public:
         }
 
         size_t scs = (GET_HISTORY_SIZE(historyDays, outputDays) - futureDays) * stockSize * sizeof(float) + ATTACH_NODE_MEMORY * sizeof(float);
-        if(scs > nodeCacheSize)
-            nodeCacheSize = scs;
+        if(scs > cacheSizePerNode)
+            cacheSizePerNode = scs;
         /*if (scs > NodeCache::cacheSize) {
             DCache<NodeCache>::release(result);
             NodeCache::cacheSize = scs;
@@ -187,7 +187,7 @@ protected:
 
 class AlphaTree : public BaseAlphaTree {
 public:
-    AlphaTree() : BaseAlphaTree(), maxHistoryDay_(NONE) {}
+    AlphaTree() : BaseAlphaTree(), maxHistoryDay_(-1),maxFutureDay_(1) {}
 
     virtual void clean() {
         maxHistoryDay_ = -1;
@@ -223,8 +223,6 @@ public:
     //计算alpha并返回,注意返回的是全部数据,要想使用必须加上偏移res + (int)((alphaTree->getHistoryDays() - 1) * stockSize
     void calAlpha(AlphaDB *alphaDataBase, size_t dayBefore, size_t sampleSize, const char *codes, size_t stockSize,
                   AlphaCache *cache, ThreadPool *threadPool) {
-        maxHistoryDay_ = -1;
-        maxFutureDay_ = 1;
         //如果缓存空间不够,就重新申请内存
         cache->initialize(nodeList_.getSize(), getMaxHistoryDays(), getMaxFutureDays(), dayBefore, sampleSize, codes, stockSize);
         //重新标记所有节点
@@ -234,8 +232,6 @@ public:
 
     //计算信号发生时的alpha，返还信号数量。sampleSize是信号发生的取样期，signHistoryDays是读取信号发生时signHistoryDays天的数据
     void calAlpha(AlphaDB *alphaDataBase, size_t dayBefore, size_t sampleSize, size_t startIndex, size_t signNum, size_t signHistoryDays, const char *signName, AlphaCache *cache, ThreadPool *threadPool){
-        maxHistoryDay_ = -1;
-        maxFutureDay_ = 1;
 //        cout<<"start init\n";
         cache->initialize(nodeList_.getSize(), getMaxHistoryDays(), getMaxFutureDays(), dayBefore, sampleSize, startIndex, signNum, signHistoryDays, signName);
 //        cout<<"finish init\n";
@@ -250,8 +246,6 @@ public:
     //将计算结果存在文件中
     template <class T>
     void cacheAlpha(AlphaDB *alphaDataBase, AlphaCache *cache, ThreadPool *threadPool, const char* featureName) {
-        maxHistoryDay_ = -1;
-        maxFutureDay_ = 1;
         int maxHistoryDays = getMaxHistoryDays();
         int maxFutureDays = getMaxFutureDays();
         //cout<<"start feature a "<<featureName<<endl;
@@ -272,6 +266,7 @@ public:
             flagAllNode(cache);
             calAlpha(alphaDataBase, cache, threadPool);
 
+            synchroAlpha(cache);
             //写入计算结果
             const float* alpha = getAlpha(featureName, cache);
 
@@ -292,8 +287,6 @@ public:
 
     //将信号存在文件中
     void cacheSign(AlphaDB *alphaDataBase, AlphaCache *cache, ThreadPool *threadPool, const char* featureName, const char* codes = nullptr, int codesNum = 0){
-        maxHistoryDay_ = -1;
-        maxFutureDay_ = 1;
         size_t maxHistoryDays = getMaxHistoryDays();
         size_t maxFutureDays = getMaxFutureDays();
         size_t days = alphaDataBase->getDays();
@@ -342,8 +335,6 @@ public:
 
     //test---------------------------------------
     void testCacheSign(AlphaDB *alphaDataBase, AlphaCache *cache, ThreadPool *threadPool, const char* featureName, const char* testFeatureName){
-        maxHistoryDay_ = -1;
-        maxFutureDay_ = 1;
         size_t maxHistoryDays = getMaxHistoryDays();
         size_t maxFutureDays = getMaxFutureDays();
         int days = alphaDataBase->getDays();
@@ -375,9 +366,9 @@ public:
                 for(size_t k = 0; k < stockSize; ++k){
                     if(alpha[l * stockSize + k] > 0){
                         if(testAlpha[l * stockSize + k] < 0)
-                            cout<<alpha[l * stockSize + k]<<" "<<alphaDataBase->testGetCode(k)<<" "<<testAlpha[l * stockSize + k]<<endl;
+                            cout<<alpha[l * stockSize + k]<<" "<<alphaDataBase->getCode(k)<<" "<<testAlpha[l * stockSize + k]<<endl;
                         if(testAlpha[(l-1) * stockSize + k] < 0)
-                            cout<<alpha[l * stockSize + k]<<" "<<alphaDataBase->testGetCode(k)<<" "<<testAlpha[(l-1) * stockSize + k]<<endl;
+                            cout<<alpha[l * stockSize + k]<<" "<<alphaDataBase->getCode(k)<<" "<<testAlpha[(l-1) * stockSize + k]<<endl;
                     }
                 }
             }
@@ -402,6 +393,8 @@ public:
         }
         calAlpha(alphaDataBase, dayBefore, sampleSize, codes, stockSize, cache, threadPool);
         float bestRes = getAlpha(rootName, cache)[0];
+        if(coffList_.getSize() == 0)
+            return bestRes;
         //cout<<"start "<<bestRes<<endl;
         RandomChoose rc = RandomChoose(2 * coffList_.getSize());
 
@@ -441,6 +434,8 @@ public:
 
             }
 
+            maxFutureDay_ = 1;
+            maxHistoryDay_ = -1;
             calAlpha(alphaDataBase, dayBefore, sampleSize, codes, stockSize, cache, threadPool);
             float res = getAlpha(rootName, cache)[0];
             if(res > bestRes){
@@ -473,6 +468,10 @@ public:
         return bestRes;
     }
 
+    void synchroAlpha(AlphaCache *cache){
+        for(auto i = 0; i < subtreeList_.getSize(); ++i)
+            getAlpha(subtreeList_[i].rootId, cache);
+    }
 
     const float *getAlpha(const char *rootName, AlphaCache *cache) {
         return getAlpha(getSubtreeRootId(rootName), cache);
@@ -585,7 +584,7 @@ protected:
     }
 
     int cast(AlphaDB *alphaDataBase, int nodeId, AlphaCache *cache) {
-        //cout<<"start "<<nodeList_[nodeId].getName()<<endl;
+        //cout<<"start "<<nodeId<<" "<<nodeList_[nodeId].getName()<<endl;
         int dateSize = GET_HISTORY_SIZE(getMaxHistoryDays(), cache->getAlphaDays()) - getMaxFutureDays();
         //float* curResultCache = getNodeCacheMemory(nodeId, dateSize, cache->stockSize, cache->result);
         //bool* curResultFlag = cache->flagRes[nodeId].get();
@@ -619,7 +618,6 @@ protected:
                                             cache->codes);
                 }
             }
-
 
         } else {
             int childMemoryIds[MAX_CHILD_NUM];
@@ -667,7 +665,7 @@ protected:
             if (curDayFlagCache[i] == CacheFlag::NEED_CAL)
                 curDayFlagCache[i] = CacheFlag::HAS_CAL;
         }
-        //cout<<nodeList_[nodeId].getName()<<" out "<<outMemoryId<<endl;
+        //cout<<nodeId<<" "<<nodeList_[nodeId].getName()<<" out "<<outMemoryId<<endl;
         return outMemoryId;
     }
 
@@ -751,7 +749,6 @@ protected:
         }
 
     }
-
 
     int maxHistoryDay_;
     int maxFutureDay_;

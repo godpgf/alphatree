@@ -12,22 +12,20 @@ template <class T>
 class IVector: public IteratorClient<T>{
 public:
     //virtual Iterator<T>&& iter(){ return Iterator<T>(this);};
-    virtual const char* getName() = 0;
     virtual T& operator[](int index) = 0;
     virtual size_t getSize() = 0;
     virtual void initialize(T data) = 0;
+    virtual ~IVector(){}
 };
 
 template <class T>
 class Vector : public IVector<T>{
 public:
-    Vector(const char* name, size_t size):isLocalMemory_(true), size_(size){
+    Vector(size_t size):isLocalMemory_(true), size_(size){
         memory_ = new T[size_];
-        strcpy(name_, name);
     }
 
-    Vector(const char* name, T* memory, size_t size):isLocalMemory_(false), memory_(memory), size_(size){
-        strcpy(name_, name);
+    Vector(T* memory, size_t size):isLocalMemory_(false), memory_(memory), size_(size){
     }
 
     virtual void initialize(T data){
@@ -40,11 +38,9 @@ public:
             delete []memory_;
     }
 
-    virtual const char* getName(){
-        return name_;
-    }
-
     virtual T& operator[](int index){
+        if(index < 0)
+            index = ((int)size_) + index;
         return memory_[index];
     }
 
@@ -58,7 +54,6 @@ public:
 protected:
 
     bool isLocalMemory_ = {false};
-    char name_[MAX_VECTOR_NAME_LEN];
     T* memory_ = {nullptr};
     size_t size_ = {0};
 };

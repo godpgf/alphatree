@@ -82,6 +82,7 @@ void* mean(void** pars, float coff, int historySize, int stockSize, CacheFlag* p
     return pout;
 }
 
+
 void* lerp(void** pars, float coff, int historySize, int stockSize, CacheFlag* pflag){
     float* pleft = (float*)pars[0];
     float* pright = (float*)pars[1];
@@ -591,7 +592,7 @@ void* correlation(void** pars, float coff, int historySize, int stockSize, Cache
                     float xDiff2 = (sumSqrLeft - meanLeft*meanLeft*(d+1));
                     float yDiff2 = (sumSqrRight - meanRight*meanRight*(d+1));
                     if(xDiff2 < 0.000000001 || yDiff2 < 0.000000001)
-                        pout[i * stockSize + j] = 1;
+                        pout[i * stockSize + j] = 0;
                     else
                         pout[i * stockSize + j] = cov / sqrtf(xDiff2) / sqrtf(yDiff2);
                 }
@@ -626,7 +627,7 @@ void* correlation(void** pars, float coff, int historySize, int stockSize, Cache
                     float xDiff2 = (sumSqrLeft - meanLeft*meanLeft*(-d+1));
                     float yDiff2 = (sumSqrRight - meanRight*meanRight*(-d+1));
                     if(xDiff2 < 0.000000001 || yDiff2 < 0.000000001)
-                        pout[i * stockSize + j] = 1;
+                        pout[i * stockSize + j] = 0;
                     else
                         pout[i * stockSize + j] = cov / sqrtf(xDiff2) / sqrtf(yDiff2);
                 }
@@ -831,7 +832,9 @@ void* tsArgMin(void** pars, float coff, int historySize, int stockSize, CacheFla
     float* pout = (float*)(pars[1]);
     float* pleft = (float*)(pars[0]);
     int d = (int)roundf(coff);
+    //cout<<"s\n";
     _tsMinIndex(pout, pleft, historySize, stockSize, d);
+    //cout<<"e\n";
     for(int i = 0; i < historySize; ++i){
         for(int j = 0; j < stockSize; ++j){
             int minId = (int)pout[i * stockSize + j];
@@ -846,7 +849,6 @@ void* tsArgMin(void** pars, float coff, int historySize, int stockSize, CacheFla
                 else
                     pout[i * stockSize + j] = -d;
             }
-
         }
     }
     return pout;
@@ -901,6 +903,21 @@ void* abs(void** pars, float coff, int historySize, int stockSize, CacheFlag* pf
         //else {
         //    memset(pout + i * stockSize, 0, stockSize * sizeof(float));
         //}
+    }
+
+    return pout;
+}
+
+void* clamp(void** pars, float coff, int historySize, int stockSize, CacheFlag* pflag){
+    float* pout = (float*)(pars[0]);
+    float* pleft = (float*)(pars[0]);
+    for(int i = 0; i < historySize; ++i){
+        if(pflag[i] == CacheFlag::NEED_CAL) {
+            _clamp(pout + i * stockSize, pleft + i * stockSize, stockSize);
+        }
+        else {
+            memset(pout + i * stockSize, 0, stockSize * sizeof(float));
+        }
     }
 
     return pout;
@@ -985,6 +1002,21 @@ void* moreCond(void** pars, float coff, int historySize, int stockSize, CacheFla
     return reduceFrom(pars, 1, historySize, stockSize, pflag);
 }
 
+void* equalCond(void** pars, float coff, int historySize, int stockSize, CacheFlag* pflag){
+    float* pout = (float*)pars[0];
+    float* pleft = (float*)pars[0];
+    float* pright = (float*)pars[1];
+    for(int i = 0; i < historySize; ++i){
+        if(pflag[i] == CacheFlag::NEED_CAL) {
+            _equalCond(pout + i * stockSize, pleft + i * stockSize, pright + i * stockSize, stockSize);
+        }
+        //else {
+        //    memset(pout + i * stockSize, 0, stockSize * sizeof(float));
+        //}
+    }
+    return pout;
+}
+
 void* lessCondFrom(void** pars, float coff, int historySize, int stockSize, CacheFlag* pflag){
     float* pout = (float*)pars[0];
     float* pleft = (float*)pars[0];
@@ -1037,6 +1069,36 @@ void* moreCondTo(void** pars, float coff, int historySize, int stockSize, CacheF
     for(int i = 0; i < historySize; ++i){
         if(pflag[i] == CacheFlag::NEED_CAL) {
             _moreCond(pout + i * stockSize, pleft + i * stockSize, coff, stockSize);
+        }
+        //else {
+        //    memset(pout + i * stockSize, 0, stockSize * sizeof(float));
+        //}
+    }
+    return pout;
+}
+
+void* equalCondFrom(void** pars, float coff, int historySize, int stockSize, CacheFlag* pflag){
+    float* pout = (float*)pars[0];
+    float* pleft = (float*)pars[0];
+    //float* pright = (float*)pars[1];
+    for(int i = 0; i < historySize; ++i){
+        if(pflag[i] == CacheFlag::NEED_CAL) {
+            _equalCond(pout + i * stockSize, coff, pleft + i * stockSize, stockSize);
+        }
+        //else {
+        //    memset(pout + i * stockSize, 0, stockSize * sizeof(float));
+        //}
+    }
+    return pout;
+}
+
+void* equalCondTo(void** pars, float coff, int historySize, int stockSize, CacheFlag* pflag){
+    float* pout = (float*)pars[0];
+    float* pleft = (float*)pars[0];
+    //float* pright = (float*)pars[1];
+    for(int i = 0; i < historySize; ++i){
+        if(pflag[i] == CacheFlag::NEED_CAL) {
+            _equalCond(pout + i * stockSize, pleft + i * stockSize, coff, stockSize);
         }
         //else {
         //    memset(pout + i * stockSize, 0, stockSize * sizeof(float));

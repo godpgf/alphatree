@@ -189,8 +189,15 @@ inline void _maxTo(float *dst, const float *a, const float b, int size){
 }
 
 inline void _abs(float *dst, const float *src, int size){
-    for(int i = 0; i < size; ++i)
+    for(int i = 0; i < size; ++i){
         dst[i] = src[i] > 0 ? src[i] : -src[i];
+    }
+
+}
+
+inline void _clamp(float *dst, const float *src, int size){
+    for(int i = 0; i < size; ++i)
+        dst[i] = src[i] > 1 ? 1 : (src[i] < -1 ? -1 : src[i]);
 }
 
 inline void _log(float *dst, const float *src, int size,  float logmax){
@@ -226,11 +233,31 @@ inline void _pow(float *dst, const float a, const float *b, int size){
             dst[i] = powf(a, b[i]);
 }
 
+inline void _equalCond(float *dst, const float *a, const float *b, int size){
+    for(int i = 0; i < size; ++i) {
+        dst[i] = fabsf(a[i] - b[i]) < 0.0001f ? 1 : 0;
+    }
+}
+
+inline void _equalCond(float *dst, float a, const float *b, int size){
+    for(int i = 0; i < size; ++i) {
+        dst[i] = fabsf(a - b[i]) < 0.0001f ? 1 : 0;
+    }
+}
+
+inline void _equalCond(float *dst, const float *a, const float b, int size){
+    for(int i = 0; i < size; ++i) {
+        dst[i] = fabsf(a[i] - b) < 0.00001f ? 1 : 0;
+        //cout<<dst[i]<<" "<<a[i]<<endl;
+    }
+}
+
 inline void _lessCond(float *dst, const float *a, const float *b, int size){
     for(int i = 0; i < size; ++i) {
         dst[i] = (a[i] < b[i]) ? 1 : 0;
     }
 }
+
 
 inline void _lessCond(float *dst, float a, const float *b, int size){
     for(int i = 0; i < size; ++i) {

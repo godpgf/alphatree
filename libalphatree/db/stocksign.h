@@ -8,6 +8,56 @@
 #include "stockdes.h"
 #include "../base/iterator.h"
 
+class MemorySignIterator : public IBaseIterator<size_t>{
+public:
+    MemorySignIterator(size_t* cache, size_t dayBefore, size_t sampleDays, size_t allDayNum):
+            cache_(cache),dayBefore_(dayBefore),sampleDays_(sampleDays),allDays_(allDayNum),preSize_(0),curIndex_(0){
+        size_t curDayIndex = allDays_ - dayBefore_ - sampleDays_;
+        size_t allSize = cache_[allDays_-dayBefore_-1];
+        if(curDayIndex > 0){
+            preSize_ = cache_[curDayIndex-1];
+        }
+        curDataOffset_ = cache_[allDayNum + preSize_];
+        size_ = allSize - preSize_;
+    }
+
+    virtual void operator++() {
+        ++curIndex_;
+        curDataOffset_ = cache_[allDays_ + preSize_ + curIndex_];
+    }
+
+    virtual void skip(long size, bool isRelative = true){
+        if(isRelative)
+            curIndex_ += size;
+        else
+            curIndex_ = size;
+
+        curDataOffset_ = cache_[allDays_ + preSize_ + curIndex_];
+        //cout<<":"<<curIndex_<<" "<<size_<<endl;
+        //file_.read(reinterpret_cast< char* >( &curDataOffset_ ), sizeof( size_t ));
+    }
+    virtual bool isValid(){ return curIndex_ < size_;}
+
+    virtual size_t&& getValue(){
+        return std::move(curDataOffset_);
+    }
+    virtual long size(){ return size_;}
+
+    virtual IBaseIterator<size_t >* clone(){
+        return new MemorySignIterator(cache_, dayBefore_, sampleDays_, allDays_);
+    }
+protected:
+    size_t* cache_;
+    size_t dayBefore_;
+    size_t sampleDays_;
+    size_t allDays_;
+    size_t preSize_;
+    //当前是第几个元素
+    size_t curIndex_;
+    //当前信号数据对应的文件偏移
+    size_t curDataOffset_;
+    size_t size_;
+};
 
 class BinarySignIterator : public IBaseIterator<size_t>{
 public:
@@ -90,15 +140,18 @@ public:
             file.seekg(sizeof(size_t) * (allDays_-1),ios::beg);
             size_t allSize = 0;
             file.read( reinterpret_cast< char* >( &allSize ), sizeof( size_t ) );
-            file.close();
             cache_ = new size_t[allSize + allDays_];
+            file.seekg(0, ios::beg);
+            for(int i = 0; i < allSize + allDays_; ++i){
+                file.read(reinterpret_cast< char* >( cache_ + i ), sizeof( size_t ));
+            }
+            file.close();
         }
     }
 
     IBaseIterator<size_t>* createIter(size_t dayBefore, size_t sampleDays){
         if(isCache()){
-            //todo
-            throw "以后再做";
+            return new MemorySignIterator(cache_, dayBefore, sampleDays, allDays_);
         } else {
             return new BinarySignIterator(path_, dayBefore, sampleDays, allDays_);
         }

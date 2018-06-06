@@ -7,6 +7,25 @@
 
 #include "alpha.h"
 
+void* randomSign(void** pars, float coff, int historySize, int stockSize, CacheFlag* pflag){
+    float* pout = (float*)pars[0];
+    srand((unsigned)time(0));
+    for(int i = 0; i < historySize; ++i) {
+        for (int j = 0; j < stockSize; ++j) {
+            int curIndex = i * stockSize + j;
+            float v = pout[curIndex];
+            if(v > 0.5f){
+                if(((double)rand())/RAND_MAX <= coff){
+                    pout[curIndex] = 1;
+                } else {
+                    pout[curIndex] = 0;
+                }
+            }
+        }
+    }
+    return pout;
+}
+
 //振幅取样，保证2/3是数据振幅超过coff，1/3数据是振幅不超过coff的，这样保证数据在正负样本和中立样本的无偏性
 void* amplitudeSample(void** pars, float coff, int historySize, int stockSize, CacheFlag* pflag){
     float* pout = (float*)pars[0];

@@ -48,6 +48,21 @@ class AlphaDB{
             }
         }
 
+        void miss2binary(){
+            cache_->miss2file();
+        }
+
+        void boolhmm2binary(const char* featureName, int hideStateNum, size_t seqLength, const char* codes, int codesNum, int epochNum = 8){
+            bool* stockFlag = nullptr;
+            if(codes != nullptr){
+                stockFlag = new bool[des_->stockMetas.getSize()];
+                getCodesFlag(stockFlag, codes, codesNum);
+            }
+            cache_->boolhmm2binary(featureName, hideStateNum, seqLength, stockFlag, epochNum);
+            if(stockFlag != nullptr)
+                delete []stockFlag;
+        }
+
         size_t getAllCodes(char* codes){
             char* curCode = codes;
             for(int i = 0; i < des_->stockMetas.getSize(); ++i){
@@ -79,7 +94,8 @@ class AlphaDB{
             }
         }
 
-        const char* testGetCode(int id){
+        //通过股票id得到股票名称
+        const char* getCode(int id){
             return des_->stockMetas[id].code;
         }
 
@@ -133,8 +149,15 @@ class AlphaDB{
             const char* curCode = codes;
             int dayNum = GET_HISTORY_SIZE(historyNum, sampleNum);
             int needDay = dayBefore + dayNum;
-            if(needDay > des_->stockMetas[des_->mainStock].days || dayBefore < (size_t)-futureNum)
+            if(needDay > des_->stockMetas[des_->mainStock].days){
+                cout<<"没有这么多天的数据\n";
                 return nullptr;
+            }
+            if(dayBefore < (size_t)-futureNum){
+                cout<<"读取历史天数小于未来天数\n";
+                return nullptr;
+            }
+
 
             for(size_t i = 0; i < stockNum; ++i){
                 const char* code = getCode(curCode, leafDataClass);
@@ -142,6 +165,11 @@ class AlphaDB{
                 curCode = curCode + strlen(curCode) + 1;
             }
             return dst;
+        }
+
+        //得到信号发生时的股票id
+        size_t getStockIds(size_t dayBefore, size_t sampleSize, const char* signName, int* dst){
+            return cache_->getStockIds(dayBefore, sampleSize, signName, dst);
         }
 
         //得到信号发生时的股票数据
@@ -207,8 +235,24 @@ class AlphaDB{
             cache_->releaseCacheFile(file);
         }
 
-        void cacheFeature(const char* featureName){
-            cache_->cacheFeature(featureName);
+        void loadFeature(const char* featureName){
+            cache_->loadFeature(featureName);
+        }
+
+        void updateFeature(const char* featureName){
+            cache_->updateFeature(featureName);
+        }
+
+        void releaseAllFeature(){
+            cache_->releaseFeatures();
+        }
+
+        void loadSign(const char* signName){
+            cache_->loadSign(signName);
+        }
+
+        void releaseAllSign(){
+            cache_->releaseSigns();
         }
 
 //        IBaseIterator<float>* createSignFeatureIter(const char* signName, const char* featureName, size_t dayBefore, size_t sampleDays, int offset){

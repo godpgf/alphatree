@@ -64,6 +64,7 @@ class IteratorClient{
 public:
     virtual BaseIterator<T>* createIter() = 0;
     virtual void cleanIter(BaseIterator<T>* iter){delete iter;}
+    virtual ~IteratorClient(){}
 };
 
 

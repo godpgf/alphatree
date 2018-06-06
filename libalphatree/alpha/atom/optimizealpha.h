@@ -8,6 +8,8 @@
 #include "../../base/normal.h"
 #include "alpha.h"
 
+#define MIN_DATA_NUM_IN_BAR 5
+
 void* noiseValid(void** pars, float coff, int historySize, int stockSize, CacheFlag* pflag){
     //memcpy(pout, pleft, historySize * stockSize * sizeof(float));
     float* src = (float*)pars[0];
@@ -90,10 +92,23 @@ void* noiseValid(void** pars, float coff, int historySize, int stockSize, CacheF
         }
     }
 
+    /*{
+        for(int i = 0; i < barSize; ++i){
+            cout<<t0_out[i]<<" ";
+        }
+        cout<<endl;
+
+        for(int i = 0; i < barSize; ++i){
+            cout<<t1_out[i]<<" ";
+        }
+        cout<<endl;
+    }*/
+
+
     float avgValue = avg_t0 / avg_t1;
     float stdValue = 0;
     for(int i = 0; i < barSize; ++i){
-        float curValue = abs(t1_out[i]) < 0.0001 ? avgValue : t0_out[i] / t1_out[i];
+        float curValue = abs(t1_out[i]) < 0.0001 || cnt_out[i] < MIN_DATA_NUM_IN_BAR ? avgValue : t0_out[i] / t1_out[i];
         //cout<<curValue<<" "<<cnt_out[i]<<" "<<t0_out[i]<<" "<<t1_out[i]<<endl;
         stdValue += (curValue - avgValue) * (curValue - avgValue) * cnt_out[i] / dataNum;
     }
@@ -157,7 +172,7 @@ void* alphaCorrelation(void** pars, float coff, int historySize, int stockSize, 
     float yDiff2 = (sumSqrRight - meanRight*meanRight);
     float res;
     if(xDiff2 < 0.000000001 || yDiff2 < 0.000000001)
-        res = 1;
+        res = 0;
     else
         res = cov / sqrtf(xDiff2) / sqrtf(yDiff2);
 

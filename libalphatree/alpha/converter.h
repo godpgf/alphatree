@@ -21,6 +21,7 @@ public:
         optMap['|'] = "or";
         //optMap['~'] = "cross";
         optMap['^'] = "signed_power";
+        optMap['='] = "equal";
         optMap['<'] = "less";
         optMap['>'] = "more";
         optMap['?'] = "if";
@@ -34,6 +35,7 @@ public:
         invOptMap["or"] = '|';
         //invOptMap["cross"] = '~';
         invOptMap["signed_power"] = '^';
+        invOptMap["equal"] = '=';
         invOptMap["less"] = '<';
         invOptMap["more"] = '>';
         invOptMap["if"] = '?';
@@ -146,6 +148,7 @@ public:
                 strcmp(str, "or") == 0 ||
                 //strcmp(str, "cross") == 0 ||
                 strcmp(str, "signed_power") == 0 ||
+                strcmp(str, "equal") == 0 ||
                 strcmp(str, "less") == 0 ||
                 strcmp(str, "more") == 0 ||
                 strcmp(str, "if") == 0 ||

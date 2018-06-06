@@ -106,6 +106,11 @@ public:
         return getAlphaTree(alphaTreeId)->getAlpha(rootName, curCache);
     }
 
+    void synchroAlpha(int alphaTreeId, int cacheId){
+        auto curCache = alphaCache_->getCacheMemory(cacheId);
+        getAlphaTree(alphaTreeId)->synchroAlpha(curCache);
+    }
+
     const float *getAlphaSum(int alphaTreeId, const char *rootName, int cacheId){
         auto curCache = alphaCache_->getCacheMemory(cacheId);
         return getAlphaTree(alphaTreeId)->getAlphaSum(rootName, curCache);

@@ -92,6 +92,28 @@ public:
         //cout<<stockMetas.getSize()<<" init "<<mainStock<<endl;
     }
 
+    int offset2index(size_t curOffset){
+        if (curOffset >= stockMetas[stockMetas.getSize()-1].offset)
+            return stockMetas.getSize() - 1;
+        int l = 0, r = stockMetas.getSize() - 2;
+
+        do{
+            int mid = (l + r) >> 1;
+            if(curOffset >= stockMetas[mid].offset){
+                if(curOffset < stockMetas[mid+1].offset)
+                    return mid;
+                l = mid + 1;
+            } else {
+                r = mid - 1;
+            }
+        }while (l < r);
+        if(!(curOffset >= stockMetas[l].offset && curOffset < stockMetas[l + 1].offset)){
+            cout<<"找不到偏移\n";
+            throw "error";
+        }
+        return l;
+    }
+
     HashMap<StockMeta> stockMetas;
     size_t offset;
     //标记最主要的股票，用来做日历

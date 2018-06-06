@@ -1,12 +1,12 @@
 //
 // Created by yanyu on 2017/9/24.
-// 不是线程安全的！
 //
 
 #ifndef ALPHATREE_DARRAY_H
 #define ALPHATREE_DARRAY_H
 #include <stdlib.h>
 #include <string.h>
+#include <mutex>
 using namespace std;
 
 #define DARRAY_HASH_TABLE_LEN 512
@@ -44,6 +44,7 @@ class DArray{
         void resize(int size){size_ = size;}
 
         T& operator[](size_t index){
+            std::lock_guard<std::mutex> lock{mutex_};
             int blockId = getBlockId(index);
             int hashBlockId = getBlockHashId(blockId);
             size_ = size_ > index + 1 ? size_ : index + 1;
@@ -68,19 +69,6 @@ class DArray{
             }
         }
 
-        /*bool getValue(int index, T& value){
-            int blockId = getBlockId(index);
-            int hashBlockId = getBlockHashId(blockId);
-            DArrayBlock* curBlock = blockHashTable[hashBlockId];
-            while(curBlock != nullptr){
-                if(curBlock->blockId == blockId){
-                    value = curBlock->dataBlock[getOffsetId(index)];
-                    return true;
-                }
-            }
-            return false;
-        }*/
-
         int add(T value){
             int id = getSize();
             //setValue(id, value);
@@ -88,27 +76,6 @@ class DArray{
             return id;
         }
 
-        /*void setValue(int index, T value){
-            int blockId = getBlockId(index);
-            int hashBlockId = getBlockHashId(blockId);
-            if(blockHashTable[hashBlockId] == nullptr){
-                blockHashTable[hashBlockId] = new DArrayBlock(blockId);
-                blockHashTable[hashBlockId]->dataBlock[getOffsetId(index)] = value;
-            } else{
-                DArrayBlock* curBlock = blockHashTable[hashBlockId];
-                while(curBlock->next != nullptr){
-                    if(curBlock->next->blockId == blockId){
-                        curBlock->next->dataBlock[getOffsetId(index)] = value;
-                        return;
-                    } else {
-                        curBlock = curBlock->next;
-                    }
-                }
-                curBlock->next = new DArrayBlock(blockId);
-                curBlock->next->dataBlock[getOffsetId(index)] = value;
-            }
-            size_ = max(size_, index + 1);
-        }*/
 
         int getSize(){
             return size_;
@@ -116,6 +83,7 @@ class DArray{
 
     protected:
         size_t size_{0};
+        std::mutex mutex_;
 
         inline void destroyBlock(DArrayBlock* block){
             if(block->next != nullptr)

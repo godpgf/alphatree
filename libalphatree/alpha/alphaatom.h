@@ -119,7 +119,7 @@ class AlphaAtom: public IAlphaElement{
 };
 
 AlphaAtom AlphaAtom::alphaAtomList[] = {
-        AlphaAtom("mean", mean, 1, 0, CoffUnit::COFF_DAY, DateRange::ALL_DAY),
+        AlphaAtom("ma", mean, 1, 0, CoffUnit::COFF_DAY, DateRange::ALL_DAY),
         AlphaAtom("lerp", lerp, 2, 0, CoffUnit::COFF_VAR),
         AlphaAtom("mean_rise", meanRise, 1, 0, CoffUnit::COFF_DAY, DateRange::CUR_AND_BEFORE_DAY),
         AlphaAtom("mean_ratio", meanRatio, 2, 0, CoffUnit::COFF_DAY, DateRange::ALL_DAY),
@@ -141,7 +141,7 @@ AlphaAtom AlphaAtom::alphaAtomList[] = {
         AlphaAtom("correlation", correlation, 2, 0, CoffUnit::COFF_DAY, DateRange::ALL_DAY),
         AlphaAtom("covariance", covariance, 3, 2, CoffUnit::COFF_DAY, DateRange::ALL_DAY),
         AlphaAtom("scale", scale, 1, 0, CoffUnit::COFF_NONE, DateRange::CUR_DAY),
-        AlphaAtom("decay_linear", decayLinear, 1, 0, CoffUnit::COFF_DAY, DateRange::ALL_DAY),
+        AlphaAtom("wma", decayLinear, 1, 0, CoffUnit::COFF_DAY, DateRange::ALL_DAY),
         AlphaAtom("ts_min", tsMin, 2, 1, CoffUnit::COFF_DAY, DateRange::ALL_DAY),
         AlphaAtom("ts_max", tsMax, 2, 1, CoffUnit::COFF_DAY, DateRange::ALL_DAY),
         AlphaAtom("min", min, 2),
@@ -157,6 +157,7 @@ AlphaAtom AlphaAtom::alphaAtomList[] = {
         AlphaAtom("product", product, 2, 1, CoffUnit::COFF_DAY, DateRange::ALL_DAY),
         AlphaAtom("stddev", stddev, 2, 1, CoffUnit::COFF_DAY, DateRange::ALL_DAY),
         AlphaAtom("sign", sign, 1),
+        AlphaAtom("clamp", clamp, 1),
         AlphaAtom("abs", abs, 1),
         AlphaAtom("log", log, 1),
 
@@ -177,6 +178,9 @@ AlphaAtom AlphaAtom::alphaAtomList[] = {
         AlphaAtom("signed_power", signedPower, 2),
         AlphaAtom("signed_power_from",signedPowerFrom, 1, 0, CoffUnit::COFF_CONST),
         AlphaAtom("signed_power_to",signedPowerTo, 1, 0, CoffUnit::COFF_CONST),
+        AlphaAtom("equal", equalCond, 2),
+        AlphaAtom("equal_from",equalCondFrom, 1, 0, CoffUnit::COFF_VAR),
+        AlphaAtom("equal_to",equalCondTo, 1, 0, CoffUnit::COFF_CONST),
         AlphaAtom("less", lessCond, 2),
         AlphaAtom("less_from",lessCondFrom, 1, 0, CoffUnit::COFF_VAR),
         AlphaAtom("less_to",lessCondTo, 1, 0, CoffUnit::COFF_CONST),
@@ -195,6 +199,11 @@ AlphaAtom AlphaAtom::alphaAtomList[] = {
         AlphaAtom("noise_valid", noiseValid, 4, 3, CoffUnit::COFF_CONST),
         AlphaAtom("alpha_correlation", alphaCorrelation, 2, 0, CoffUnit::COFF_NONE),
 
+        AlphaAtom("amplitude_sample", amplitudeSample, 1, 0, CoffUnit::COFF_CONST),
+        AlphaAtom("random_sign", randomSign, 1, 0, CoffUnit::COFF_CONST),
+        //AlphaAtom("up_mean", upMean, 1, CoffUnit::COFF_DAY),
+
+        //todo delete later
         AlphaAtom("kd", kd, 2, 1, CoffUnit::COFF_NONE, DateRange::CUR_AND_BEFORE_DAY),
         AlphaAtom("cross", cross, 2, 0, CoffUnit::COFF_DAY, DateRange::CUR_AND_BEFORE_DAY),
         AlphaAtom("cross_from", crossFrom, 1, 0, CoffUnit::COFF_DAY, DateRange::CUR_AND_BEFORE_DAY),
@@ -203,9 +212,6 @@ AlphaAtom AlphaAtom::alphaAtomList[] = {
         AlphaAtom("ft_sharp", ftSharp, 3, 2),
         AlphaAtom("res_eratio", resEratio, 4, 3),
         AlphaAtom("opt_sharp", optShape, 2),
-
-        AlphaAtom("amplitude_sample", amplitudeSample, 1, 0, CoffUnit::COFF_CONST),
-        //AlphaAtom("up_mean", upMean, 1, CoffUnit::COFF_DAY),
 };
 
 //参数alpha
