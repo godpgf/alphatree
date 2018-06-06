@@ -10,6 +10,7 @@
 #include "stocksign.h"
 #include "../hmm/eventhmm.h"
 #include <map>
+#include <algorithm>
 
 class StockCache{
 public:
@@ -588,7 +589,7 @@ protected:
                     cout<<code<<endl;
                     cout<<curStockMeta.offset<<" "<<curStockMeta.days<<endl;
                     cout<<*curDateIter<<" "<<*mainDateIter<<endl;
-                    cout<<"主要的股票有的数据丢失，这是不允许的！";
+                    cout<<"main stock loss date!\n";
                     throw "main stock loss date!";
                 } else {
                     if(*curDateIter == *mainDateIter){
