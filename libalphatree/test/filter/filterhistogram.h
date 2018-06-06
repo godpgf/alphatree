@@ -5,7 +5,7 @@
 #ifndef ALPHATREE_HISTOGRAM_H
 #define ALPHATREE_HISTOGRAM_H
 
-#include "../base/normal.h"
+#include "normal.h"
 #include <stddef.h>
 #include <stdlib.h>
 #include <math.h>

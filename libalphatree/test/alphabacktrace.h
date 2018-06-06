@@ -5,7 +5,7 @@
 #ifndef ALPHATREE_ALPHABACKTRACE_H
 #define ALPHATREE_ALPHABACKTRACE_H
 
-#include "../base/darray.h"
+#include "darray.h"
 #include <cstddef>
 #include <algorithm>
 #include <utility>

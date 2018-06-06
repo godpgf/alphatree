@@ -4,8 +4,8 @@
 
 #ifndef ALPHATREE_ALPHATRANSACTION_H
 #define ALPHATREE_ALPHATRANSACTION_H
-#include "base/dcache.h"
-#include "alpha/alphabacktrace.h"
+#include "dcache.h"
+#include "alphabacktrace.h"
 #include <iostream>
 
 class AlphaTransaction {

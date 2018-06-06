@@ -5,7 +5,7 @@
 #ifndef ALPHATREE_BASEFILTERTREE_H
 #define ALPHATREE_BASEFILTERTREE_H
 
-#include "../base/hashmap.h"
+#include "hashmap.h"
 
 namespace fb {
 #define CHECK(isSuccess, err) if(!(isSuccess)) throw err

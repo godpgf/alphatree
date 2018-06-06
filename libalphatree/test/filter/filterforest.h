@@ -6,9 +6,9 @@
 #define ALPHATREE_FILTERFOREST_H
 
 #include "filtertree.h"
-#include "../base/dcache.h"
-#include "../base/cache.h"
-#include "../base/threadpool.h"
+#include "dcache.h"
+#include "cache.h"
+#include "threadpool.h"
 
 namespace fb {
     class FilterForest{

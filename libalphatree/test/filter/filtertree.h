@@ -11,8 +11,8 @@
 #include <iostream>
 #include "basefiltertree.h"
 #include "filterhistogram.h"
-#include "../base/pareto.h"
-#include "../base/normal.h"
+#include "pareto.h"
+#include "normal.h"
 using namespace std;
 
 namespace fb {
