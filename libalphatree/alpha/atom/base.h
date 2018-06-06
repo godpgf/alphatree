@@ -138,7 +138,7 @@ inline void _div(float* dst, const float* a, const float* const b, int size){
         //cout<<a[i]<<" "<<b[i]<<" "<<size<<endl;
         if (b[i] == 0.0f || (b[i] > 0 && b[i] < 0.0001)) {
             dst[i] = a[i] * 10000;
-        } else if( b[i] < 0 and b[i] > -0.0001){
+        } else if( b[i] < 0 && b[i] > -0.0001){
             dst[i] = a[i] * -10000;
         }
         else {

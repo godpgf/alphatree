@@ -34,7 +34,7 @@ void distributionWeightPr(size_t *ranking, size_t size, float *outWeight, float 
     for (size_t i = size - 1; i > 0; --i) {
         if(ranking[i] > 0){
             sum += ranking[i];
-            float weight = max(1.0 - pr(sum, 1, alpha),0.0);
+            float weight = std::max(1.0 - pr(sum, 1, alpha),0.0);
             outWeight[i] = (weight - lastWeight) * all_num;
             allWeight += (weight - lastWeight);
             cout<<"num:"<<ranking[i]<<" "<<"weight:"<<outWeight[i]<<"w/n:"<<outWeight[i]/ranking[i]<<endl;

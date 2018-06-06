@@ -266,7 +266,7 @@ public:
             //得到偏移
             int evalStart = des->stockMetas[stockIndex].offset + (*pStock2Offset)[stockIndex];
             long lastDate = (*pStock2LastDate)[stockIndex];
-            int evalLen = (int)min((long)(des->stockMetas[stockIndex].days - (*pStock2Offset)[stockIndex]), (long)(date - lastDate));
+            int evalLen = (int)std::min((long)(des->stockMetas[stockIndex].days - (*pStock2Offset)[stockIndex]), (long)(date - lastDate));
             int skip = pAllDateIter->jumpTo(date, evalStart, evalLen);
             ++skip;
             if(skip > 0)
@@ -359,7 +359,7 @@ public:
             //得到偏移
             int evalStart = des->stockMetas[stockIndex].offset + (*pStock2Offset)[stockIndex];
             long lastDate = (*pStock2LastDate)[stockIndex];
-            int evalLen = (int)min((long)(des->stockMetas[stockIndex].days - (*pStock2Offset)[stockIndex]), (long)(date - lastDate));
+            int evalLen = (int)std::min((long)(des->stockMetas[stockIndex].days - (*pStock2Offset)[stockIndex]), (long)(date - lastDate));
             int skip = pAllDateIter->jumpTo(date, evalStart, evalLen);
             ++skip;
             if(skip > 0)

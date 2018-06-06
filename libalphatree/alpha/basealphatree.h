@@ -358,7 +358,7 @@ protected:
         int nameLen = strlen(name);
 
         //特殊处理系数在左边的情况
-        if(nameLen > 5 and strcmp(name + (nameLen-5),"_from") == 0){
+        if(nameLen > 5 && strcmp(name + (nameLen-5),"_from") == 0){
             //先写名字
             memcpy(pout + curIndex, node->getName(), (nameLen - 5) * sizeof(char));
             curIndex += (nameLen - 5);
@@ -377,7 +377,7 @@ protected:
         } else {
 
             //特殊处理一些符号
-            if(nameLen > 3 and strcmp(name + (nameLen-3),"_to") == 0)
+            if(nameLen > 3 && strcmp(name + (nameLen-3),"_to") == 0)
                 nameLen -= 3;
 
             //先写名字
@@ -493,7 +493,7 @@ protected:
 
         int childDepth = 0;
         for(int i = 0; i < nodeList_[nodeId].getChildNum(); ++i){
-            childDepth = max(childDepth,getDepth(nodeList_[nodeId].childIds[i], false));
+            childDepth = std::max(childDepth,getDepth(nodeList_[nodeId].childIds[i], false));
         }
         return childDepth + myDepth;
     }

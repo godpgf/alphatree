@@ -260,7 +260,7 @@ AlphaForest *AlphaForest::alphaForest_ = nullptr;
 class AlphaSignIterator : public IBaseIterator<float>{
 public:
     AlphaSignIterator(AlphaForest* af, const char* rootName, const char* signName, int alphaTreeId, size_t daybefore, size_t sampleSize, size_t startIndex, size_t signNum, size_t cacheSize = 4096):
-            af_(af), alphaTreeId_(alphaTreeId), daybefore_(daybefore), sampleSize_(sampleSize), startIndex_(startIndex), signNum_(signNum), cacheSize_(min(cacheSize, signNum)), curBlockIndex_(signNum){
+            af_(af), alphaTreeId_(alphaTreeId), daybefore_(daybefore), sampleSize_(sampleSize), startIndex_(startIndex), signNum_(signNum), cacheSize_(std::min(cacheSize, signNum)), curBlockIndex_(signNum){
         cache_ = new float[cacheSize];
         rootName_ = new char[strlen(rootName) + 1];
         signName_ = new char[strlen(signName) + 1];
@@ -282,9 +282,9 @@ public:
         if(curIndex_ < curBlockIndex_ || curIndex_ >= curBlockIndex_ + cacheSize_){
             int cacheId = af_->useCache();
             curBlockIndex_ = (curIndex_ / cacheSize_) * cacheSize_;
-            af_->calAlpha(alphaTreeId_, cacheId, daybefore_, sampleSize_, startIndex_ +  curBlockIndex_, min(cacheSize_, signNum_ - curBlockIndex_), 1, signName_);
+            af_->calAlpha(alphaTreeId_, cacheId, daybefore_, sampleSize_, startIndex_ +  curBlockIndex_, std::min(cacheSize_, signNum_ - curBlockIndex_), 1, signName_);
             const float* alpha = af_->getAlpha(alphaTreeId_, rootName_, cacheId);
-            memcpy(cache_, alpha, min(cacheSize_, signNum_ - curBlockIndex_) * sizeof(float));
+            memcpy(cache_, alpha, std::min(cacheSize_, signNum_ - curBlockIndex_) * sizeof(float));
             af_->releaseCache(cacheId);
         }
         return std::move(cache_[curIndex_ % cacheSize_]);

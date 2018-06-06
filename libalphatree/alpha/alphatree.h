@@ -416,7 +416,7 @@ public:
                     } else {
                         coffList_[curIndex].coffValue += 1;
                     }
-                    coffList_[curIndex].coffValue = min(coffList_[curIndex].coffValue, nodeList_[srcIndex].getElement()->getMaxCoff());
+                    coffList_[curIndex].coffValue = std::min(coffList_[curIndex].coffValue, nodeList_[srcIndex].getElement()->getMaxCoff());
                 }
                 if(!isAdd && coffList_[curIndex].coffValue > nodeList_[srcIndex].getElement()->getMinCoff()){
                     lastCoffValue = coffList_[curIndex].coffValue;
@@ -425,7 +425,7 @@ public:
                     } else {
                         coffList_[curIndex].coffValue -= 1;
                     }
-                    coffList_[curIndex].coffValue = max(coffList_[curIndex].coffValue, nodeList_[srcIndex].getElement()->getMinCoff());
+                    coffList_[curIndex].coffValue = std::max(coffList_[curIndex].coffValue, nodeList_[srcIndex].getElement()->getMinCoff());
                 }
                 if(isnan(lastCoffValue)){
                     curIndex = isAdd ? curIndex : coffList_.getSize() + curIndex;
@@ -674,7 +674,7 @@ protected:
             return 0;
         float maxDays = 0;
         for (int i = 0; i < nodeList_[nodeId].getChildNum(); ++i) {
-            maxDays = max(getMaxHistoryDays(nodeList_[nodeId].childIds[i]), maxDays);
+            maxDays = std::max(getMaxHistoryDays(nodeList_[nodeId].childIds[i]), maxDays);
         }
         //cout<<nodeList_[nodeId].getName()<<" "<<nodeList_[nodeId].getNeedBeforeDays(coffList_)<<" "<<maxDays<<endl;
         return fmax(roundf(nodeList_[nodeId].getNeedBeforeDays(coffList_)), 0.f) + maxDays;
@@ -686,7 +686,7 @@ protected:
             return 0;
         float maxDays = 0;
         for (int i = 0; i < nodeList_[nodeId].getChildNum(); ++i){
-            maxDays = min(getMaxFutureDays(nodeList_[nodeId].childIds[i]), maxDays);
+            maxDays = std::min(getMaxFutureDays(nodeList_[nodeId].childIds[i]), maxDays);
         }
         return fmin(roundf(nodeList_[nodeId].getNeedBeforeDays(coffList_)),0.f) + maxDays;
     }

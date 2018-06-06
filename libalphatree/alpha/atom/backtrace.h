@@ -29,8 +29,8 @@ void* ftSharp(void** pars, float coff, int historySize, int stockSize, CacheFlag
                     maxPrice = close[curIndex];
                     maxDropdown = 0;
                     for(int k = 1; k <= sign[curIndex]; ++k){
-                        maxPrice = max(close[curIndex + k * stockSize],maxPrice);
-                        maxDropdown = max((maxPrice - close[curIndex + k * stockSize]) / maxPrice, maxDropdown);
+                        maxPrice = std::max(close[curIndex + k * stockSize],maxPrice);
+                        maxDropdown = std::max((maxPrice - close[curIndex + k * stockSize]) / maxPrice, maxDropdown);
                     }
                     pout[curIndex] = maxDropdown;
                     meanDropdown += maxDropdown;
@@ -94,23 +94,23 @@ void* resEratio(void** pars, float coff, int historySize, int stockSize, CacheFl
                     minPrice = close[curIndex];
                     for(int k = 1; k <= buyDay; ++k){
                         //已经买入,等待卖出
-                        maxPrice = max(maxPrice, close[curIndex + k * stockSize]);
-                        minPrice = min(minPrice, close[curIndex + k * stockSize]);
+                        maxPrice = std::max(maxPrice, close[curIndex + k * stockSize]);
+                        minPrice = std::min(minPrice, close[curIndex + k * stockSize]);
 
                         if(k <= 5){
                             ++signCounts[k-1];
-                            MFE[k-1] += (maxPrice - close[curIndex]) / max(atr[curIndex],0.001f);
-                            MAE[k-1] += (close[curIndex] - minPrice) / max(atr[curIndex],0.001f);
-                            returns[k-1] += (close[curIndex + k * stockSize] - close[curIndex]) / max(close[curIndex],0.001f);
-                            returnsSqr[k-1] += powf((close[curIndex + k * stockSize] - close[curIndex]) / max(close[curIndex],0.001f), 2);
+                            MFE[k-1] += (maxPrice - close[curIndex]) / std::max(atr[curIndex],0.001f);
+                            MAE[k-1] += (close[curIndex] - minPrice) / std::max(atr[curIndex],0.001f);
+                            returns[k-1] += (close[curIndex + k * stockSize] - close[curIndex]) / std::max(close[curIndex],0.001f);
+                            returnsSqr[k-1] += powf((close[curIndex + k * stockSize] - close[curIndex]) / std::max(close[curIndex],0.001f), 2);
                         }
                     }
                     ++signCounts[5];
                     //cout<<(maxPrice - close[curIndex])<<"/"<<(close[curIndex] - minPrice)<<endl;
-                    MFE[5] += (maxPrice - close[curIndex]) / max(atr[curIndex],0.001f);
-                    MAE[5] += (close[curIndex] - minPrice) / max(atr[curIndex],0.001f);
-                    returns[5] += (close[curIndex + buyDay * stockSize] - close[curIndex]) / max(close[curIndex],0.001f);
-                    returnsSqr[5] += powf((close[curIndex + buyDay * stockSize] - close[curIndex]) / max(close[curIndex],0.001f), 2);
+                    MFE[5] += (maxPrice - close[curIndex]) / std::max(atr[curIndex],0.001f);
+                    MAE[5] += (close[curIndex] - minPrice) / std::max(atr[curIndex],0.001f);
+                    returns[5] += (close[curIndex + buyDay * stockSize] - close[curIndex]) / std::max(close[curIndex],0.001f);
+                    returnsSqr[5] += powf((close[curIndex + buyDay * stockSize] - close[curIndex]) / std::max(close[curIndex],0.001f), 2);
                 }
             }
         }
@@ -158,12 +158,12 @@ void* optShape(void** pars, float coff, int historySize, int stockSize, CacheFla
                     minPrice = close[curIndex];
                     for(int k = 1; k <= buyDay; ++k){
                         //已经买入,等待卖出
-                        maxPrice = max(maxPrice, close[curIndex + k * stockSize]);
-                        minPrice = min(minPrice, close[curIndex + k * stockSize]);
+                        maxPrice = std::max(maxPrice, close[curIndex + k * stockSize]);
+                        minPrice = std::min(minPrice, close[curIndex + k * stockSize]);
                     }
                     ++signCounts;
-                    returns += (close[curIndex + buyDay * stockSize] - close[curIndex]) / max(close[curIndex],0.001f);
-                    returnsSqr += powf((close[curIndex + buyDay * stockSize] - close[curIndex]) / max(close[curIndex],0.001f), 2);
+                    returns += (close[curIndex + buyDay * stockSize] - close[curIndex]) / std::max(close[curIndex],0.001f);
+                    returnsSqr += powf((close[curIndex + buyDay * stockSize] - close[curIndex]) / std::max(close[curIndex],0.001f), 2);
                 }
             }
         }

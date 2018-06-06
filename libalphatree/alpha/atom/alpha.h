@@ -1186,11 +1186,11 @@ void* lstsq(void** pars, float coff, int historySize, int stockSize, CacheFlag* 
     if(coff < 0){
         for(int i = 0; i < historySize; ++i){
             if(pflag[i] == CacheFlag::NEED_CAL){
-                int dayNum = min(-(int)coff, historySize - i - 1);
+                int dayNum = std::min(-(int)coff, historySize - i - 1);
                 for(int j = 1; j <= dayNum; ++j){
                     for(int k = 0; k < stockSize; ++k){
-                        beta[(i + j - 1) * stockSize + k] = close[(i + j) * stockSize + k] / max(close[i * stockSize + k], 0.0001f);
-                        alpha[(i + j - 1) * stockSize + k] = marketClose[(i + j) * stockSize + k] / max(marketClose[i * stockSize + k], 0.0001f);
+                        beta[(i + j - 1) * stockSize + k] = close[(i + j) * stockSize + k] / std::max(close[i * stockSize + k], 0.0001f);
+                        alpha[(i + j - 1) * stockSize + k] = marketClose[(i + j) * stockSize + k] / std::max(marketClose[i * stockSize + k], 0.0001f);
                     }
                 }
                 lstsq_(alpha + i * stockSize, beta + i * stockSize, dayNum, stockSize, alpha + i * stockSize, beta + i * stockSize);
@@ -1199,11 +1199,11 @@ void* lstsq(void** pars, float coff, int historySize, int stockSize, CacheFlag* 
     } else {
         for(int i = historySize - 1; i >= 0; --i){
             if(pflag[i] == CacheFlag::NEED_CAL){
-                int dayNum = min(i, (int)coff);
+                int dayNum = std::min(i, (int)coff);
                 for(int j = 1; j <= dayNum; ++j){
                     for(int k = 0; k < stockSize; ++k){
-                        beta[(i - dayNum + j - 1) * stockSize + k] = close[(i - j) * stockSize + k] / max(close[i * stockSize + k], 0.0001f);
-                        alpha[(i - dayNum + j - 1) * stockSize + k] = marketClose[(i - j) * stockSize + k] / max(close[i * stockSize + k], 0.0001f);
+                        beta[(i - dayNum + j - 1) * stockSize + k] = close[(i - j) * stockSize + k] / std::max(close[i * stockSize + k], 0.0001f);
+                        alpha[(i - dayNum + j - 1) * stockSize + k] = marketClose[(i - j) * stockSize + k] / std::max(close[i * stockSize + k], 0.0001f);
                     }
                 }
                 lstsq_(alpha + (i - dayNum) * stockSize, beta + (i - dayNum) * stockSize, dayNum, stockSize, alpha + i * stockSize, beta + i * stockSize);
