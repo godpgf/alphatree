@@ -19,7 +19,7 @@ class AlphaForest(object):
 
         self.max_alpha_tree_str_len = 4096;
         self.sub_alphatree_str_cache = (c_char * (self.max_alpha_tree_str_len * 1024))()
-        self.alphatree_id_cache = (c_int * 1024)()
+        self.alphatree_id_cache = (c_int * max_stock_num)()
 
         self.encode_cache = (c_char * self.max_alpha_tree_str_len)()
         self.process_cache = (c_char * (4096 * 64))()
@@ -38,17 +38,21 @@ class AlphaForest(object):
 
     # 读取数据
     def load_db(self, path):
-        alphatree.loadDataBase(c_char_p(path))
+        alphatree.loadDataBase(c_char_p(path.encode('utf-8')))
 
     def csv2binary(self, path, feature_name):
-        alphatree.csv2binary(c_char_p(path), c_char_p(feature_name))
+        alphatree.csv2binary(c_char_p(path.encode('utf-8')), c_char_p(feature_name.encode('utf-8')))
+
+    #缓存缺失数据的描述，以便快速知道数据的缺失情况
+    def cache_miss(self):
+        alphatree.cacheMiss()
 
     #将某个公式的计算结果保持在文件
     def cache_alpha(self, name, line):
         alphatree_id = self.create_alphatree()
         cache_id = self.use_cache()
         self.decode_alphatree(alphatree_id, name, line)
-        alphatree.cacheAlpha(alphatree_id, cache_id, c_char_p(name))
+        alphatree.cacheAlpha(alphatree_id, cache_id, c_char_p(name.encode('utf-8')))
         self.release_cache(cache_id)
         self.release_alphatree(alphatree_id)
 
@@ -57,9 +61,9 @@ class AlphaForest(object):
         cache_id = self.use_cache()
         for formula in formula_list:
             tmp = formula.split('=')
-            alphatree.decodeAlphatree(alphatree_id, c_char_p(tmp[0].lstrip().rstrip()), c_char_p("" if len(tmp) == 1 else tmp[1].lstrip().rstrip()))
+            alphatree.decodeAlphatree(alphatree_id, c_char_p(tmp[0].strip().encode('utf-8')), c_char_p(("" if len(tmp) == 1 else tmp[1].strip()).encode('utf-8')))
         for name in name_list:
-            alphatree.cacheAlpha(alphatree_id, cache_id, c_char_p(name))
+            alphatree.cacheAlpha(alphatree_id, cache_id, c_char_p(name.encode('utf-8')))
         self.release_cache(cache_id)
         self.release_alphatree(alphatree_id)
 
@@ -68,7 +72,7 @@ class AlphaForest(object):
         alphatree_id = self.create_alphatree()
         cache_id = self.use_cache()
         self.decode_alphatree(alphatree_id, name, line)
-        alphatree.cacheSign(alphatree_id, cache_id, c_char_p(name))
+        alphatree.cacheSign(alphatree_id, cache_id, c_char_p(name.encode('utf-8')))
         self.release_cache(cache_id)
         self.release_alphatree(alphatree_id)
 
@@ -79,31 +83,51 @@ class AlphaForest(object):
         alphatree_id = self.create_alphatree()
         cache_id = self.use_cache()
         self.decode_alphatree(alphatree_id, name, line)
-        alphatree.cacheCodesSign(alphatree_id, cache_id, c_char_p(name), self.code_cache, stock_size)
+        alphatree.cacheCodesSign(alphatree_id, cache_id, c_char_p(name.encode('utf-8')), self.code_cache, stock_size)
         self.release_cache(cache_id)
         self.release_alphatree(alphatree_id)
 
-    def cache_feature(self, feature_name):
-        alphatree.cacheFeature(c_char_p(feature_name))
+    def load_feature(self, feature_name):
+        alphatree.loadFeature(c_char_p(feature_name.encode('utf-8')))
+
+    def update_feature(self, feature_name):
+        alphatree.updateFeature(c_char_p(feature_name.encode('utf-8')))
+
+    def release_all_feature(self):
+        alphatree.releaseAllFeature()
+
+    def load_sign(self, sign_name):
+        alphatree.loadSign(c_char_p(sign_name.encode('utf-8')))
+
+    def release_all_sign(self):
+        alphatree.releaseAllSign()
 
     def get_stock_codes(self):
         stock_size = alphatree.getStockCodes(self.code_cache)
         return np.array(self._read_str_list(self.code_cache, stock_size))
 
     def get_market_codes(self):
-        stock_size = alphatree.getMarketCodes(self.code_cache)
+        stock_size = alphatree.getMarketCodes(None, self.code_cache)
         return np.array(self._read_str_list(self.code_cache, stock_size))
+
+    def get_stock_ids(self, daybefore, sample_size, sign_name):
+        stock_num = alphatree.getStockIds(daybefore, sample_size, c_char_p(sign_name.encode('utf-8')), self.alphatree_id_cache)
+        return np.array([self.alphatree_id_cache[i] for i in range(stock_num)])
+
+    def get_code(self, stock_id):
+        l = alphatree.getCode(stock_id, self.code_cache)
+        return ''.join([self.code_cache[i] for i in range(l)])
 
     def fill_codes(self, codes):
         self.cur_stock_size = len(codes)
         self._write_codes(codes)
 
-    def process_alpha(self, line, daybefore, sample_size):
+    def process_alpha(self, line, daybefore, sample_size, sign_name):
         alphatree_id = alphatree.createAlphatree()
-        alphatree.decodeAlphatree(alphatree_id, c_char_p("_process"), c_char_p(line))
+        alphatree.decodeAlphatree(alphatree_id, c_char_p(b"_process"), c_char_p(line.encode('utf-8')))
         cache_id = alphatree.useCache()
-        alphatree.calAlpha(alphatree_id, cache_id, daybefore, sample_size, self.code_cache, self.cur_stock_size)
-        alphatree.getAlpha(alphatree_id, c_char_p("_process"), cache_id, self.alpha_cache)
+        alphatree.calSignAlpha(alphatree_id, cache_id, daybefore, sample_size, 0, self.get_sign_num(daybefore, sample_size, sign_name), 1, c_char_p(sign_name.encode('utf-8')))
+        alphatree.getAlpha(alphatree_id, c_char_p(b"_process"), cache_id, self.alpha_cache)
         alphatree.releaseAlphatree(alphatree_id)
         alphatree.releaseCache(cache_id)
         return self.alpha_cache[0]
@@ -121,22 +145,24 @@ class AlphaForest(object):
         alphatree.releaseCache(cache_id)
 
     def encode_alphatree(self, alphatree_id, root_name):
-        str_len = alphatree.encodeAlphatree(alphatree_id, c_char_p(root_name), self.encode_cache)
-        str_list = [self.encode_cache[i] for i in xrange(str_len)]
+        str_len = alphatree.encodeAlphatree(alphatree_id, c_char_p(root_name.encode('utf-8')), self.encode_cache)
+        str_list = [self.encode_cache[i] for i in range(str_len)]
         return "".join(str_list)
 
     def decode_alphatree(self, alphatree_id, root_name, line):
-        alphatree.decodeAlphatree(alphatree_id, c_char_p(root_name), c_char_p(line))
+        alphatree.decodeAlphatree(alphatree_id, c_char_p(root_name.encode('utf-8')), c_char_p(line.encode('utf-8')))
 
     def get_max_history_days(self, alphatree_id):
         return alphatree.getMaxHistoryDays(alphatree_id)
 
     def get_sign_num(self, day_before, sample_days, sign_name):
-        return alphatree.getSignNum(day_before, sample_days, c_char_p(sign_name))
+        return alphatree.getSignNum(day_before, sample_days, c_char_p(sign_name.encode('utf-8')))
 
 
-
-
+    def cache_bool_hmm(self, feature_name, codes, hide_state_num = 3, seq_len = 750, epoch_num = 64):
+        stock_size = len(codes)
+        self._write_codes(codes)
+        alphatree.cacheBoolHMM(c_char_p(feature_name.encode('utf-8')), hide_state_num, seq_len, self.code_cache, stock_size, epoch_num)
 
 
     def cal_alpha(self, alphatree_id, cache_id, daybefore, sample_size, codes):
@@ -146,16 +172,16 @@ class AlphaForest(object):
         alphatree.calAlpha(alphatree_id, cache_id, daybefore, sample_size, self.code_cache, stock_size)
 
     def cal_sign_alpha(self, alphatree_id, cache_id, daybefore, sample_size, sign_history_days, sign_name):
-        alphatree.calSignAlpha(alphatree_id, cache_id, daybefore, sample_size, sign_history_days, c_char_p(sign_name))
+        alphatree.calSignAlpha(alphatree_id, cache_id, daybefore, sample_size, sign_history_days, c_char_p(sign_name.encode('utf-8')))
 
 
     def optimize_alpha(self, alphatree_id, cache_id, root_name, daybefore, sample_size, codes, exploteRatio = 0.1, errTryTime = 64):
         stock_size = len(codes)
         self._write_codes(codes)
-        return alphatree.optimizeAlpha(alphatree_id, cache_id, c_char_p(root_name), daybefore, sample_size, self.code_cache, stock_size, c_float(exploteRatio), errTryTime)
+        return alphatree.optimizeAlpha(alphatree_id, cache_id, c_char_p(root_name.encode('utf-8')), daybefore, sample_size, self.code_cache, stock_size, c_float(exploteRatio), errTryTime)
 
     def get_root_alpha(self, alphatree_id, root_name, cache_id, sample_size):
-        data_size = alphatree.getAlpha(alphatree_id, c_char_p(root_name), cache_id, self.alpha_cache)
+        data_size = alphatree.getAlpha(alphatree_id, c_char_p(root_name.encode('utf-8')), cache_id, self.alpha_cache)
         stock_size = data_size / sample_size
         return self._read_alpha(sample_size, stock_size)
 
@@ -168,15 +194,15 @@ class AlphaForest(object):
     #    alphatree.processAlpha(alphatree_id, cache_id)
 
     def get_process(self, alphatree_id, process_name, cache_id):
-        alphatree.getRootProcess(alphatree_id, c_char_p(process_name), cache_id, self.process_cache)
+        alphatree.getRootProcess(alphatree_id, c_char_p(process_name.encode('utf-8')), cache_id, self.process_cache)
         return self._read_str(self.process_cache)
 
     def _read_alpha(self, sample_size, stock_size):
         alpha_list = list()
         cur_alpha_index = 0
-        for i in xrange(sample_size):
+        for i in range(sample_size):
             alpha = list()
-            for j in xrange(stock_size):
+            for j in range(stock_size):
                 alpha.append(self.alpha_cache[cur_alpha_index])
                 cur_alpha_index += 1
             alpha_list.append(alpha)
@@ -196,7 +222,7 @@ class AlphaForest(object):
     def _read_str_list(clf, str_cache, str_num):
         cur_index = 0
         str_list = list()
-        for i in xrange(str_num):
+        for i in range(str_num):
             code = list()
             while str_cache[cur_index] != '\0':
                 code.append(str_cache[cur_index])

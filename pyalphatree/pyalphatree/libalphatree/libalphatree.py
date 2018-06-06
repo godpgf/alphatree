@@ -9,7 +9,7 @@ lib_path = curr_path + "/../../lib/"
 
 try:
     alphatree = ctypes.cdll.LoadLibrary(lib_path + "libalphatree_api.so")
-except OSError,e:
+except OSError as e:
     lib_path = curr_path + "/../../../lib/"
     alphatree = ctypes.cdll.LoadLibrary(lib_path + "libalphatree_api.so")
 
