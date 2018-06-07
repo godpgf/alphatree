@@ -10,9 +10,9 @@ using namespace std;
 
 
 #ifndef WIN32 // or something like that...
-#define DLLEXPORT __declspec(dllexport)
-#else
 #define DLLEXPORT
+#else
+#define DLLEXPORT __declspec(dllexport)
 #endif
 
 #define MAX_TREE_SIZE 32768
