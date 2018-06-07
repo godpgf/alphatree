@@ -412,7 +412,7 @@ void* calStddevData(void** pars, float coff, int historySize, int stockSize, Cac
                     }
                 }
 
-                sum /= (fabs(d)+1);
+                sum /= (fabsf((float)d)+1.f);
                 switch(dataType){
                     case 0:
                         //stddev
@@ -533,7 +533,7 @@ void* tsRank(void** pars, float coff, int historySize, int stockSize, CacheFlag*
 
     int size = historySize * stockSize;
     for(int i = 0; i < size; ++i)
-        pout[i] /= fabs(d);
+        pout[i] /= fabsf((float)d);
     return pout;
 }
 
@@ -692,7 +692,7 @@ void* decayLinear(void** pars, float coff, int historySize, int stockSize, Cache
     float* pout = (float*)(pars[0]);
     if(coff > 0){
         int d = (int)roundf(coff) + 1;
-        float allWeight = (d + 1) * d * 0.5;
+        float allWeight = (d + 1) * d * 0.5f;
         for(int i = historySize - 1; i >= d-1; --i){
             if(pflag[i] == CacheFlag::NEED_CAL){
                 for(int j = 0; j < d; j++){
@@ -705,7 +705,7 @@ void* decayLinear(void** pars, float coff, int historySize, int stockSize, Cache
         }
     } else {
         int d = (int)roundf(coff) - 1;
-        float allWeight = (-d + 1) * (-d) * 0.5;
+        float allWeight = (-d + 1) * (-d) * 0.5f;
         for(int i = 0; i < historySize + (d + 1); ++i){
             if(pflag[i] == CacheFlag::NEED_CAL){
                 for(int j = 0; j > d; --j){
@@ -840,14 +840,14 @@ void* tsArgMin(void** pars, float coff, int historySize, int stockSize, CacheFla
             int minId = (int)pout[i * stockSize + j];
             if(d > 0){
                 if(minId + d >= i)
-                    pout[i * stockSize + j] = i - minId;
+                    pout[i * stockSize + j] = (float)(i - minId);
                 else
-                    pout[i * stockSize + j] = d;
+                    pout[i * stockSize + j] = (float)d;
             } else {
                 if(minId + d <= i)
-                    pout[i * stockSize + j] = minId - i;
+                    pout[i * stockSize + j] = (float)(minId - i);
                 else
-                    pout[i * stockSize + j] = -d;
+                    pout[i * stockSize + j] = -(float)d;
             }
         }
     }
@@ -864,14 +864,14 @@ void* tsArgMax(void** pars, float coff, int historySize, int stockSize, CacheFla
             int maxId = (int)pout[i * stockSize + j];
             if(d > 0){
                 if(maxId + d >= i)
-                    pout[i * stockSize + j] = i - maxId;
+                    pout[i * stockSize + j] = (float)(i - maxId);
                 else
-                    pout[i * stockSize + j] = d;
+                    pout[i * stockSize + j] = (float)d;
             } else {
                 if(maxId + d <= i)
-                    pout[i * stockSize + j] = maxId - i;
+                    pout[i * stockSize + j] = (float)(maxId - i);
                 else
-                    pout[i * stockSize + j] = -d;
+                    pout[i * stockSize + j] = -(float)d;
             }
 
         }
@@ -924,7 +924,7 @@ void* clamp(void** pars, float coff, int historySize, int stockSize, CacheFlag* 
 }
 
 void* log(void** pars, float coff, int historySize, int stockSize, CacheFlag* pflag){
-    float logmax = logf(0.0001);
+    float logmax = logf(0.0001f);
     float* pout = (float*)(pars[0]);
     float* pleft = (float*)(pars[0]);
     for(int i = 0; i < historySize; ++i){
@@ -1249,7 +1249,7 @@ void* cross(void** pars, float coff, int historySize, int stockSize, CacheFlag* 
         if(pflag[i] == CacheFlag::NEED_CAL) {
             for(int j = 0; j < stockSize; ++j){
                 curIndex = i * stockSize + j;
-                pout[curIndex] = (pleft[curIndex - d * stockSize] < pright[curIndex - d * stockSize] && pleft[curIndex] > pright[curIndex]) ? 1 : 0;
+                pout[curIndex] = (pleft[curIndex - d * stockSize] < pright[curIndex - d * stockSize] && pleft[curIndex] > pright[curIndex]) ? 1.f : 0.f;
             }
         }
         //else {
@@ -1268,7 +1268,7 @@ void* crossFrom(void** pars, float coff, int historySize, int stockSize, CacheFl
         if(pflag[i] == CacheFlag::NEED_CAL) {
             for(int j = 0; j < stockSize; ++j){
                 curIndex = i * stockSize + j;
-                pout[curIndex] = (coff < pleft[curIndex - d*stockSize] && coff > pleft[curIndex]) ? 1 : 0;
+                pout[curIndex] = (coff < pleft[curIndex - d*stockSize] && coff > pleft[curIndex]) ? 1.f : 0.f;
             }
         }
         //else {
@@ -1287,7 +1287,7 @@ void* crossTo(void** pars, float coff, int historySize, int stockSize, CacheFlag
         if(pflag[i] == CacheFlag::NEED_CAL) {
             for(int j = 0; j < stockSize; ++j){
                 curIndex = i * stockSize + j;
-                pout[curIndex] = (pleft[curIndex - d*stockSize] < coff && pleft[curIndex] > coff) ? 1 : 0;
+                pout[curIndex] = (pleft[curIndex - d*stockSize] < coff && pleft[curIndex] > coff) ? 1.f : 0.f;
             }
         }
         //else {
@@ -1311,7 +1311,7 @@ void* match(void** pars, float coff, int historySize, int stockSize, CacheFlag* 
             if(pflag[i] == CacheFlag::NEED_CAL){
                 curIndex = i * stockSize + j;
                 if(buyIndex > 0 && pright[curIndex] > 0){
-                    pout[buyIndex] = (curIndex - buyIndex) / stockSize;
+                    pout[buyIndex] = (float)(curIndex - buyIndex) / stockSize;
                     buyIndex = -1;
                 }
                 if(pout[curIndex] < 0 && buyIndex < 0){

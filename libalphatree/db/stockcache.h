@@ -716,7 +716,7 @@ public:
         float* curEventArgSortIndex = new float[hideStateNum];
 
         int useBitSize = 64 / (hideStateNum * hideStateNum);//确定用多少bit去存转移概率
-        int useBitValue = (int)powf(2, useBitSize) - 1;
+        int useBitValue = (int)powf(2.f, (float)useBitSize) - 1;
 
         for(int i = 0; i < des_->stockMetas.getSize(); ++i){
             if(stockFlag && stockFlag[i]){
@@ -727,7 +727,7 @@ public:
 
                 //写入先前空缺的数据
                 while (curDateIndex < seqLength - 1 && curDateIndex < curIter.size()){
-                    o[curDateIndex++] = (*curIter) > 0 ? 1 : 0;
+                    o[curDateIndex++] = (*curIter) > 0 ? 1.f : 0.f;
                     ++curIter;
                     convertPercentFile.write(reinterpret_cast< char* >( &percentBatch ), sizeof( long ));
                     for(int j = 0; j < hideStateNum; ++j){
@@ -737,7 +737,7 @@ public:
 
                 //计算hmm
                 while (curDateIndex < curIter.size()){
-                    o[seqLength-1] = (*curIter) > 0 ? 1 : 0;
+                    o[seqLength-1] = (*curIter) > 0 ? 1.f : 0.f;
                     ++curIter;
                     ++curDateIndex;
                     DMatrix<float> out(seqLength, 1, o);

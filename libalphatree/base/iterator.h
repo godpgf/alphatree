@@ -248,7 +248,7 @@ protected:
         data = atoi(curData_.c_str());
     }
     void readData(float& data){
-        data = atof(curData_.c_str());
+        data = (float)atof(curData_.c_str());
     }
     ifstream inFile_;
     int columnIndex_;

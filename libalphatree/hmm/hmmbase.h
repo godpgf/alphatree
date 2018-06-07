@@ -85,7 +85,7 @@ protected:
         for (unsigned i = 0; i < model_.getA()->getDim1(); ++i) {
             float sum = 0;
             for (unsigned j = 0; j < model_.getA()->getDim2(); ++j) {
-                (*model_.getA())(i, j) = rand() / double(RAND_MAX);
+                (*model_.getA())(i, j) = rand() / float(RAND_MAX);
                 sum += (*model_.getA())(i, j);
             }
             for (unsigned j = 0; j < model_.getA()->getDim2(); ++j)
@@ -94,7 +94,7 @@ protected:
         for (unsigned i = 0; i < model_.getB()->getDim1(); ++i) {
             float sum = 0;
             for (unsigned j = 0; j < model_.getB()->getDim2(); ++j) {
-                (*model_.getB())(i, j) = rand() / double(RAND_MAX);
+                (*model_.getB())(i, j) = rand() / float(RAND_MAX);
                 sum += (*model_.getB())(i, j);
             }
             for (unsigned j = 0; j < model_.getB()->getDim2(); ++j)
@@ -102,7 +102,7 @@ protected:
         }
         float sum = 0;
         for (unsigned i = 0; i < model_.getPi()->getDim1(); ++i) {
-            (*model_.getPi())(i, 0) = rand() / double(RAND_MAX);
+            (*model_.getPi())(i, 0) = rand() / float(RAND_MAX);
             for (unsigned j = 0; j < model_.getB()->getDim2(); ++j)
                 sum += (*model_.getPi())(i, j);
         }

@@ -37,14 +37,14 @@ inline void _sign(float *dst, const float *src, int size){
 inline void _signAnd(float* dst, const float* l, const float* r, int size){
     for(int i = 0; i < size; ++i){
         //cout<<l[i]<<" "<<r[i]<<" "<<endl;
-        dst[i] = ((l[i] > 0 && r[i] > 0) ? 1 : 0);
+        dst[i] = ((l[i] > 0 && r[i] > 0) ? 1.f : 0.f);
         //cout<<dst[i]<<endl;
     }
 }
 
 inline void _signOr(float* dst, const float* l, const float* r, int size){
     for(int i = 0; i < size; ++i)
-        dst[i] = ((l[i] > 0 || r[i] > 0) ? 1 : 0);
+        dst[i] = ((l[i] > 0 || r[i] > 0) ? 1.f : 0.f);
 }
 
 inline void _add(float* dst, const float* src, int size){
@@ -122,10 +122,10 @@ inline void _div(float* dst, float v, int size){
 
 inline void _div(float v, float* dst, int size){
     for(int i = 0; i < size; ++i){
-        if(dst[i] == 0.0f || (dst[i] > 0.0f && dst[i] < 0.0001)){
-            dst[i] =v / 0.0001;
-        } else if(dst[i] < 0.0f && dst[i] > -0.0001){
-            dst[i] = v / -0.0001;
+        if(dst[i] == 0.0f || (dst[i] > 0.0f && dst[i] < 0.0001f)){
+            dst[i] =v / 0.0001f;
+        } else if(dst[i] < 0.0f && dst[i] > -0.0001f){
+            dst[i] = v / -0.0001f;
         }
         else{
             dst[i] = v / dst[i];
@@ -136,9 +136,9 @@ inline void _div(float v, float* dst, int size){
 inline void _div(float* dst, const float* a, const float* const b, int size){
     for(int i = 0; i < size; ++i) {
         //cout<<a[i]<<" "<<b[i]<<" "<<size<<endl;
-        if (b[i] == 0.0f || (b[i] > 0 && b[i] < 0.0001)) {
+        if (b[i] == 0.0f || (b[i] > 0 && b[i] < 0.0001f)) {
             dst[i] = a[i] * 10000;
-        } else if( b[i] < 0 && b[i] > -0.0001){
+        } else if( b[i] < 0 && b[i] > -0.0001f){
             dst[i] = a[i] * -10000;
         }
         else {
@@ -154,7 +154,7 @@ inline void _div(float* dst, const float* a, const float* const b, int size){
 
 inline void _lerp(float* dst, const float* a, const float* b, float c, int size){
     for(int i = 0; i < size; ++i) {
-        dst[i] = a[i] * c + b[i] * (1.0 - c);
+        dst[i] = a[i] * c + b[i] * (1.f - c);
     }
 }
 
@@ -202,7 +202,7 @@ inline void _clamp(float *dst, const float *src, int size){
 
 inline void _log(float *dst, const float *src, int size,  float logmax){
     for(int i = 0; i < size; ++i){
-        if(src[i] < 0.0001)
+        if(src[i] < 0.0001f)
             dst[i] = logmax;
         else
             dst[i] = logf(src[i]);
@@ -235,52 +235,52 @@ inline void _pow(float *dst, const float a, const float *b, int size){
 
 inline void _equalCond(float *dst, const float *a, const float *b, int size){
     for(int i = 0; i < size; ++i) {
-        dst[i] = fabsf(a[i] - b[i]) < 0.0001f ? 1 : 0;
+        dst[i] = fabsf(a[i] - b[i]) < 0.0001f ? 1.f : 0.f;
     }
 }
 
 inline void _equalCond(float *dst, float a, const float *b, int size){
     for(int i = 0; i < size; ++i) {
-        dst[i] = fabsf(a - b[i]) < 0.0001f ? 1 : 0;
+        dst[i] = fabsf(a - b[i]) < 0.0001f ? 1.f : 0.f;
     }
 }
 
 inline void _equalCond(float *dst, const float *a, const float b, int size){
     for(int i = 0; i < size; ++i) {
-        dst[i] = fabsf(a[i] - b) < 0.00001f ? 1 : 0;
+        dst[i] = fabsf(a[i] - b) < 0.00001f ? 1.f : 0.f;
         //cout<<dst[i]<<" "<<a[i]<<endl;
     }
 }
 
 inline void _lessCond(float *dst, const float *a, const float *b, int size){
     for(int i = 0; i < size; ++i) {
-        dst[i] = (a[i] < b[i]) ? 1 : 0;
+        dst[i] = (a[i] < b[i]) ? 1.f : 0.f;
     }
 }
 
 
 inline void _lessCond(float *dst, float a, const float *b, int size){
     for(int i = 0; i < size; ++i) {
-        dst[i] = (a < b[i]) ? 1 : 0;
+        dst[i] = (a < b[i]) ? 1.f : 0.f;
     }
 }
 
 inline void _lessCond(float *dst, const float *a, const float b, int size){
     for(int i = 0; i < size; ++i) {
-        dst[i] = (a[i] < b) ? 1 : 0;
+        dst[i] = (a[i] < b) ? 1.f : 0.f;
         //cout<<dst[i]<<" "<<a[i]<<endl;
     }
 }
 
 inline void _moreCond(float *dst, float a, const float *b, int size){
     for(int i = 0; i < size; ++i) {
-        dst[i] = (a > b[i]) ? 1 : 0;
+        dst[i] = (a > b[i]) ? 1.f : 0.f;
     }
 }
 
 inline void _moreCond(float *dst, const float *a, const float b, int size){
     for(int i = 0; i < size; ++i) {
-        dst[i] = (a[i] > b) ? 1 : 0;
+        dst[i] = (a[i] > b) ? 1.f : 0.f;
     }
 }
 
@@ -348,7 +348,7 @@ void quickSort(const float* src, float* index, int left, int right){
         if(low < high)
             index[high--] = index[low];
     }
-    index[low] = key;
+    index[low] = (float)key;
 
     quickSort(src, index, left, low - 1);
     quickSort(src, index, low+1, right);
@@ -356,7 +356,7 @@ void quickSort(const float* src, float* index, int left, int right){
 
 void _ranksort(float *index, const float *src, int size){
     for(int i = 0; i < size; ++i)
-        index[i] = i;
+        index[i] = (float)i;
     quickSort(src, index, 0, size-1);
     //for(int i = 0; i < size; ++i){
     //    if(flag[(int)index[i]] == false){
@@ -380,7 +380,7 @@ void _rankscale(float *dst,const float *index, int size){
             ++curSortId;
         }else{
             int elementId = ((int)(-index[i] - 1));
-            dst[elementId] = -0.001;
+            dst[elementId] = -0.0001f;
         }
     }
 }
@@ -418,7 +418,7 @@ inline void _scale(float *dst, int size){
     for(int i = 0; i < size; ++i)
         //if(flag[i])
             sum += dst[i] >= 0 ? dst[i] : -dst[i];
-    if(sum < 0.0001)
+    if(sum < 0.0001f)
         memset(dst,0,sizeof(float) * size);
     else
         for(int i = 0; i < size; ++i)
@@ -436,33 +436,33 @@ inline void _tsMinIndex(float *dst, const float *src, int historySize, int eleme
                 //如果出现相等的情况，后面的id优先
                 if (lastId + range >= i) {
                     //上一个元素记录的最小值在自己的视野内
-                    dst[i * elementSize + j] = (src[i * elementSize + j] <= src[lastId * elementSize + j]) ? i : lastId;
+                    dst[i * elementSize + j] = (float)((src[i * elementSize + j] <= src[lastId * elementSize + j]) ? i : lastId);
                 } else {
                     int minId = i;
                     for (int k = 1; k <= range; ++k) {
                         if (src[(i - k) * elementSize + j] < src[minId * elementSize + j])
                             minId = i - k;
                     }
-                    dst[i * elementSize + j] = minId;
+                    dst[i * elementSize + j] = (float)minId;
                 }
             }
         }
     } else {
         for(int j = 0; j < elementSize; ++j)
-            dst[(historySize - 1) * elementSize + j] = historySize - 1;
+            dst[(historySize - 1) * elementSize + j] = (float)(historySize - 1);
         for(int i = historySize - 2; i >= 0; --i){
             for(int j = 0; j < elementSize; ++j) {
                 int lastId = (int) dst[(i + 1) * elementSize + j];
                 if(lastId + range <= i){
                     //在自己的视野内
-                    dst[i * elementSize + j] = (src[i * elementSize + j] <= src[lastId * elementSize + j]) ? i : lastId;
+                    dst[i * elementSize + j] = (float)((src[i * elementSize + j] <= src[lastId * elementSize + j]) ? i : lastId);
                 } else {
                     int  minId = i;
                     for(int k = -1; k >= range; --k){
                         if(src[(i - k) * elementSize + j] < src[minId * elementSize + j])
                             minId = i - k;
                     }
-                    dst[i * elementSize + j] = minId;
+                    dst[i * elementSize + j] = (float)minId;
                 }
             }
         }
@@ -478,33 +478,33 @@ inline void _tsMaxIndex(float *dst, const float *src, int historySize, int eleme
                 //如果出现相等的情况，后面的id优先
                 if (lastId + range >= i) {
                     //上一个元素记录的最小值在自己的视野内
-                    dst[i * elementSize + j] = (src[i * elementSize + j] >= src[lastId * elementSize + j]) ? i : lastId;
+                    dst[i * elementSize + j] = (float)((src[i * elementSize + j] >= src[lastId * elementSize + j]) ? i : lastId);
                 } else {
                     int minId = i;
                     for (int k = 1; k <= range; ++k) {
                         if (src[(i - k) * elementSize + j] > src[minId * elementSize + j])
                             minId = i - k;
                     }
-                    dst[i * elementSize + j] = minId;
+                    dst[i * elementSize + j] = (float)minId;
                 }
             }
         }
     } else {
         for(int j = 0; j < elementSize; ++j)
-            dst[(historySize - 1) * elementSize + j] = historySize - 1;
+            dst[(historySize - 1) * elementSize + j] = (float)(historySize - 1);
         for(int i = historySize - 2; i >= 0; --i){
             for(int j = 0; j < elementSize; ++j) {
                 int lastId = (int) dst[(i + 1) * elementSize + j];
                 if(lastId + range <= i){
                     //在自己的视野内
-                    dst[i * elementSize + j] = (src[i * elementSize + j] >= src[lastId * elementSize + j]) ? i : lastId;
+                    dst[i * elementSize + j] = (float)((src[i * elementSize + j] >= src[lastId * elementSize + j]) ? i : lastId);
                 } else {
                     int  minId = i;
                     for(int k = -1; k >= range; --k){
                         if(src[(i - k) * elementSize + j] > src[minId * elementSize + j])
                             minId = i - k;
                     }
-                    dst[i * elementSize + j] = minId;
+                    dst[i * elementSize + j] = (float)minId;
                 }
             }
         }
@@ -566,7 +566,7 @@ void lstd(float* x, float* y, int historySize, int elementSize, const float* alp
             sumAlphaErr += err;
             sumAlphaErr_2 += err * err;
 
-            if(fabsf(x[j * elementSize + i]) < 0.0001) {
+            if(fabsf(x[j * elementSize + i]) < 0.0001f) {
                 err = 0;
             }
             else{

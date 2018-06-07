@@ -108,7 +108,7 @@ void* noiseValid(void** pars, float coff, int historySize, int stockSize, CacheF
     float avgValue = avg_t0 / avg_t1;
     float stdValue = 0;
     for(int i = 0; i < barSize; ++i){
-        float curValue = abs(t1_out[i]) < 0.0001 || cnt_out[i] < MIN_DATA_NUM_IN_BAR ? avgValue : t0_out[i] / t1_out[i];
+        float curValue = abs(t1_out[i]) < 0.0001f || cnt_out[i] < MIN_DATA_NUM_IN_BAR ? avgValue : t0_out[i] / t1_out[i];
         //cout<<curValue<<" "<<cnt_out[i]<<" "<<t0_out[i]<<" "<<t1_out[i]<<endl;
         stdValue += (curValue - avgValue) * (curValue - avgValue) * cnt_out[i] / dataNum;
     }
