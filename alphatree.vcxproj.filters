@@ -1,0 +1,132 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="源文件">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="头文件">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="资源文件">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="头文件\hmm">
+      <UniqueIdentifier>{4a7809b2-d89b-43e8-8649-817fac00e5db}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="头文件\db">
+      <UniqueIdentifier>{7dfc93f4-083e-4e1b-99a1-12a56898dad5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="头文件\alpha">
+      <UniqueIdentifier>{6ac9a28a-0d4c-4430-bd0a-ee01e6b482b2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="头文件\alpha\atom">
+      <UniqueIdentifier>{cf849894-8f91-485c-b3ca-998eaf4cd711}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="头文件\base">
+      <UniqueIdentifier>{2d08c25d-1b4f-470e-9fbf-bd02e01b6d9f}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="libalphatree\alphaforest.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\hmm\eventhmm.h">
+      <Filter>头文件\hmm</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\hmm\gaussianhmm.h">
+      <Filter>头文件\hmm</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\hmm\hmmbase.h">
+      <Filter>头文件\hmm</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\db\stockcache.h">
+      <Filter>头文件\db</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\db\stockdes.h">
+      <Filter>头文件\db</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\db\stockfeature.h">
+      <Filter>头文件\db</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\db\stocksign.h">
+      <Filter>头文件\db</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\alpha\alphaatom.h">
+      <Filter>头文件\alpha</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\alpha\alphadb.h">
+      <Filter>头文件\alpha</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\alpha\alphatree.h">
+      <Filter>头文件\alpha</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\alpha\basealphatree.h">
+      <Filter>头文件\alpha</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\alpha\converter.h">
+      <Filter>头文件\alpha</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\alpha\atom\alpha.h">
+      <Filter>头文件\alpha\atom</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\alpha\atom\backtrace.h">
+      <Filter>头文件\alpha\atom</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\alpha\atom\base.h">
+      <Filter>头文件\alpha\atom</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\alpha\atom\optimizealpha.h">
+      <Filter>头文件\alpha\atom</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\alpha\atom\sample.h">
+      <Filter>头文件\alpha\atom</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\base\cache.h">
+      <Filter>头文件\base</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\base\darray.h">
+      <Filter>头文件\base</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\base\dcache.h">
+      <Filter>头文件\base</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\base\dtree.h">
+      <Filter>头文件\base</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\base\hashmap.h">
+      <Filter>头文件\base</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\base\hashname.h">
+      <Filter>头文件\base</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\base\iterator.h">
+      <Filter>头文件\base</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\base\matrix.h">
+      <Filter>头文件\base</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\base\normal.h">
+      <Filter>头文件\base</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\base\pareto.h">
+      <Filter>头文件\base</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\base\randomchoose.h">
+      <Filter>头文件\base</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\base\threadpool.h">
+      <Filter>头文件\base</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\base\vector.h">
+      <Filter>头文件\base</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="libalphatree\libalphatree_api.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
