@@ -7,6 +7,14 @@
 
 using namespace std;
 
+
+
+#ifndef WIN32 // or something like that...
+#define DLLEXPORT __declspec(dllexport)
+#else
+#define DLLEXPORT
+#endif
+
 #define MAX_TREE_SIZE 32768
 #define MAX_SUB_TREE_SIZE 16
 #define MAX_NODE_SIZE 64
@@ -19,129 +27,130 @@ using namespace std;
 
 extern "C"
 {
-void initializeAlphaforest(int cacheSize) {
+
+void DLLEXPORT initializeAlphaforest(int cacheSize) {
     AlphaForest::initialize(cacheSize);
 }
 
-void releaseAlphaforest() {
+void DLLEXPORT releaseAlphaforest() {
     AlphaForest::release();
 }
 
-void loadDataBase(const char *path) {
+void DLLEXPORT loadDataBase(const char *path) {
     AlphaForest::getAlphaforest()->getAlphaDataBase()->loadDataBase(path);
 }
 
-void csv2binary(const char *path, const char* featureName){
+void DLLEXPORT csv2binary(const char *path, const char* featureName){
     AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary(path, featureName);
 }
 
-void cacheMiss(){
+void DLLEXPORT cacheMiss(){
     AlphaForest::getAlphaforest()->getAlphaDataBase()->miss2binary();
 }
 
-void cacheBoolHMM(const char* featureName, int hideStateNum, size_t seqLength, const char* codes, int codesNum, int epochNum = 8){
+void DLLEXPORT cacheBoolHMM(const char* featureName, int hideStateNum, size_t seqLength, const char* codes, int codesNum, int epochNum = 8){
     AlphaForest::getAlphaforest()->getAlphaDataBase()->boolhmm2binary(featureName, hideStateNum, seqLength, codes, codesNum, epochNum);
 }
 
-void loadFeature(const char* featureName){
+void DLLEXPORT loadFeature(const char* featureName){
     AlphaForest::getAlphaforest()->getAlphaDataBase()->loadFeature(featureName);
 }
 
-void updateFeature(const char* featureName){
+void DLLEXPORT updateFeature(const char* featureName){
     AlphaForest::getAlphaforest()->getAlphaDataBase()->updateFeature(featureName);
 }
 
-void releaseAllFeature(){
+void DLLEXPORT releaseAllFeature(){
     AlphaForest::getAlphaforest()->getAlphaDataBase()->releaseAllFeature();
 }
 
-void loadSign(const char* signName){
+void DLLEXPORT loadSign(const char* signName){
     AlphaForest::getAlphaforest()->getAlphaDataBase()->loadSign(signName);
 }
 
-void releaseAllSign(){
+void DLLEXPORT releaseAllSign(){
     AlphaForest::getAlphaforest()->getAlphaDataBase()->releaseAllSign();
 }
 
-int createAlphatree() {
+int DLLEXPORT createAlphatree() {
     return AlphaForest::getAlphaforest()->useAlphaTree();
 }
 
-void releaseAlphatree(int alphatreeId) {
+void DLLEXPORT releaseAlphatree(int alphatreeId) {
     AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
 }
 
-int useCache() {
+int DLLEXPORT useCache() {
     return AlphaForest::getAlphaforest()->useCache();
 }
 
-void releaseCache(int cacheId) {
+void DLLEXPORT releaseCache(int cacheId) {
     AlphaForest::getAlphaforest()->releaseCache(cacheId);
 }
 
-int encodeAlphatree(int alphatreeId, const char *rootName, char *out) {
+int DLLEXPORT encodeAlphatree(int alphatreeId, const char *rootName, char *out) {
     const char *res = AlphaForest::getAlphaforest()->encodeAlphaTree(alphatreeId, rootName, out);
     return strlen(res);
 }
 
-void decodeAlphatree(int alphaTreeId, const char *rootName, const char *line) {
+void DLLEXPORT decodeAlphatree(int alphaTreeId, const char *rootName, const char *line) {
     AlphaForest::getAlphaforest()->decode(alphaTreeId, rootName, line);
 }
 
-int getStockCodes(char *codes) {
+int DLLEXPORT getStockCodes(char *codes) {
     return AlphaForest::getAlphaforest()->getAlphaDataBase()->getStockCodes(codes);
 }
 
-int getStockIds(int dayBefore, int sampleSize, const char* signName, int* dst){
+int DLLEXPORT getStockIds(int dayBefore, int sampleSize, const char* signName, int* dst){
     return AlphaForest::getAlphaforest()->getAlphaDataBase()->getStockIds(dayBefore, sampleSize, signName, dst);
 }
 
-int getCode(int id, char* codes){
+int DLLEXPORT getCode(int id, char* codes){
     strcpy(codes, AlphaForest::getAlphaforest()->getAlphaDataBase()->getCode(id));
     return strlen(codes);
 }
 
-int getMarketCodes(const char *marketName, char *codes) {
+int DLLEXPORT getMarketCodes(const char *marketName, char *codes) {
     return AlphaForest::getAlphaforest()->getAlphaDataBase()->getMarketCodes(marketName, codes);
 }
 
-int getIndustryCodes(const char *industryName, char *codes) {
+int DLLEXPORT getIndustryCodes(const char *industryName, char *codes) {
     return AlphaForest::getAlphaforest()->getAlphaDataBase()->getIndustryCodes(industryName, codes);
 }
 
-int getMaxHistoryDays(int alphaTreeId) { return AlphaForest::getAlphaforest()->getMaxHistoryDays(alphaTreeId); }
+int DLLEXPORT getMaxHistoryDays(int alphaTreeId) { return AlphaForest::getAlphaforest()->getMaxHistoryDays(alphaTreeId); }
 
-int getSignNum(int dayBefore, int sampleSize, const char* signName){
+int DLLEXPORT getSignNum(int dayBefore, int sampleSize, const char* signName){
     return AlphaForest::getAlphaforest()->getAlphaDataBase()->getSignNum(dayBefore, sampleSize, signName);
 }
 
 
-void calAlpha(int alphaTreeId, int cacheId, int dayBefore, int sampleSize, const char *codes, int stockSize) {
+void DLLEXPORT calAlpha(int alphaTreeId, int cacheId, int dayBefore, int sampleSize, const char *codes, int stockSize) {
     AlphaForest::getAlphaforest()->calAlpha(alphaTreeId, cacheId, dayBefore, sampleSize, codes, stockSize);
 }
 
-void calSignAlpha(int alphaTreeId, int cacheId, int dayBefore, int sampleSize, int startIndex, int signNum, int signHistoryDays, const char* signName){
+void DLLEXPORT calSignAlpha(int alphaTreeId, int cacheId, int dayBefore, int sampleSize, int startIndex, int signNum, int signHistoryDays, const char* signName){
     AlphaForest::getAlphaforest()->calAlpha(alphaTreeId, cacheId, dayBefore, sampleSize, startIndex, signNum, signHistoryDays, signName);
 }
 
-void cacheAlpha(int alphaTreeId, int cacheId, const char* featureName) {
+void DLLEXPORT cacheAlpha(int alphaTreeId, int cacheId, const char* featureName) {
     AlphaForest::getAlphaforest()->cacheAlpha(alphaTreeId, cacheId, featureName);
 }
 
-void cacheSign(int alphaTreeId, int cacheId, const char* signName){
+void DLLEXPORT cacheSign(int alphaTreeId, int cacheId, const char* signName){
     AlphaForest::getAlphaforest()->cacheSign(alphaTreeId, cacheId, signName);
 }
 
-void cacheCodesSign(int alphaTreeId, int cacheId, const char* signName, const char* codes, int codesNum){
+void DLLEXPORT cacheCodesSign(int alphaTreeId, int cacheId, const char* signName, const char* codes, int codesNum){
     AlphaForest::getAlphaforest()->cacheSign(alphaTreeId, cacheId, signName, codes, codesNum);
 }
 
 
-float optimizeAlpha(int alphaTreeId, int cacheId, const char *rootName, int dayBefore, int sampleSize, const char *codes, size_t stockSize, float exploteRatio, int errTryTime){
+float DLLEXPORT optimizeAlpha(int alphaTreeId, int cacheId, const char *rootName, int dayBefore, int sampleSize, const char *codes, size_t stockSize, float exploteRatio, int errTryTime){
     return AlphaForest::getAlphaforest()->optimizeAlpha(alphaTreeId, cacheId, rootName, dayBefore, sampleSize, codes, stockSize, exploteRatio, errTryTime);
 }
 
-int getAlpha(int alphaTreeId, const char *rootName, int cacheId, float *alpha) {
+int DLLEXPORT getAlpha(int alphaTreeId, const char *rootName, int cacheId, float *alpha) {
     const float *res = AlphaForest::getAlphaforest()->getAlpha(alphaTreeId, rootName, cacheId);
     auto *cache = AlphaForest::getAlphaforest()->getCache(cacheId);
     int dataSize = cache->getAlphaDays() * cache->stockSize;
@@ -156,16 +165,16 @@ int getAlpha(int alphaTreeId, const char *rootName, int cacheId, float *alpha) {
     return dataSize;
 }
 
-void synchroAlpha(int alphaTreeId, int cacheId){
+void DLLEXPORT synchroAlpha(int alphaTreeId, int cacheId){
     AlphaForest::getAlphaforest()->synchroAlpha(alphaTreeId, cacheId);
 }
 
-void getAlphaSum(int alphaTreeId, const char *rootName, int cacheId, float* alpha){
+void DLLEXPORT getAlphaSum(int alphaTreeId, const char *rootName, int cacheId, float* alpha){
     const float* res = AlphaForest::getAlphaforest()->getAlphaSum(alphaTreeId, rootName, cacheId);
     memcpy(alpha, res, 2 * sizeof(float));
 }
 
-void getAlphaSmooth(int alphaTreeId, const char *rootName, int cacheId, int smoothNum, float* smooth){
+void DLLEXPORT getAlphaSmooth(int alphaTreeId, const char *rootName, int cacheId, int smoothNum, float* smooth){
     return AlphaForest::getAlphaforest()->getAlphaSmooth(alphaTreeId, rootName, cacheId, smoothNum, smooth);
 }
 
