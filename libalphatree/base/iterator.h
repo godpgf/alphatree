@@ -27,6 +27,16 @@ public:
     virtual T&& operator*() { return getValue();}
     virtual T&& getValue() = 0;
     virtual IBaseIterator<T>* clone() = 0;
+
+    /*virtual float sum(int* skip, int skipLen){
+        float dataSum = 0;
+        for(int i = 0; i < skipLen; ++i){
+            this->skip(skip[i]);
+            dataSum += getValue();
+        }
+        this->skip(0, false);
+        return dataSum;
+    }*/
 };
 
 //写数据访问器

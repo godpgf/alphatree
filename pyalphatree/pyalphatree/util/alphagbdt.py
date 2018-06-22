@@ -53,8 +53,8 @@ class AlphaGBDT(object):
         alphatree.getFirstFeatureGainsGBDT(daybefore, sample_size, c_char_p(weight) if weight else None, c_char_p(target), c_char_p(sign_name), gain_cache, bar_size, cache_size)
         return np.array([gain_cache[i] for i in range(self.alphatree_num)])
 
-    def train(self, daybefore, sample_size, weight, target, sign_name, bar_size = 32, min_weight = 64.0, max_depth = 8, boost_num = 2, boost_weight_scale = 1, cache_size = 2048):
-        alphatree.trainAlphaGBDT(daybefore, sample_size, c_char_p(weight) if weight else None, c_char_p(target), c_char_p(sign_name), bar_size, c_float(min_weight), max_depth, boost_num, c_float(boost_weight_scale), cache_size)
+    def train(self, daybefore, sample_size, weight, target, sign_name, bar_size = 32, min_weight = 64.0, max_depth = 8, sample_percent = 1.0, feature_percent = 1.0, boost_num = 2, boost_weight_scale = 1, cache_size = 2048):
+        alphatree.trainAlphaGBDT(daybefore, sample_size, c_char_p(weight) if weight else None, c_char_p(target), c_char_p(sign_name), bar_size, c_float(min_weight), max_depth, c_float(sample_percent), c_float(feature_percent), boost_num, c_float(boost_weight_scale), cache_size)
 
     def pred(self, daybefore, sample_size, sign_name, cache_size = 1024):
         sign_num = alphatree.getSignNum(daybefore, sample_size, c_char_p(sign_name))

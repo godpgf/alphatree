@@ -2,8 +2,14 @@
 // Created by yanyu on 2017/7/20.
 //
 
+#define ML
+
 #include "alphaforest.h"
 #include <iostream>
+
+#ifdef ML
+#include "alphagbdt.h"
+#endif
 
 using namespace std;
 
@@ -15,14 +21,14 @@ using namespace std;
 #define DLLEXPORT __declspec(dllexport)
 #endif
 
-#define MAX_TREE_SIZE 32768
-#define MAX_SUB_TREE_SIZE 16
-#define MAX_NODE_SIZE 64
-#define MAX_STOCK_SIZE 3600
-#define MAX_HISTORY_DAYS 250
-#define MAX_SAMPLE_DAYS 2500
-#define MAX_FUTURE_DAYS 80
-#define CODE_LEN 64
+//#define MAX_TREE_SIZE 32768
+//#define MAX_SUB_TREE_SIZE 16
+//#define MAX_NODE_SIZE 64
+//#define MAX_STOCK_SIZE 3600
+//#define MAX_HISTORY_DAYS 250
+//#define MAX_SAMPLE_DAYS 2500
+//#define MAX_FUTURE_DAYS 80
+//#define CODE_LEN 64
 
 
 extern "C"
@@ -54,6 +60,10 @@ void DLLEXPORT cacheBoolHMM(const char* featureName, int hideStateNum, size_t se
 
 void DLLEXPORT loadFeature(const char* featureName){
     AlphaForest::getAlphaforest()->getAlphaDataBase()->loadFeature(featureName);
+}
+
+void DLLEXPORT releaseFeature(const char* featureName){
+    AlphaForest::getAlphaforest()->getAlphaDataBase()->releaseFeature(featureName);
 }
 
 void DLLEXPORT updateFeature(const char* featureName){
@@ -154,13 +164,6 @@ int DLLEXPORT getAlpha(int alphaTreeId, const char *rootName, int cacheId, float
     const float *res = AlphaForest::getAlphaforest()->getAlpha(alphaTreeId, rootName, cacheId);
     auto *cache = AlphaForest::getAlphaforest()->getCache(cacheId);
     int dataSize = cache->getAlphaDays() * cache->stockSize;
-    /*float a = 0;
-    for(int i = 0; i < dataSize; ++i){
-        a += res[i];
-    }
-    for(int i = 0; i < dataSize; ++i){
-        alpha[i] = 0;
-    }*/
     memcpy(alpha, res, dataSize * sizeof(float));
     return dataSize;
 }
@@ -178,4 +181,57 @@ void DLLEXPORT getAlphaSmooth(int alphaTreeId, const char *rootName, int cacheId
     return AlphaForest::getAlphaforest()->getAlphaSmooth(alphaTreeId, rootName, cacheId, smoothNum, smooth);
 }
 
+void DLLEXPORT getReturns(const char* codes, int stockSize, int dayBefore, int sampleSize,  const char* buySignList, int buySignNum, const char* sellSignList, int sellSignNum, float maxReturn, float maxDrawdown, int maxHoldDays, float* returns, const char* price = "close"){
+    AlphaForest::getAlphaforest()->getReturns(codes, stockSize, dayBefore, sampleSize, buySignList, buySignNum, sellSignList, sellSignNum, maxReturn, maxDrawdown, maxHoldDays, returns, price);
+}
+
+void DLLEXPORT getBag(const char* codes, int stockSize, const char* feature, const char* signName, int dayBefore, int sampleSize, int bagNum, float* bags){
+    int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
+    AlphaForest::getAlphaforest()->decode(alphatreeId,"sign",feature);
+    size_t signNum = AlphaForest::getAlphaforest()->getAlphaDataBase()->getSignNum(dayBefore, sampleSize, signName);
+    AlphaSignIterator asi(AlphaForest::getAlphaforest(), "sign", signName, alphatreeId, dayBefore, sampleSize, 0, signNum);
+    getBags(&asi, bags, bagNum);
+    AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
+}
+
+#ifdef ML
+void DLLEXPORT initializeAlphaGBDT(const char* alphatreeList, int alphatreeNum, float gamma, float lambda, int threadNum, const char* lossFunName = "binary:logistic") {
+    AlphaGBDT::initialize(AlphaForest::getAlphaforest(), alphatreeList, alphatreeNum, gamma, lambda, threadNum, lossFunName);
+}
+
+void DLLEXPORT releaseAlphaGBDT(){
+    AlphaGBDT::release();
+}
+
+int DLLEXPORT testReadGBDT(int daybefore, int sampleSize, const char* target, const char* signName, float* pFeature, float* pTarget, int cacheSize = 4096){
+    return AlphaGBDT::getAlphaGBDT()->testReadData(daybefore, sampleSize, target, signName, pFeature, pTarget, cacheSize);
+}
+
+void DLLEXPORT getFirstFeatureGainsGBDT(int daybefore, int sampleSize, const char* weight, const char* target, const char* signName, float* gains,
+                              int barSize, int cacheSize){
+    AlphaGBDT::getAlphaGBDT()->getFirstFeatureGains(daybefore, sampleSize, weight, target, signName, gains, barSize, cacheSize);
+}
+
+void DLLEXPORT trainAlphaGBDT(int daybefore, int sampleSize, const char* weight, const char* target, const char* signName,
+                    int barSize, float minWeight, int maxDepth, float samplePercent, float featurePercent, int boostNum, float boostWeightScale, int cacheSize){
+    AlphaGBDT::getAlphaGBDT()->train(daybefore, sampleSize, weight, target, signName, barSize, minWeight, maxDepth, samplePercent, featurePercent, boostNum, boostWeightScale, cacheSize);
+}
+
+void DLLEXPORT predAlphaGBDT(int daybefore, int sampleSize, const char* signName, float* predOut, int cacheSize){
+    AlphaGBDT::getAlphaGBDT()->pred(daybefore, sampleSize, signName, predOut, cacheSize);
+}
+
+void DLLEXPORT saveGBDTModel(const char* path){
+    AlphaGBDT::getAlphaGBDT()->saveModel(path);
+}
+
+void DLLEXPORT loadGBDTModel(const char* path){
+    AlphaGBDT::getAlphaGBDT()->loadModel(path);
+}
+
+int DLLEXPORT alphaGBDT2String(char* pout){
+    return AlphaGBDT::getAlphaGBDT()->tostring(pout);
+}
+
+#endif
 }

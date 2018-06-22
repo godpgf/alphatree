@@ -55,6 +55,23 @@ public:
         }
     }
 
+    void releaseFeature(const char* featureName){
+        if(strcmp(featureName,"date") == 0){
+            if(date_)
+                delete date_;
+            date_ = nullptr;
+        } else if(strcmp(featureName, "miss") == 0){
+            if(miss_)
+                delete miss_;
+            miss_ = nullptr;
+        }else{
+            if(feature_[featureName])
+                delete feature_[featureName];
+            feature_[featureName] = nullptr;
+            //feature_[featureName] = new StockFeature<float>(feature2path_(featureName).c_str(), des_->offset);
+        }
+    }
+
     void updateFeature(const char* featureName){
         if(strcmp(featureName,"date") == 0){
             delete date_;
@@ -436,7 +453,7 @@ protected:
         StockFeature<float> *ft = nullptr;
 
         auto** pHashNameNode = feature_.find(featureName);
-        if(*pHashNameNode == nullptr){
+        if(*pHashNameNode == nullptr || (*pHashNameNode)->value == nullptr){
             ft = new StockFeature<float>(feature2path_(featureName).c_str());
         } else {
             ft = (*pHashNameNode)->value;
@@ -552,7 +569,7 @@ protected:
         StockFeature<long> *date = date_ ? date_ : new StockFeature<long>(feature2path_("date").c_str());
         StockFeature<float> *ft = nullptr;
         auto** pHashNameNode = feature_.find(featureName);
-        if(*pHashNameNode == nullptr){
+        if(*pHashNameNode == nullptr || (*pHashNameNode)->value == nullptr){
             ft = new StockFeature<float>(feature2path_(featureName).c_str());
         } else {
             ft = (*pHashNameNode)->value;
@@ -657,7 +674,7 @@ public:
             if(mainOffset > 0)
                 ++mainDateIter;
             if(*mainDateIter != lastDate){
-                cout<<"保存miss文件错误\n";
+                cout<<"s "<<des_->stockMetas[i].code<<"保存miss文件错误\n";
                 throw "err";
             }
 
@@ -672,7 +689,7 @@ public:
                     fullDataNum = 0;
                     int skip = mainDateIter.jumpTo(*allDateIter, mainOffset, mainDateIter.size() - mainOffset);
                     if(skip < 0){
-                        cout<<"保存miss文件错误\n";
+                        cout<<"m "<<des_->stockMetas[i].code<<"保存miss文件错误\n";
                         throw "err";
                     }
                     ++skip;
@@ -693,7 +710,7 @@ public:
     void boolhmm2binary(const char* featureName, int hideStateNum, size_t seqLength, bool* stockFlag, int epochNum = 8){
         StockFeature<float> *ft = nullptr;
         auto** pHashNameNode = feature_.find(featureName);
-        if(*pHashNameNode == nullptr){
+        if(*pHashNameNode == nullptr || (*pHashNameNode)->value == nullptr){
             ft = new StockFeature<float>(feature2path_(featureName).c_str());
         } else {
             ft = (*pHashNameNode)->value;

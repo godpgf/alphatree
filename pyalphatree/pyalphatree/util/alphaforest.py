@@ -90,6 +90,9 @@ class AlphaForest(object):
     def load_feature(self, feature_name):
         alphatree.loadFeature(c_char_p(feature_name.encode('utf-8')))
 
+    def release_feature(self, feature_name):
+        alphatree.releaseFeature(c_char_p(feature_name.encode('utf-8')))
+
     def update_feature(self, feature_name):
         alphatree.updateFeature(c_char_p(feature_name.encode('utf-8')))
 
@@ -185,6 +188,24 @@ class AlphaForest(object):
         stock_size = data_size / sample_size
         return self._read_alpha(sample_size, stock_size)
 
+    def get_returns(self, codes, daybefore, sample_size, buysign_list, sellsign_list, max_return, max_drawdown, max_holdday, price = "close"):
+        stock_size = len(codes)
+        self._write_codes(codes)
+        alphatree.getReturns(self.code_cache, stock_size, daybefore, sample_size, self.alphalist2char(buysign_list), len(buysign_list), self.alphalist2char(sellsign_list), len(sellsign_list), c_float(max_return), c_float(max_drawdown), c_int32(max_holdday), self.alpha_cache, c_char_p(price.encode('utf-8')))
+        returns = []
+        for i in range(sample_size):
+            returns.append(self.alpha_cache[i])
+        return np.array(returns)
+
+    def get_bag(self, codes, daybefore, sample_size, bag_size, sign_name, feature_name):
+        stock_size = len(codes)
+        self._write_codes(codes)
+        alphatree.getBag(self.code_cache, stock_size, c_char_p(feature_name.encode()), c_char_p(sign_name.encode()), c_int32(daybefore), c_int32(sample_size), c_int32(bag_size), self.alpha_cache)
+        bags = []
+        for i in range(bag_size):
+            bags.append(self.alpha_cache[i])
+        return np.array(bags)
+
     def get_node_alpha(self, alphatree_id, node_id, cache_id, sample_size):
         data_size = alphatree.getNodeAlpha(alphatree_id, node_id, cache_id, sample_size)
         stock_size = data_size / sample_size
@@ -224,8 +245,8 @@ class AlphaForest(object):
         str_list = list()
         for i in range(str_num):
             code = list()
-            while str_cache[cur_index] != '\0':
-                code.append(str_cache[cur_index])
+            while str_cache[cur_index] != b'\x00':
+                code.append(str_cache[cur_index].decode())
                 cur_index += 1
             cur_index += 1
             str_list.append("".join(code))
@@ -250,6 +271,23 @@ class AlphaForest(object):
             cur_index += 1
         return "".join(str)
 
+    @classmethod
+    def alphalist2char(cls, alphalist):
+        alphatree_char_num = 0
+        for at in alphalist:
+            alphatree_char_num += len(at) + 1
+
+        alphatree_cache = (c_char * alphatree_char_num)()
+        cur_alpha_index = 0
+        for at in alphalist:
+            code_list = list(at)
+            for c in code_list:
+                alphatree_cache[cur_alpha_index] = c.encode()
+                cur_alpha_index += 1
+            alphatree_cache[cur_alpha_index] = '\0'.encode()
+            cur_alpha_index += 1
+        return alphatree_cache
+
     def _read_codes(self, stock_size):
         return self._read_str_list(self.code_cache, stock_size)
 
@@ -258,9 +296,9 @@ class AlphaForest(object):
         for code in codes:
             code_list = list(code)
             for c in code_list:
-                self.code_cache[cur_code_index] = c
+                self.code_cache[cur_code_index] = c.encode()
                 cur_code_index += 1
-            self.code_cache[cur_code_index] = '\0'
+            self.code_cache[cur_code_index] = '\0'.encode()
             cur_code_index += 1
 
     def _write_features(self, features):

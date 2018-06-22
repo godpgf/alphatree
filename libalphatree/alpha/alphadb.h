@@ -239,6 +239,10 @@ class AlphaDB{
             cache_->loadFeature(featureName);
         }
 
+        void releaseFeature(const char* featureName){
+            cache_->releaseFeature(featureName);
+        }
+
         void updateFeature(const char* featureName){
             cache_->updateFeature(featureName);
         }

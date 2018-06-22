@@ -12,6 +12,7 @@
 #include "base/threadpool.h"
 #include "alpha/alphadb.h"
 #include "base/hashmap.h"
+#include "base/bag.h"
 #include <set>
 #include <vector>
 #include <iostream>
@@ -133,6 +134,114 @@ public:
 
     int getMaxHistoryDays(int alphaTreeId) {
         return (int) getAlphaTree(alphaTreeId)->getMaxHistoryDays();
+    }
+
+    void getReturns(const char* codes, int stockSize, int dayBefore, int sampleSize,  const char* buySignList, int buySignNum, const char* sellSignList, int sellSignNum, float maxReturn, float maxDrawdown, int maxHoldDays, float* returns, const char* price = "close"){
+        int maxNameLen = max(buySignNum, sellSignNum) / 10 + 3;
+        int maxSignLen = (max(buySignNum, sellSignNum) / 10 + 3 + 6) * max(buySignNum, sellSignNum);
+        char* name = new char[maxNameLen];
+        char* sign = new char[maxSignLen];
+        char* tmp = new char[maxSignLen];
+
+        int buyId = useAlphaTree();
+        int buyCacheId = useCache();
+        for(int i = 0; i < buySignNum; ++i){
+            sprintf(name,"s%d", i);
+            if(i == 0)
+                strcpy(sign, name);
+            else{
+                strcpy(tmp, sign);
+                sprintf(sign, "(%s & %s)", tmp, name);
+            }
+            int len = strlen(buySignList);
+            //cout<<"buy:"<<buySignList<<endl;
+            decode(buyId, name, buySignList);
+            buySignList = buySignList + (len + 1);
+        }
+        decode(buyId, "sign", sign);
+        //cout<<sign<<endl;
+
+        int sellId = useAlphaTree();
+        int sellCacheId = useCache();
+        if(sellSignNum > 0){
+            for(int i = 0; i < sellSignNum; ++i){
+                sprintf(name, "s%d", i);
+                if(i == 0)
+                    strcpy(sign, name);
+                else{
+                    strcpy(tmp, sign);
+                    sprintf(sign, "(%s | %s)", tmp, name);
+                }
+                int len = strlen(sellSignList);
+                //cout<<"sell:"<<sellSignList<<endl;
+                decode(sellId, name, sellSignList);
+                sellSignList = sellSignList + (len + 1);
+            }
+            decode(sellId, "sign", sign);
+            //cout<<sign<<endl;
+        }
+
+
+        int priceId = useAlphaTree();
+        int priceCacheId = useCache();
+        decode(priceId, "price", price);
+
+        //back trader--------------------------------------------------
+        auto maxPrice = Vector<float>(stockSize);
+        auto buyPrice = Vector<float>(stockSize);
+        auto buyDay = Vector<int>(stockSize);
+        buyDay.initialize(-1);
+        calAlpha(buyId, buyCacheId, dayBefore, sampleSize, codes, stockSize);
+        if(sellSignNum > 0)
+            calAlpha(sellId, sellCacheId, dayBefore, sampleSize, codes, stockSize);
+        calAlpha(priceId, priceCacheId, dayBefore, sampleSize, codes, stockSize);
+        const float* buyAlpha = getAlpha(buyId, "sign", buyCacheId);
+        const float* sellAlpha = sellSignNum <= 0 ? nullptr : getAlpha(sellId, "sign", sellCacheId);
+        const float* priceAlpha = getAlpha(priceId, "price", priceCacheId);
+        returns[0] = 1;
+        for(int i = 1; i < sampleSize; ++i){
+            float r = 0;
+            int cnt = 0;
+            for(int j = 0; j < stockSize; ++j){
+                int curIndex = i * stockSize + j;
+                if(buyDay[j] < 0){
+                    if(buyAlpha[curIndex] > 0.5f &&
+                       buyAlpha[curIndex - stockSize] < 0.5f &&
+                       priceAlpha[curIndex] / priceAlpha[curIndex - stockSize] < 1.09f){
+                        maxPrice[j] = priceAlpha[curIndex];
+                        buyPrice[j] = priceAlpha[curIndex];
+                        buyDay[j] = i;
+                    }
+                } else {
+                    r += priceAlpha[curIndex] / priceAlpha[curIndex - stockSize];
+                    ++cnt;
+                    //sell
+                    if(priceAlpha[curIndex] / buyPrice[j] > 1 + maxReturn){
+                        buyDay[j] = -1;
+                    } else if(priceAlpha[curIndex] / maxPrice[j] < 1 - maxDrawdown){
+                        buyDay[j] = -1;
+                    } else if(i - buyDay[j] >= maxHoldDays){
+                        buyDay[j] = -1;
+                    } else if(sellAlpha != nullptr && sellAlpha[curIndex] > 0.5f){
+                        buyDay[j] = -1;
+                    }
+                    maxPrice[j] = max(maxPrice[j], priceAlpha[curIndex]);
+                }
+            }
+            r = (cnt > 0 ? r / cnt : 1);
+            returns[i] = returns[i-1] * r;
+        }
+
+        //release------------------------------------------------------
+        releaseAlphaTree(buyId);
+        releaseCache(buyCacheId);
+        releaseAlphaTree(sellId);
+        releaseCache(sellCacheId);
+        releaseAlphaTree(priceId);
+        releaseCache(priceCacheId);
+        delete []name;
+        delete []sign;
+        delete []tmp;
     }
 
 

@@ -17,11 +17,11 @@ class AlphaArray(object):
             self.code_cache = (c_char * (len(name) * 64))()
             cur_code_index = 0
             for code in name:
-                code_list = list(code)
+                code_list = list(code.encode('utf-8'))
                 for c in code_list:
                     self.code_cache[cur_code_index] = c
                     cur_code_index += 1
-                self.code_cache[cur_code_index] = '\0'
+                self.code_cache[cur_code_index] = b'\0'
                 cur_code_index += 1
         else:
             code_list = list(name.encode('utf-8'))
@@ -55,7 +55,7 @@ class AlphaArray(object):
     def __getitem__(self, item):
         if isinstance(item, int):
             if isinstance(self.name, list) or isinstance(self.name, np.ndarray):
-                alpha_cache = (c_float * len(self.name))
+                alpha_cache = (c_float * len(self.name))()
                 alphatree.calAlpha(self.alphatree_id, self.cache_id, self.day_before + self.sample_days - 1 - item, 1, self.code_cache, len(self.name))
 
                 if isinstance(self.data_column, list):
