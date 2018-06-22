@@ -89,6 +89,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalOptions>/D"WIN32"=1 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -112,6 +113,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalOptions>/D"WIN32"=1</AdditionalOptions>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -120,6 +122,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="libalphatree\alphaforest.h" />
+    <ClInclude Include="libalphatree\alphagbdt.h" />
     <ClInclude Include="libalphatree\alpha\alphaatom.h" />
     <ClInclude Include="libalphatree\alpha\alphadb.h" />
     <ClInclude Include="libalphatree\alpha\alphatree.h" />
@@ -130,6 +133,7 @@
     <ClInclude Include="libalphatree\alpha\atom\sample.h" />
     <ClInclude Include="libalphatree\alpha\basealphatree.h" />
     <ClInclude Include="libalphatree\alpha\converter.h" />
+    <ClInclude Include="libalphatree\base\bag.h" />
     <ClInclude Include="libalphatree\base\cache.h" />
     <ClInclude Include="libalphatree\base\darray.h" />
     <ClInclude Include="libalphatree\base\dcache.h" />
@@ -143,6 +147,12 @@
     <ClInclude Include="libalphatree\base\randomchoose.h" />
     <ClInclude Include="libalphatree\base\threadpool.h" />
     <ClInclude Include="libalphatree\base\vector.h" />
+    <ClInclude Include="libalphatree\cart\act.h" />
+    <ClInclude Include="libalphatree\cart\bar.h" />
+    <ClInclude Include="libalphatree\cart\gbdt.h" />
+    <ClInclude Include="libalphatree\cart\gbdtbase.h" />
+    <ClInclude Include="libalphatree\cart\loss.h" />
+    <ClInclude Include="libalphatree\cart\split.h" />
     <ClInclude Include="libalphatree\db\stockcache.h" />
     <ClInclude Include="libalphatree\db\stockdes.h" />
     <ClInclude Include="libalphatree\db\stockfeature.h" />

@@ -28,6 +28,9 @@
     <Filter Include="头文件\base">
       <UniqueIdentifier>{2d08c25d-1b4f-470e-9fbf-bd02e01b6d9f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="头文件\cart">
+      <UniqueIdentifier>{e0c989dc-a387-4072-b1c4-c0ea81bcc0c4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="libalphatree\alphaforest.h">
@@ -122,6 +125,30 @@
     </ClInclude>
     <ClInclude Include="libalphatree\base\vector.h">
       <Filter>头文件\base</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\alphagbdt.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\base\bag.h">
+      <Filter>头文件\base</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\cart\act.h">
+      <Filter>头文件\cart</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\cart\bar.h">
+      <Filter>头文件\cart</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\cart\gbdt.h">
+      <Filter>头文件\cart</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\cart\gbdtbase.h">
+      <Filter>头文件\cart</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\cart\loss.h">
+      <Filter>头文件\cart</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\cart\split.h">
+      <Filter>头文件\cart</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
