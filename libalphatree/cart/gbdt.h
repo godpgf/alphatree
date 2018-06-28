@@ -17,9 +17,9 @@ public:
 
     //得到最开始每个特征的重要程度
     void getFirstFeatureGains(IVector<IBaseIterator<float>*>* featureList, IBaseIterator<float>* weight, IBaseIterator<float>* target,
-                         IOBaseIterator<float>* g, IOBaseIterator<float>* h, int* skip, IOBaseIterator<float>* pred, float* gains, const char* lossFunName = "binary:logistic",
+                         IOBaseIterator<float>* g, IOBaseIterator<float>* h, int* skip, IOBaseIterator<bool>* flag,  IOBaseIterator<float>* pred, float* gains, const char* lossFunName = "binary:logistic",
                          int barSize = 64){
-        auto opt = lossFun[lossFunName];
+        auto opt = lossFunGrad[lossFunName];
         int skipLen = weight->size();
         pred->initialize(0);
         //注意skip是总共的偏移缓存，前面一半是真实的，后面一半是零时的
@@ -36,7 +36,7 @@ public:
             int barId = splitBars_->useCacheMemory();
             SplitBarList& bars = splitBars_->getCacheMemory(barId);
             bars.initialize(barSize);
-            if(!fillBars((*featureList)[i], weight, g, h, firstSkip, skipLen, bars.bars, barSize, bars.startValue, bars.deltaStd)){
+            if(!fillBars((*featureList)[i], weight, flag, g, h, firstSkip, skipLen, bars.bars, barSize, bars.startValue, bars.deltaStd)){
                 splitBars_->releaseCacheMemory(barId);
                 gains[i] = 0;
             } else {
@@ -47,61 +47,17 @@ public:
         }
     }
 
-    void train(IVector<IBaseIterator<float>*>* featureList, IBaseIterator<float>* weight, IBaseIterator<float>* target,
-               IOBaseIterator<float>* g, IOBaseIterator<float>* h, int* skip, IOBaseIterator<float>* pred, const char* lossFunName = "binary:logistic",
+    void train(IVector<IBaseIterator<float>*>* featureList, IBaseIterator<float>* weight, IBaseIterator<float>* target, IOBaseIterator<float>* pred,
+               IOBaseIterator<float>* g, IOBaseIterator<float>* h, int* skip, IOBaseIterator<bool>* flag, const char* lossFunName = "binary:logistic",
                int barSize = 64, float minWeight = 32, int maxDepth = 16, float samplePercent = 1, float featurePercent = 1, int boostNum = 2, float boostWeightScale = 1){
-        BaseGBDT< DTREE_BLOCK_SIZE>::tree_->releaseAll();
-        rootIds_.clear();
-        int lastRootId = -1;
-        auto opt = lossFun[lossFunName];
-
-        srand((int)time(0));
-        //注意skip是总共的偏移缓存，前面一半是真实的，后面一半是零时的
-        for(int i = 0; i < boostNum; ++i){
-            //取样特征
-            Vector<IBaseIterator<float>*> chooseFeatureList(featureList->getSize());
-            for(int i = 0; i < featureList->getSize(); ++i){
-                if(((double)rand())/RAND_MAX <= samplePercent){
-                    chooseFeatureList[i] = (*featureList)[i];
-                } else {
-                    chooseFeatureList[i] = nullptr;
-                }
-            }
-            //随机取样
-            skip[0] = 0;
-            int skipLen = 0;
-            for(int j = 0; j < weight->size(); ++j){
-                if(j > 0)
-                    skip[j] = 1;
-                if(((double)rand())/RAND_MAX <= samplePercent){
-                    ++skipLen;
-                } else{
-                    //跳过这个元素
-                    ++skip[skipLen];
-                }
-            }
-
-            //完成上次boost的预测
-            BaseGBDT<DTREE_BLOCK_SIZE>::boostPred(lastRootId, lambda_, skip, pred, boostWeightScale);
-
-            //计算g和h
-            opt(g, h, target, pred);
-            //创建新树
-            lastRootId = BaseGBDT<DTREE_BLOCK_SIZE>::boost(&chooseFeatureList, weight, target, g, h, skip, skipLen, barSize, gamma_, lambda_, minWeight, maxDepth);
-            //cout<<"add "<<lastRootId<<endl;
-            rootIds_.add(lastRootId);
-        }
-        //cout<<"train child "<<BaseGBDT<DTREE_BLOCK_SIZE>::tree_->getChildNum(rootIds_[0])<<endl;
+        trainAndEval(featureList, weight, target, pred, nullptr, nullptr, nullptr, g, h, skip, flag, lossFunName, barSize, minWeight, maxDepth, samplePercent, featurePercent, boostNum, boostWeightScale);
     }
 
     void pred(IVector<IBaseIterator<float>*>* featureList, int* skip, IOBaseIterator<float>* pred, const char* actFunName = "binary:logistic"){
         auto act = actFun[actFunName];
         pred->initialize(0);
         for(int i = 0; i < rootIds_.getSize(); ++i){
-            skip[0] = 0;
-            for(int j = 1; j < (*featureList)[0]->size(); ++j)
-                skip[j] = 1;
-
+            recoverSkip(skip, (*featureList)[0]->size());
             (*BaseGBDT<DTREE_BLOCK_SIZE>::tree_)[rootIds_[i]].tmpOffset = 0;
             (*BaseGBDT<DTREE_BLOCK_SIZE>::tree_)[rootIds_[i]].tmpElementNum = (*featureList)[0]->size();
             BaseGBDT<DTREE_BLOCK_SIZE>::updateAllSkip(rootIds_[i], featureList, skip, (*featureList)[0]->size(), skip + (*featureList)[0]->size());
@@ -110,7 +66,66 @@ public:
         act(pred);
     }
 
+    float trainAndEval(IVector<IBaseIterator<float>*>* featureList, IBaseIterator<float>* weight, IBaseIterator<float>* target, IOBaseIterator<float>* pred,
+               IVector<IBaseIterator<float>*>* evalFeatureList, IBaseIterator<float>* evalTarget, IOBaseIterator<float>* evalPred,
+               IOBaseIterator<float>* g, IOBaseIterator<float>* h, int* skip, IOBaseIterator<bool>* flag, const char* lossFunName = "binary:logistic",
+               int barSize = 64, float minWeight = 32, int maxDepth = 16, float samplePercent = 1, float featurePercent = 1, int boostNum = 2, float boostWeightScale = 1){
+        clear();
+        int lastRootId = -1;
+        auto opt = lossFunGrad[lossFunName];
 
+
+        srand((int)time(0));
+        Vector<IBaseIterator<float>*> chooseFeatureList(featureList->getSize());
+
+        float evalLoss = 0;
+
+        //注意skip是总共的偏移缓存，前面一半是真实的，后面一半是零时的
+        for(int i = 0; i < boostNum; ++i){
+            //取样特征
+            initChooseFeatureList(chooseFeatureList, featureList, featurePercent);
+
+            //随机取样
+            initFlag(flag, samplePercent);
+
+            //完成上次boost的预测
+            BaseGBDT<DTREE_BLOCK_SIZE>::boostPred(lastRootId, lambda_, skip, pred, boostWeightScale);
+
+            //eval
+            eval(evalFeatureList, evalTarget, evalPred, skip, lossFunName);
+
+            //恢复skip
+            recoverSkip(skip, weight->size());
+
+            //计算g和h
+            opt(g, h, target, pred);
+            //创建新树
+            lastRootId = BaseGBDT<DTREE_BLOCK_SIZE>::boost(&chooseFeatureList, weight, target, g, h, skip, flag, barSize, gamma_, lambda_, minWeight, maxDepth);
+            //cout<<"add "<<lastRootId<<endl;
+            rootIds_.add(lastRootId);
+        }
+
+        //eval
+        evalLoss = eval(evalFeatureList, evalTarget, evalPred, skip, lossFunName);
+        
+        return evalLoss;
+    }
+
+    float eval(IVector<IBaseIterator<float>*>* evalFeatureList, IBaseIterator<float>* evalTarget, IOBaseIterator<float>* evalPred, int* skip, const char* lossFunName){
+        auto loss = lossFun[lossFunName];
+        if(evalFeatureList != nullptr && rootIds_.getSize() > 0){
+            evalPred->initialize(0);
+            for(int j = 0; j < rootIds_.getSize(); ++j){
+                recoverSkip(skip, (*evalFeatureList)[0]->size());
+                (*BaseGBDT<DTREE_BLOCK_SIZE>::tree_)[rootIds_[j]].tmpOffset = 0;
+                (*BaseGBDT<DTREE_BLOCK_SIZE>::tree_)[rootIds_[j]].tmpElementNum = (*evalFeatureList)[0]->size();
+                BaseGBDT<DTREE_BLOCK_SIZE>::updateAllSkip(rootIds_[j], evalFeatureList, skip, (*evalFeatureList)[0]->size(), skip + (*evalFeatureList)[0]->size());
+                BaseGBDT<DTREE_BLOCK_SIZE>::boostPred(rootIds_[j], lambda_, skip, evalPred, 1);
+            }
+            return loss(evalTarget, evalPred);
+        }
+        return 0;
+    }
 
     string tostring(IVector<string>* nameList){
         string str;
@@ -178,12 +193,14 @@ public:
     }
 protected:
     GBDT(int threadNum, float gamma = 0.01f, float lambda = 0.01f):BaseGBDT<DTREE_BLOCK_SIZE>(threadNum), gamma_(gamma), lambda_(lambda){
-        if(lossFun.getSize() == 0){
+        if(lossFunGrad.getSize() == 0){
             //加入损失函数
-            lossFun.add("binary:logistic", binaryLogisticLoss);
-            lossFun.add("regression", regressionLoss);
+            lossFunGrad.add("binary:logistic", binaryLogisticLossGrad);
+            lossFunGrad.add("regression", regressionLossGrad);
             actFun.add("binary:logistic", binaryLogisticAct);
             actFun.add("regression", regressionAct);
+            lossFun.add("binary:logistic", binaryLogisticLoss);
+            lossFun.add("regression", regressionLoss);
         }
         ++objNum_;
     }
@@ -191,8 +208,9 @@ protected:
     virtual ~GBDT(){
         --objNum_;
         if(objNum_ == 0){
-            lossFun.clear();
+            lossFunGrad.clear();
             actFun.clear();
+            lossFun.clear();
         }
     }
 
@@ -234,10 +252,40 @@ protected:
         }
     }
 
+    void clear(){
+        BaseGBDT< DTREE_BLOCK_SIZE>::tree_->releaseAll();
+        rootIds_.clear();
+    }
+
+    inline void initChooseFeatureList(Vector<IBaseIterator<float>*>& chooseFeatureList, IVector<IBaseIterator<float>*>* featureList, float featurePercent){
+        //取样特征
+        for(int i = 0; i < featureList->getSize(); ++i){
+            if(((double)rand())/RAND_MAX <= featurePercent){
+                chooseFeatureList[i] = (*featureList)[i];
+            } else {
+                chooseFeatureList[i] = nullptr;
+            }
+        }
+    }
+
+    inline void initFlag(IOBaseIterator<bool>* flag, float samplePercent){
+        while (flag->isValid()){
+            flag->setValue(((double)rand())/RAND_MAX <= samplePercent);
+            flag->skip(1);
+        }
+        flag->skip(0, false);
+    }
+
     inline static void toLeafString(string& str, int lineId, float weight, int depth){
         for(int i = 0; i < depth; ++i)
             str += '\t';
         str += to_string(lineId) + ":leaf=" + to_string(weight) + "\n";
+    }
+
+    inline static void recoverSkip(int* skip, int skipLen){
+        skip[0] = 0;
+        for(int j = 1; j < skipLen; ++j)
+            skip[j] = 1;
     }
 
     void tostring(string& str, int rootId, map<int,int>& nodeId, map<int,int>& childId, IVector<string>* nameList, float lambda, int depth){
@@ -294,17 +342,20 @@ protected:
 
     float gamma_, lambda_;
 
-    static HashMap<void(*)(OBaseIterator<float>*, OBaseIterator<float>*, IBaseIterator<float>*, IBaseIterator<float>*), 8, 16> lossFun;
+    static HashMap<void(*)(OBaseIterator<float>*, OBaseIterator<float>*, IBaseIterator<float>*, IBaseIterator<float>*), 8, 16> lossFunGrad;
     static HashMap<void(*)(IOBaseIterator<float>*), 8, 16> actFun;
+    static HashMap<float(*)(IBaseIterator<float>*, IBaseIterator<float>*), 8, 16> lossFun;
     static int objNum_;
 };
 
 template <int DTREE_BLOCK_SIZE>
-HashMap<void(*)(OBaseIterator<float>*, OBaseIterator<float>*, IBaseIterator<float>*, IBaseIterator<float>*), 8, 16> GBDT<DTREE_BLOCK_SIZE>::lossFun;
+HashMap<void(*)(OBaseIterator<float>*, OBaseIterator<float>*, IBaseIterator<float>*, IBaseIterator<float>*), 8, 16> GBDT<DTREE_BLOCK_SIZE>::lossFunGrad;
 
 template <int DTREE_BLOCK_SIZE>
 HashMap<void(*)(IOBaseIterator<float>*), 8, 16> GBDT<DTREE_BLOCK_SIZE>::actFun;
 
+template <int DTREE_BLOCK_SIZE>
+HashMap<float(*)(IBaseIterator<float>*, IBaseIterator<float>*), 8, 16> GBDT<DTREE_BLOCK_SIZE>::lossFun;
 template <int DTREE_BLOCK_SIZE>
 int GBDT<DTREE_BLOCK_SIZE>::objNum_ = 0;
 

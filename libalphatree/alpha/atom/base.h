@@ -258,6 +258,12 @@ inline void _lessCond(float *dst, const float *a, const float *b, int size){
     }
 }
 
+inline void _moreCond(float *dst, const float *a, const float *b, int size){
+    for(int i = 0; i < size; ++i) {
+        dst[i] = (a[i] > b[i]) ? 1.f : 0.f;
+    }
+}
+
 
 inline void _lessCond(float *dst, float a, const float *b, int size){
     for(int i = 0; i < size; ++i) {

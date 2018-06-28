@@ -99,7 +99,7 @@ public:
         file->close();
     }
 
-    size_t getStockIds(size_t dayBefore, size_t sampleSize, const char* signName, int* dst){
+    size_t getStockIds(int dayBefore, size_t sampleSize, const char* signName, int* dst){
         size_t allDays = des_->stockMetas[des_->mainStock].days;
         StockSign* ss = nullptr;
         auto ** pSignHashNameNode = sign_.find(signName);
@@ -118,7 +118,7 @@ public:
         return cnt;
     }
 
-    size_t getSignNum(size_t dayBefore, size_t sampleSize, const char* signName){
+    size_t getSignNum(int dayBefore, size_t sampleSize, const char* signName){
         size_t allDays = des_->stockMetas[des_->mainStock].days;
         StockSign* ss = nullptr;
         auto ** pSignHashNameNode = sign_.find(signName);
@@ -136,13 +136,13 @@ public:
     }
 
     //注意，信号填写不考虑补缺失数据，因为数据如果有缺损就不应该发出信号！
-    void fill(float* dst, size_t dayBefore, size_t daySize, int historyDays, int futureDays, size_t startIndex, size_t signNum, const char* signName, const char* featureName){
+    void fill(float* dst, int dayBefore, int daySize, int historyDays, int futureDays, size_t startIndex, size_t signNum, const char* signName, const char* featureName){
         fill_(dayBefore, daySize, historyDays, futureDays, startIndex, signNum, signName, featureName,[dst](int index, float value){
             dst[index] = value;
         });
     }
 
-    void fill(float* dst, size_t dayBefore, size_t daySize, const char* code, const char* featureName, size_t offset, size_t stockNum){
+    void fill(float* dst, int dayBefore, int daySize, const char* code, const char* featureName, size_t offset, size_t stockNum){
         fill_(dayBefore, daySize, code, featureName, offset, stockNum,[dst](int index, float value){
             dst[index] = value;
         });
@@ -150,7 +150,7 @@ public:
 
 
     template<class T>
-    void invFill2File(const float* cache, size_t dayBefore, size_t daySize, const char* code, const char* featureName, size_t offset, size_t stockNum, ofstream* file,
+    void invFill2File(const float* cache, int dayBefore, int daySize, const char* code, const char* featureName, size_t offset, size_t stockNum, ofstream* file,
                       bool isWritePreData = false, bool isWriteLastData = false){
         StockFeature<long> *date = date_ ? date_ : new StockFeature<long>(feature2path_("date").c_str());
 
@@ -234,7 +234,7 @@ public:
     }
 
 
-    void invFill2Sign(const float* cache, size_t daySize, size_t stockNum, ofstream* file, size_t allDayNum, size_t& preDayNum, size_t& preSignCnt, const bool* stockFlag = nullptr){
+    void invFill2Sign(const float* cache, int daySize, size_t stockNum, ofstream* file, size_t allDayNum, size_t& preDayNum, size_t& preSignCnt, const bool* stockFlag = nullptr){
         //cout<<"ssss1\n";
         StockFeature<long> *date = date_ ? date_ : new StockFeature<long>(feature2path_("date").c_str());
         auto mainStockMeta = des_->stockMetas[des_->mainStock];
@@ -307,8 +307,7 @@ public:
                 //cout<<(*pStock2Offset)[stockIndex]<<endl;
                 (*pStock2LastDate)[stockIndex] = date;
             } else {
-
-                cout<<stockIndex<<" "<<des->stockMetas[stockIndex].code<<" "<<date<<" "<<"我擦，居然没找到!\n";
+                cout<<stockIndex<<" "<<des->stockMetas[stockIndex].code<<" ("<<date<<","<<*(*pAllDateIter)<<") "<<"我擦，居然没找到!\n";
             }
 
         });
@@ -327,7 +326,7 @@ public:
         //cout<<"ssss4\n";
     }
 
-    void testInvFill2Sign(const float* cache, const float* testCache, size_t daySize, size_t stockNum, ofstream* file, size_t allDayNum, size_t& preDayNum, size_t& preSignCnt){
+    void testInvFill2Sign(const float* cache, const float* testCache, int daySize, size_t stockNum, ofstream* file, size_t allDayNum, size_t& preDayNum, size_t& preSignCnt){
         //cout<<"ssss1\n";
         StockFeature<long> *date = date_ ? date_ : new StockFeature<long>(feature2path_("date").c_str());
         auto mainStockMeta = des_->stockMetas[des_->mainStock];
@@ -424,7 +423,7 @@ public:
     }
 
     //todo delete later
-//    IBaseIterator<float>* createSignFeatureIter(const char* signName, const char* featureName, size_t dayBefore, size_t sampleDays, int offset){
+//    IBaseIterator<float>* createSignFeatureIter(const char* signName, const char* featureName, int dayBefore, size_t sampleDays, int offset){
 //        StockFeature<float> *ft = nullptr;
 //        auto** pHashNameNode = feature_.find(featureName);
 //        if(*pHashNameNode == nullptr){
@@ -449,7 +448,7 @@ protected:
 
     //在dayBefore前的daySize天取样信号，向前取信号发生时特征(featureName)的historyDays条数据,向后取-futureDays的数据（不考虑数据缺失！）
     template <class F>
-    void fill_(size_t dayBefore, size_t daySize, int historyDays, int futureDays, size_t startIndex, size_t signNum, const char* signName, const char* featureName, F&& f){
+    void fill_(int dayBefore, int daySize, int historyDays, int futureDays, size_t startIndex, size_t signNum, const char* signName, const char* featureName, F&& f){
         StockFeature<float> *ft = nullptr;
 
         auto** pHashNameNode = feature_.find(featureName);
@@ -565,7 +564,7 @@ protected:
     }
 
     template <class F>
-    void fill_(size_t dayBefore, size_t daySize, const char* code, const char* featureName, size_t offset, size_t stockNum, F&& f){
+    void fill_(int dayBefore, int daySize, const char* code, const char* featureName, size_t offset, size_t stockNum, F&& f){
         StockFeature<long> *date = date_ ? date_ : new StockFeature<long>(feature2path_("date").c_str());
         StockFeature<float> *ft = nullptr;
         auto** pHashNameNode = feature_.find(featureName);
@@ -599,7 +598,7 @@ protected:
         //}
 
         //填写要读取的数据，如有缺失就补上
-        for(size_t i = 0; i < daySize; ++i){
+        for(int i = 0; i < daySize; ++i){
 
             if(curDateIter.isValid()){
                 if(*curDateIter < *mainDateIter){
@@ -634,7 +633,7 @@ protected:
     }
 
     template <class F>
-    void invFillSign_(const float* cache, size_t daySize, size_t stockNum, const bool* stockFlag, F&& f){
+    void invFillSign_(const float* cache, int daySize, size_t stockNum, const bool* stockFlag, F&& f){
         for(size_t i = 0; i < daySize; ++i){
             for(size_t j = 0; j < stockNum; ++j){
                 if(cache[i * stockNum + j] > 0 && (stockFlag == nullptr || stockFlag[j])){

@@ -144,26 +144,34 @@ class AlphaDB{
         }
 
         //得到所有股票数据，注意futureNum<=0
-        float* getStock(size_t dayBefore, int historyNum, int futureNum, size_t sampleNum, size_t stockNum, const char* name, const char* leafDataClass,
+        float* getStock(int dayBefore, int historyNum, int futureNum, size_t sampleNum, size_t stockNum, const char* name, const char* leafDataClass,
                         float* dst, const char* codes){
             const char* curCode = codes;
             int dayNum = GET_HISTORY_SIZE(historyNum, sampleNum);
             int needDay = dayBefore + dayNum;
             if(needDay > des_->stockMetas[des_->mainStock].days){
                 cout<<"没有这么多天的数据\n";
+                //memset(dst, 0, dayNum - futureNum);
                 return nullptr;
             }
-            if(dayBefore < (size_t)-futureNum){
-                cout<<"读取历史天数小于未来天数\n";
-                return nullptr;
+            if(dayBefore < -futureNum){
+                //cout<<"读取历史天数小于未来天数\n";
+                //return nullptr;
+                int delta = -futureNum - dayBefore;
+                memset(dst, 0, sizeof(float) * stockNum * (dayNum - futureNum));
+                for(size_t i = 0; i < stockNum; ++i){
+                    const char* code = getCode(curCode, leafDataClass);
+                    cache_->fill(dst, dayBefore + futureNum + delta, dayNum - futureNum - delta, code, name, i, stockNum);
+                    curCode = curCode + strlen(curCode) + 1;
+                }
+            } else {
+                for(size_t i = 0; i < stockNum; ++i){
+                    const char* code = getCode(curCode, leafDataClass);
+                    cache_->fill(dst, dayBefore + futureNum, dayNum - futureNum, code, name, i, stockNum);
+                    curCode = curCode + strlen(curCode) + 1;
+                }
             }
 
-
-            for(size_t i = 0; i < stockNum; ++i){
-                const char* code = getCode(curCode, leafDataClass);
-                cache_->fill(dst, dayBefore + futureNum, dayNum - futureNum, code, name, i, stockNum);
-                curCode = curCode + strlen(curCode) + 1;
-            }
             return dst;
         }
 

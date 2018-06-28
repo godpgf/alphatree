@@ -88,13 +88,15 @@ public:
 
         //申请中间内存
         float* memory = new float[3 * signNum];
-        //分配3份内存，第一份是真实用的，第二份是中间结果，第三份是初始取样
+        //分配2份内存，第一份是真实用的，第二份是中间结果，第三份是初始取样
         int* skip = new int[3 * signNum];
         MemoryIterator<float> pred(memory, signNum);
         MemoryIterator<float> g(memory + 1 * signNum, signNum);
         MemoryIterator<float> h(memory + 2 * signNum, signNum);
+        MemoryIterator<bool> flag((bool*)(skip + 2 * signNum), signNum);
+        flag.initialize(true);
 
-        gbdt->getFirstFeatureGains(&features, weightIter, &targetIter, &g, &h, skip, &pred, gains, lossFunName, barSize);
+        gbdt->getFirstFeatureGains(&features, weightIter, &targetIter, &g, &h, skip, &flag, &pred, gains, lossFunName, barSize);
 
         //释放空间
         delete []memory;
@@ -121,6 +123,7 @@ public:
             features[i] = new AlphaSignIterator(af_, (*alphaNameList_)[i].c_str(), signName, (*alphatreeIds_)[i],daybefore,sampleSize,0,signNum, cacheSize);
         }
 
+        //cout<<"target:"<<target<<endl;
         int targetAlphatreeId = af_->useAlphaTree();
         af_->decode(targetAlphatreeId, "_target", target);
 
@@ -143,13 +146,14 @@ public:
 
         //申请中间内存
         float* memory = new float[3 * signNum];
-        //分配3份内存，第一份是真实用的，第二份是中间结果
-        int* skip = new int[2 * signNum];
+        //分配2份内存，第一份是真实用的，第二份是中间结果
+        int* skip = new int[3 * signNum];
         MemoryIterator<float> pred(memory, signNum);
         MemoryIterator<float> g(memory + 1 * signNum, signNum);
         MemoryIterator<float> h(memory + 2 * signNum, signNum);
+        MemoryIterator<bool> flag((bool*)(skip + 2 * signNum), signNum);
 
-        gbdt->train(&features, weightIter, &targetIter, &g, &h, skip, &pred, lossFunName, barSize, minWeight, maxDepth, samplePercent, featurePercent, boostNum, boostWeightScale);
+        gbdt->train(&features, weightIter, &targetIter, &pred, &g, &h, skip, &flag, lossFunName, barSize, minWeight, maxDepth, samplePercent, featurePercent, boostNum, boostWeightScale);
 
         //释放空间
         delete []memory;
@@ -164,6 +168,136 @@ public:
         delete weightIter;
         if(weightMemory)
             delete []weightMemory;
+    }
+
+    float trainAndEval(size_t daybefore, size_t sampleSize, size_t evalDaybefore, size_t evalSampleSize, const char* weight, const char* target, const char* signName,
+              int barSize = 64, float minWeight = 32, int maxDepth = 16, float samplePercent = 1, float featurePercent = 1, int boostNum = 2, float boostWeightScale = 1, int cacheSize = 4096){
+        size_t signNum = af_->getAlphaDataBase()->getSignNum(daybefore, sampleSize, signName);
+        size_t evalSignNum = af_->getAlphaDataBase()->getSignNum(evalDaybefore, evalSampleSize, signName);
+        //填写特征
+        Vector<IBaseIterator<float>*> features( featureList_->getSize());
+        Vector<IBaseIterator<float>*> evalFeatures(featureList_->getSize());
+        for(size_t i = 0; i < features.getSize(); ++i){
+            //cout<<(*alphaNameList_)[i].c_str()<<" "<<daybefore<<" "<<sampleSize<<endl;
+            features[i] = new AlphaSignIterator(af_, (*alphaNameList_)[i].c_str(), signName, (*alphatreeIds_)[i],daybefore,sampleSize,0,signNum, cacheSize);
+            evalFeatures[i] = new AlphaSignIterator(af_, (*alphaNameList_)[i].c_str(), signName, (*alphatreeIds_)[i], evalDaybefore, evalSampleSize, 0, evalSignNum, cacheSize);
+        }
+
+        //cout<<"target:"<<target<<endl;
+        int targetAlphatreeId = af_->useAlphaTree();
+        af_->decode(targetAlphatreeId, "_target", target);
+
+        int weightAlphatreeId = -1;
+        float* weightMemory = nullptr;
+        IBaseIterator<float>* weightIter;
+        if(weight != nullptr){
+            weightAlphatreeId = af_->useAlphaTree();
+            af_->decode(weightAlphatreeId, "_weight", weight);
+            weightIter = new AlphaSignIterator(af_, "_weight", signName, weightAlphatreeId, daybefore, sampleSize, 0, signNum, cacheSize);
+        } else {
+            weightMemory = new float[signNum];
+            weightIter = new MemoryIterator<float>(weightMemory, signNum);
+            ((MemoryIterator<float>*)weightIter)->initialize(1);
+        }
+
+
+        //填写目标
+        AlphaSignIterator targetIter(af_, "_target", signName, targetAlphatreeId, daybefore, sampleSize, 0, signNum, cacheSize);
+        AlphaSignIterator evalTargetIter(af_, "_target", signName, targetAlphatreeId, evalDaybefore, evalSampleSize, 0, evalSignNum, cacheSize);
+
+        //申请中间内存
+        float* memory = new float[3 * signNum + evalSignNum];
+        //分配2份内存，第一份是真实用的，第二份是中间结果
+        int* skip = new int[3 * max(signNum, evalSignNum)];
+        MemoryIterator<float> pred(memory, signNum);
+        MemoryIterator<float> evalPred(memory + 3 * signNum, evalSignNum);
+        MemoryIterator<float> g(memory + 1 * signNum, signNum);
+        MemoryIterator<float> h(memory + 2 * signNum, signNum);
+        MemoryIterator<bool> flag((bool*)(skip + 2 * signNum), signNum);
+
+        float evalLoss = gbdt->trainAndEval(&features, weightIter, &targetIter, &pred, &evalFeatures, &evalTargetIter, &evalPred, &g, &h, skip, &flag, lossFunName, barSize, minWeight, maxDepth, samplePercent, featurePercent, boostNum, boostWeightScale);
+        //gbdt->train(&features, weightIter, &targetIter, &pred, &g, &h, skip, &flag, lossFunName, barSize, minWeight, maxDepth, samplePercent, featurePercent, boostNum, boostWeightScale);
+
+        //释放空间
+        delete []memory;
+        delete []skip;
+
+        //删除特征
+        for(size_t i = 0; i < features.getSize(); ++i){
+            delete features[i];
+            delete evalFeatures[i];
+        }
+
+        af_->releaseAlphaTree(targetAlphatreeId);
+        if(weightAlphatreeId != -1)
+            af_->releaseAlphaTree(weightAlphatreeId);
+        delete weightIter;
+        if(weightMemory)
+            delete []weightMemory;
+        return evalLoss;
+    }
+
+    float eval(size_t evalDaybefore, size_t evalSampleSize, const char* target, const char* signName, int cacheSize = 4096){
+        size_t evalSignNum = af_->getAlphaDataBase()->getSignNum(evalDaybefore, evalSampleSize, signName);
+        //cout<<evalDaybefore<<" "<<evalSampleSize<<" "<<evalSignNum<<endl;
+        //填写特征
+        Vector<IBaseIterator<float>*> evalFeatures(featureList_->getSize());
+        for(size_t i = 0; i < evalFeatures.getSize(); ++i){
+            evalFeatures[i] = new AlphaSignIterator(af_, (*alphaNameList_)[i].c_str(), signName, (*alphatreeIds_)[i], evalDaybefore, evalSampleSize, 0, evalSignNum, cacheSize);
+        }
+
+        //cout<<"target:"<<target<<endl;
+        int targetAlphatreeId = af_->useAlphaTree();
+        af_->decode(targetAlphatreeId, "_target", target);
+
+        //填写目标
+        AlphaSignIterator evalTargetIter(af_, "_target", signName, targetAlphatreeId, evalDaybefore, evalSampleSize, 0, evalSignNum, cacheSize);
+
+        //申请中间内存
+        float* memory = new float[evalSignNum];
+        //分配2份内存，第一份是真实用的，第二份是中间结果
+        int* skip = new int[3 * evalSignNum];
+        MemoryIterator<float> evalPred(memory, evalSignNum);
+
+
+        float evalLoss = gbdt->eval( &evalFeatures, &evalTargetIter, &evalPred, skip, lossFunName);
+        //gbdt->train(&features, weightIter, &targetIter, &pred, &g, &h, skip, &flag, lossFunName, barSize, minWeight, maxDepth, samplePercent, featurePercent, boostNum, boostWeightScale);
+
+        /*{//test
+            int* ids = new int[evalSignNum];
+            AlphaForest::getAlphaforest()->getAlphaDataBase()->getStockIds(evalDaybefore, evalSampleSize, signName, ids);
+
+            int cnt = 0;
+            int id = 0;
+            while (evalPred.isValid()){
+                float v = evalPred.getValue();
+                float t = evalTargetIter.getValue();
+                v = 1.0f / (1.0f + expf(-v));
+                if(v > 0.9){
+                    ++cnt;
+                    cout<<AlphaForest::getAlphaforest()->getAlphaDataBase()->getCode(ids[id])<<" "<<t<<endl;
+                }
+
+                evalPred.skip(1);
+                evalTargetIter.skip(1);
+                id++;
+            }
+            evalPred.skip(0, false);
+            evalTargetIter.skip(0, false);
+            cout<<"cnt = "<<cnt<<endl;
+        }*/
+
+        //释放空间
+        delete []memory;
+        delete []skip;
+
+        //删除特征
+        for(size_t i = 0; i < evalFeatures.getSize(); ++i){
+            delete evalFeatures[i];
+        }
+
+        af_->releaseAlphaTree(targetAlphatreeId);
+        return evalLoss;
     }
 
     void pred(size_t daybefore, size_t sampleSize, const char* signName, float* predOut, int cacheSize = 4096){

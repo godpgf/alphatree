@@ -224,7 +224,7 @@ protected:
 
         //操作数后必须紧跟'('
         if(line[l] != '('){
-            cout<<"'(' must after opt!\n";
+            cout<<line<<" '(' must after opt!\n";
             throw "'(' must after opt!";
         }
 

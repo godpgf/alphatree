@@ -20,6 +20,8 @@ except OSError as e:
 
 alphatree.optimizeAlpha.restype = c_float
 alphatree.getSignNum.restype = c_int32
+alphatree.trainAndEvalAlphaGBDT.restype = c_float
+alphatree.evalAlphaGBDT.restype = c_float
 # alphatree.alphaRFT2String.restype = c_int32
 # alphatree.getBalance.restype = c_float
 # alphatree.createSignFeatureIter.restype = c_void_p

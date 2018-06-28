@@ -998,8 +998,18 @@ void* lessCond(void** pars, float coff, int historySize, int stockSize, CacheFla
 }
 
 void* moreCond(void** pars, float coff, int historySize, int stockSize, CacheFlag* pflag){
-    lessCond(pars, coff, historySize, stockSize, pflag);
-    return reduceFrom(pars, 1, historySize, stockSize, pflag);
+    float* pout = (float*)pars[0];
+    float* pleft = (float*)pars[0];
+    float* pright = (float*)pars[1];
+    for(int i = 0; i < historySize; ++i){
+        if(pflag[i] == CacheFlag::NEED_CAL) {
+            _moreCond(pout + i * stockSize, pleft + i * stockSize, pright + i * stockSize, stockSize);
+        }
+        //else {
+        //    memset(pout + i * stockSize, 0, stockSize * sizeof(float));
+        //}
+    }
+    return pout;
 }
 
 void* equalCond(void** pars, float coff, int historySize, int stockSize, CacheFlag* pflag){

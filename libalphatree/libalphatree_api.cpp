@@ -217,6 +217,15 @@ void DLLEXPORT trainAlphaGBDT(int daybefore, int sampleSize, const char* weight,
     AlphaGBDT::getAlphaGBDT()->train(daybefore, sampleSize, weight, target, signName, barSize, minWeight, maxDepth, samplePercent, featurePercent, boostNum, boostWeightScale, cacheSize);
 }
 
+float DLLEXPORT trainAndEvalAlphaGBDT(int daybefore, int sampleSize, int evalDaybefore, int evalSampleSize, const char* weight, const char* target, const char* signName,
+                             int barSize, float minWeight, int maxDepth, float samplePercent, float featurePercent, int boostNum, float boostWeightScale, int cacheSize){
+    return AlphaGBDT::getAlphaGBDT()->trainAndEval(daybefore, sampleSize, evalDaybefore, evalSampleSize, weight, target, signName, barSize, minWeight, maxDepth, samplePercent, featurePercent, boostNum, boostWeightScale, cacheSize);
+}
+
+float DLLEXPORT evalAlphaGBDT(int evalDaybefore, int evalSampleSize, const char* target, const char* signName,int cacheSize){
+    return AlphaGBDT::getAlphaGBDT()->eval(evalDaybefore, evalSampleSize, target, signName, cacheSize);
+}
+
 void DLLEXPORT predAlphaGBDT(int daybefore, int sampleSize, const char* signName, float* predOut, int cacheSize){
     AlphaGBDT::getAlphaGBDT()->pred(daybefore, sampleSize, signName, predOut, cacheSize);
 }

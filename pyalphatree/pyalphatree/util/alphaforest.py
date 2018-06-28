@@ -118,8 +118,8 @@ class AlphaForest(object):
         return np.array([self.alphatree_id_cache[i] for i in range(stock_num)])
 
     def get_code(self, stock_id):
-        l = alphatree.getCode(stock_id, self.code_cache)
-        return ''.join([self.code_cache[i] for i in range(l)])
+        l = alphatree.getCode(c_int32(stock_id), self.code_cache)
+        return ''.join([self.code_cache[i].decode() for i in range(l)])
 
     def fill_codes(self, codes):
         self.cur_stock_size = len(codes)

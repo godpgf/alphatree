@@ -111,6 +111,7 @@ public:
             cout<<"找不到偏移\n";
             throw "error";
         }
+        //cout<<"curoffset:"<<curOffset<<" find:"<<stockMetas[l].code<<" offset:"<<stockMetas[l].offset<<" days:"<<stockMetas[l].days<<endl;
         return l;
     }
 

@@ -39,7 +39,7 @@ protected:
     };
 
 public:
-    BaseGBDT(int threadNum):threadPool_(threadNum){
+    BaseGBDT(int threadNum):threadPool_(threadNum), threadNum_(threadNum){
         splitBars_ = DCache<SplitBarList>::create();
         tree_ = DTree<Node, DTREE_BLOCK_SIZE>::create();
     }
@@ -52,7 +52,7 @@ public:
 
 
     int boost(IVector<IBaseIterator<float>*>* featureList, IBaseIterator<float>* weight, IBaseIterator<float>* target,
-              IBaseIterator<float>* g, IBaseIterator<float>* h, int* skip, int skipLen,
+              IBaseIterator<float>* g, IBaseIterator<float>* h, int* skip, IBaseIterator<bool>* flag,
               int barSize, float gamma, float lambda, float minWeight, int maxDepth){
         int rootId = tree_->createNode();
         (*tree_)[rootId].clean();
@@ -60,14 +60,17 @@ public:
 
         int* tmpSkip = skip + weight->size();
 
-        for(int i = 0; i < skipLen; ++i){
+        for(int i = 0; i < weight->size(); ++i){
             weight->skip(skip[i]);
-            (*tree_)[rootId].weight += weight->getValue();
+            flag->skip(skip[i]);
+            if(flag->getValue())
+                (*tree_)[rootId].weight += weight->getValue();
         }
 
         weight->skip(0, false);
+        flag->skip(0, false);
         (*tree_)[rootId].tmpOffset = 0;
-        (*tree_)[rootId].tmpElementNum = skipLen;
+        (*tree_)[rootId].tmpElementNum = weight->size();
 
         int startLeafIndex = rootId;
         std::shared_future<SplitRes>* res = new std::shared_future<SplitRes>[featureList->getSize()];
@@ -87,48 +90,76 @@ public:
                 int* curSkip = skip + (*tree_)[leafIndex].tmpOffset;
                 int curSkipLen = (*tree_)[leafIndex].tmpElementNum;
 
-                for(int i = 0; i < featureList->getSize(); ++i){
-                    if((*featureList)[i] == nullptr)
-                        continue;
-                    IBaseIterator<float>* featureClone = (*featureList)[i]->clone();
-                    IBaseIterator<float>* weightClone = weight->clone();
-                    IBaseIterator<float>* gClone = g->clone();
-                    IBaseIterator<float>* hClone = h->clone();
-
-                    //对每个特征分裂
-                    DCache<SplitBarList>* splitBars_ = this->splitBars_;
-                    res[i] = threadPool_.enqueue([splitBars_, barSize, featureClone, weightClone, gClone, hClone, curSkip, curSkipLen, gamma, lambda]{
-                        int barId = splitBars_->useCacheMemory();
-                        SplitBarList& bars = splitBars_->getCacheMemory(barId);
-                        bars.initialize(barSize);
-                        if(!fillBars(featureClone, weightClone, gClone, hClone, curSkip, curSkipLen, bars.bars, barSize, bars.startValue, bars.deltaStd)){
-                            splitBars_->releaseCacheMemory(barId);
-                            SplitRes res;
-                            delete featureClone;
-                            delete weightClone;
-                            delete gClone;
-                            delete hClone;
-                            return res;
-                        } else {
-                            auto res = splitBars(bars.bars, barSize, bars.startValue, bars.deltaStd, gamma, lambda);
-                            splitBars_->releaseCacheMemory(barId);
-                            delete featureClone;
-                            delete weightClone;
-                            delete gClone;
-                            delete hClone;
-                            return res;
-                        }
-                    }).share();
-                }
-
                 //找到最好的特征
                 int bestFeatureIndex = -1;
                 float maxGain = 0;
-                for(int i = 0; i <  featureList->getSize(); ++i){
-                    //cout<<res[i].get().gain<<"/"<<maxGain<<" ";
-                    if((*featureList)[i] != nullptr && res[i].get().gain > maxGain){
-                        maxGain = res[i].get().gain;
-                        bestFeatureIndex = i;
+                SplitRes bestSplitRes;
+
+                if(threadNum_ > 1){
+                    for(int i = 0; i < featureList->getSize(); ++i){
+                        if((*featureList)[i] == nullptr)
+                            continue;
+                        IBaseIterator<float>* featureClone = (*featureList)[i]->clone();
+                        IBaseIterator<float>* weightClone = weight->clone();
+                        IBaseIterator<bool>* flagClone = flag->clone();
+                        IBaseIterator<float>* gClone = g->clone();
+                        IBaseIterator<float>* hClone = h->clone();
+
+                        //对每个特征分裂
+                        DCache<SplitBarList>* splitBars_ = this->splitBars_;
+                        res[i] = threadPool_.enqueue([splitBars_, barSize, featureClone, weightClone, flagClone, gClone, hClone, curSkip, curSkipLen, gamma, lambda]{
+                            int barId = splitBars_->useCacheMemory();
+                            SplitBarList& bars = splitBars_->getCacheMemory(barId);
+                            bars.initialize(barSize);
+                            if(!fillBars(featureClone, weightClone, flagClone, gClone, hClone, curSkip, curSkipLen, bars.bars, barSize, bars.startValue, bars.deltaStd)){
+                                splitBars_->releaseCacheMemory(barId);
+                                SplitRes res;
+                                delete featureClone;
+                                delete weightClone;
+                                delete gClone;
+                                delete hClone;
+                                return res;
+                            } else {
+                                auto res = splitBars(bars.bars, barSize, bars.startValue, bars.deltaStd, gamma, lambda);
+                                splitBars_->releaseCacheMemory(barId);
+                                delete featureClone;
+                                delete weightClone;
+                                delete gClone;
+                                delete hClone;
+                                return res;
+                            }
+                        }).share();
+                    }
+
+                    for(int i = 0; i <  featureList->getSize(); ++i){
+                        if((*featureList)[i] != nullptr && res[i].get().gain > maxGain){
+                            //cout<<" depth: "<<depth<<" feature: "<<i<<" "<<res[i].get().gain<<"/"<<maxGain<<" ";
+                            maxGain = res[i].get().gain;
+                            bestFeatureIndex = i;
+                        }
+                    }
+
+                    if(bestFeatureIndex >= 0){
+                        bestSplitRes = res[bestFeatureIndex].get();
+                    }
+                } else{
+                    for(int i = 0; i < featureList->getSize(); ++i) {
+                        if ((*featureList)[i] == nullptr)
+                            continue;
+                        int barId = splitBars_->useCacheMemory();
+                        SplitBarList& bars = splitBars_->getCacheMemory(barId);
+                        bars.initialize(barSize);
+                        if(!fillBars((*featureList)[i], weight, flag, g, h, curSkip, curSkipLen, bars.bars, barSize, bars.startValue, bars.deltaStd)){
+                            splitBars_->releaseCacheMemory(barId);
+                        } else {
+                            auto res = splitBars(bars.bars, barSize, bars.startValue, bars.deltaStd, gamma, lambda);
+                            splitBars_->releaseCacheMemory(barId);
+                            if(res.gain > maxGain){
+                                maxGain = res.gain;
+                                bestFeatureIndex = i;
+                                bestSplitRes = res;
+                            }
+                        }
                     }
                 }
                 //cout<<bestFeatureIndex<<endl;
@@ -136,17 +167,17 @@ public:
                 if(bestFeatureIndex >= 0){
                     //开始分裂
                     (*tree_)[leafIndex].featureIndex = bestFeatureIndex;
-                    (*tree_)[leafIndex].split = res[bestFeatureIndex].get().splitValue;
+                    (*tree_)[leafIndex].split = bestSplitRes.splitValue;
                     int l = tree_->createNode();
                     int r = tree_->createNode();
                     (*tree_)[l].clean();
                     (*tree_)[r].clean();
-                    (*tree_)[l].weight = res[bestFeatureIndex].get().leftWeightSum;
-                    (*tree_)[r].weight = res[bestFeatureIndex].get().rightWeightSum;
-                    (*tree_)[l].g = res[bestFeatureIndex].get().gl;
-                    (*tree_)[l].h = res[bestFeatureIndex].get().hl;
-                    (*tree_)[r].g = res[bestFeatureIndex].get().gr;
-                    (*tree_)[r].h = res[bestFeatureIndex].get().hr;
+                    (*tree_)[l].weight = bestSplitRes.leftWeightSum;
+                    (*tree_)[r].weight = bestSplitRes.rightWeightSum;
+                    (*tree_)[l].g = bestSplitRes.gl;
+                    (*tree_)[l].h = bestSplitRes.hl;
+                    (*tree_)[r].g = bestSplitRes.gr;
+                    (*tree_)[r].h = bestSplitRes.hr;
                     int lSkipLen = updateSkip(leafIndex, (*featureList)[bestFeatureIndex], curSkip, curSkipLen, tmpSkip, true);
                     int rSkipLen = updateSkip(leafIndex, (*featureList)[bestFeatureIndex], curSkip, curSkipLen, tmpSkip + lSkipLen, false);
                     memcpy(curSkip, tmpSkip, lSkipLen * sizeof(int));
@@ -230,6 +261,7 @@ protected:
 protected:
     DCache<SplitBarList>* splitBars_ = {nullptr};
     DTree<Node, DTREE_BLOCK_SIZE>* tree_ = {nullptr};
+    int threadNum_;
     ThreadPool threadPool_;
 };
 

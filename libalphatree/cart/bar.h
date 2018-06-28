@@ -44,17 +44,20 @@ public:
     int maxBarSize = {0};
 };
 
-float getWeightSum_(IBaseIterator<float>* weight, int* skip, int skipLen){
+float getWeightSum_(IBaseIterator<float>* weight, IBaseIterator<bool>* flag, int* skip, int skipLen){
     float weightSum = 0;
     for(int i = 0; i < skipLen; ++i){
         weight->skip(skip[i]);
-        weightSum += **weight;
+        flag->skip(skip[i]);
+        if(flag->getValue())
+            weightSum += **weight;
     }
+    flag->skip(0, false);
     weight->skip(0, false);
     return weightSum;
 }
 
-void fillBars_(SplitBar* curBars, int barSize, IBaseIterator<float>* feature, IBaseIterator<float>* weight, IBaseIterator<float>* g, IBaseIterator<float>* h, int* skip, int skipLen, float startValue, float deltaStd){
+void fillBars_(SplitBar* curBars, int barSize, IBaseIterator<float>* feature, IBaseIterator<float>* weight, IBaseIterator<bool>* flag, IBaseIterator<float>* g, IBaseIterator<float>* h, int* skip, int skipLen, float startValue, float deltaStd){
     memset(curBars, 0, barSize * sizeof(SplitBar));
 
     for(int i = 0; i < skipLen; ++i){
@@ -62,33 +65,8 @@ void fillBars_(SplitBar* curBars, int barSize, IBaseIterator<float>* feature, IB
         g->skip(skip[i]);
         h->skip(skip[i]);
         weight->skip(skip[i]);
-
-        int index = (**feature) < startValue ? 0 : std::min((int)(((**feature) - startValue) / deltaStd) + 1, barSize - 1);
-        //cout<<index<<" "<<(*feature)<<" "<<deltaStd<<" "<<startValue<<endl;
-        curBars[index].dataSum += (**feature) * (**weight);
-        curBars[index].dataSqrSum += powf((**feature), 2) * (**weight);
-        curBars[index].weightSum += (**weight);
-        curBars[index].g += (**g) * (**weight);
-        curBars[index].h += (**h) * (**weight);
-    }
-
-    feature->skip(0, false);
-    g->skip(0, false);
-    h->skip(0, false);
-    weight->skip(0, false);
-}
-
-void fillBars_(SplitBar* curBars, int barSize, IBaseIterator<float>* feature, IBaseIterator<float>* weight, IBaseIterator<float>* g, IBaseIterator<float>* h, int* skip, int skipLen, IBaseIterator<float>* cmp, float cmpValue, bool isLeft, float startValue, float deltaStd){
-    memset(curBars, 0, barSize * sizeof(SplitBar));
-
-    for(int i = 0; i < skipLen; ++i){
-        feature->skip(skip[i]);
-        weight->skip(skip[i]);
-        g->skip(skip[i]);
-        h->skip(skip[i]);
-        cmp->skip(skip[i]);
-
-        if((**cmp < cmpValue) == isLeft){
+        flag->skip(skip[i]);
+        if(**flag){
             int index = (**feature) < startValue ? 0 : std::min((int)(((**feature) - startValue) / deltaStd) + 1, barSize - 1);
             //cout<<index<<" "<<(*feature)<<" "<<deltaStd<<" "<<startValue<<endl;
             curBars[index].dataSum += (**feature) * (**weight);
@@ -103,6 +81,36 @@ void fillBars_(SplitBar* curBars, int barSize, IBaseIterator<float>* feature, IB
     g->skip(0, false);
     h->skip(0, false);
     weight->skip(0, false);
+    flag->skip(0, false);
+}
+
+void fillBars_(SplitBar* curBars, int barSize, IBaseIterator<float>* feature, IBaseIterator<float>* weight, IBaseIterator<bool>* flag, IBaseIterator<float>* g, IBaseIterator<float>* h, int* skip, int skipLen, IBaseIterator<float>* cmp, float cmpValue, bool isLeft, float startValue, float deltaStd){
+    memset(curBars, 0, barSize * sizeof(SplitBar));
+
+    for(int i = 0; i < skipLen; ++i){
+        feature->skip(skip[i]);
+        weight->skip(skip[i]);
+        flag->skip(skip[i]);
+        g->skip(skip[i]);
+        h->skip(skip[i]);
+        cmp->skip(skip[i]);
+
+        if((**cmp < cmpValue) == isLeft && (**flag)){
+            int index = (**feature) < startValue ? 0 : std::min((int)(((**feature) - startValue) / deltaStd) + 1, barSize - 1);
+            //cout<<index<<" "<<(*feature)<<" "<<deltaStd<<" "<<startValue<<endl;
+            curBars[index].dataSum += (**feature) * (**weight);
+            curBars[index].dataSqrSum += powf((**feature), 2) * (**weight);
+            curBars[index].weightSum += (**weight);
+            curBars[index].g += (**g) * (**weight);
+            curBars[index].h += (**h) * (**weight);
+        }
+    }
+
+    feature->skip(0, false);
+    g->skip(0, false);
+    h->skip(0, false);
+    weight->skip(0, false);
+    flag->skip(0, false);
     cmp->skip(0, false);
 }
 
@@ -112,24 +120,29 @@ void fillBars_(SplitBar* curBars, int barSize, IBaseIterator<float>* feature, IB
  *         (w1*x1^2+w2*x2^2+...+wn*xn^2)/(w1+w2+...+wn)-2x*(w1*x1+w2*x2+...+wn*xn)/(w1+w2+...+wn)+x*^2
  *         (w1*x1^2+w2*x2^2+...+wn*xn^2)/(w1+w2+...+wn)-x*^2
  */
-bool fillBars(IBaseIterator<float>* feature, IBaseIterator<float>* weight, IBaseIterator<float>* g, IBaseIterator<float>* h, int* skip, int skipLen, SplitBar* curBars, int barSize, float& startValue, float& deltaStd){
+bool fillBars(IBaseIterator<float>* feature, IBaseIterator<float>* weight, IBaseIterator<bool>* flag, IBaseIterator<float>* g, IBaseIterator<float>* h, int* skip, int skipLen, SplitBar* curBars, int barSize, float& startValue, float& deltaStd){
     //先计算需要统计柱状图的数据的均值和标准差
     double sum = 0;
     double sumSqr = 0;
 
-    double dataCount = getWeightSum_(weight, skip, skipLen);
+    double dataCount = getWeightSum_(weight, flag, skip, skipLen);
 
     for(int i = 0; i < skipLen; ++i){
         feature->skip(skip[i]);
         weight->skip(skip[i]);
+        flag->skip(skip[i]);
         //在这里先做除法是为了防止数据溢出
         float value = (**feature);
-        sum += value * (**weight) / dataCount;
-        sumSqr += value * value * (**weight) / dataCount;
+        if(**flag){
+            sum += value * (**weight) / dataCount;
+            sumSqr += value * value * (**weight) / dataCount;
+        }
+
     }
 
     feature->skip(0, false);
     weight->skip(0, false);
+    flag->skip(0, false);
 
     float avg = sum;
     float std = sqrtf(sumSqr  - avg * avg);
@@ -139,21 +152,22 @@ bool fillBars(IBaseIterator<float>* feature, IBaseIterator<float>* weight, IBase
     float stdScale =  normsinv(1.0 - 1.0 / barSize);
     startValue = avg - std * stdScale;
     deltaStd = std * stdScale / (0.5f * (barSize - 2));
-    fillBars_(curBars, barSize, feature, weight, g, h, skip, skipLen, startValue, deltaStd);
+    fillBars_(curBars, barSize, feature, weight, flag, g, h, skip, skipLen, startValue, deltaStd);
     return true;
 }
 
-bool fillBars(IBaseIterator<float>* feature, IBaseIterator<float>* weight, IBaseIterator<float>* g, IBaseIterator<float>* h, int* skip, int skipLen, IBaseIterator<float>* cmp, float cmpValue, bool isLeft, SplitBar* curBars, int barSize, float& startValue, float& deltaStd){
+bool fillBars(IBaseIterator<float>* feature, IBaseIterator<float>* weight, IBaseIterator<bool>* flag, IBaseIterator<float>* g, IBaseIterator<float>* h, int* skip, int skipLen, IBaseIterator<float>* cmp, float cmpValue, bool isLeft, SplitBar* curBars, int barSize, float& startValue, float& deltaStd){
     //先计算需要统计柱状图的数据的均值和标准差
     double sum = 0;
     double sumSqr = 0;
-    double dataCount = getWeightSum_(weight, skip, skipLen);
+    double dataCount = getWeightSum_(weight, flag, skip, skipLen);
 
     for(int i = 0; i < skipLen; ++i){
         feature->skip(skip[i]);
         weight->skip(skip[i]);
+        flag->skip(skip[i]);
         cmp->skip(skip[i]);
-        if((**cmp < cmpValue) == isLeft){
+        if((**cmp < cmpValue) == isLeft && (**flag)){
             //在这里先做除法是为了防止数据溢出
             sum += ((**feature) * (**weight)) / dataCount;
             sumSqr += powf((**feature), 2) * (**weight) / dataCount;
@@ -162,6 +176,7 @@ bool fillBars(IBaseIterator<float>* feature, IBaseIterator<float>* weight, IBase
 
     feature->skip(0, false);
     weight->skip(0, false);
+    flag->skip(0, false);
     cmp->skip(0, false);
 
     float avg = sum;
@@ -172,7 +187,7 @@ bool fillBars(IBaseIterator<float>* feature, IBaseIterator<float>* weight, IBase
     float stdScale =  normsinv(1.0 - 1.0 / barSize);
     startValue = avg - std * stdScale;
     deltaStd = std * stdScale / (0.5f * (barSize - 2));
-    fillBars_(curBars, barSize, feature, weight, g, h, skip, skipLen, cmp, cmpValue, isLeft, startValue, deltaStd);
+    fillBars_(curBars, barSize, feature, weight, flag, g, h, skip, skipLen, cmp, cmpValue, isLeft, startValue, deltaStd);
     return true;
 }
 
