@@ -41,7 +41,6 @@ class AlphaForest(object):
         alphatree.loadDataBase(c_char_p(path.encode('utf-8')))
 
     def csv2binary(self, path, feature_name):
-        print(feature_name.encode('utf-8'))
         alphatree.csv2binary(c_char_p(path.encode('utf-8')), c_char_p(feature_name.encode('utf-8')))
 
     #缓存缺失数据的描述，以便快速知道数据的缺失情况

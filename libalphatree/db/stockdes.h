@@ -10,8 +10,10 @@
 #include <sstream>
 #include <map>
 #include <set>
+
 #include "../base/hashmap.h"
 #include "../base/darray.h"
+
 
 //定义股票的数据结构------------------------------
 const size_t CODE_LEN = 64;
@@ -29,6 +31,7 @@ public:
     int offset;
     int days;
 };
+
 
 #define STOCK_BLOCK 1024
 class StockDes{
@@ -60,6 +63,8 @@ public:
             StockMeta sm;
             strcpy(sm.code, code.c_str());
             sm.days = atoi(days.c_str());
+			//godpgf
+			//cout << code << " " << sm.days << endl;
             //offset += sm.days;
             //cout<<market<<market.length()<<industry<<industry.length()<<endl;
             if(market.length() != 0 && industry.length() == 0){

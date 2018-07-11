@@ -850,7 +850,7 @@ public:
                 ++iter;
             }
             if(dayNum != meta.days){
-                cout<<"day num error\n";
+                cout<<meta.code<<" "<<dayNum<<" "<<meta.days<<" day num error\n";
                 throw "day num error!";
             }
         }
