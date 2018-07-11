@@ -1,4 +1,4 @@
-# coding=utf-8
+﻿# coding=utf-8
 # author=godpgf
 from .util import AlphaForest, AlphaArray, AlphaFilter, AlphaGBDT, AlphaPic
 import re
@@ -6,18 +6,18 @@ import re
 def cache_base(data_path):
     with AlphaForest() as af:
         af.load_db(data_path)
-        af.csv2binary("data", "date")
-        af.csv2binary("data", "open")
-        af.csv2binary("data", "high")
-        af.csv2binary("data", "low")
-        af.csv2binary("data", "close")
-        af.csv2binary("data", "volume")
-        af.csv2binary("data", "vwap")
-        af.csv2binary("data", "returns")
-        af.csv2binary("data", "amount")
-        af.csv2binary("data", "turn")
-        af.csv2binary("data", "tcap")
-        af.csv2binary("data", "mcap")
+        af.csv2binary(data_path, "date")
+        af.csv2binary(data_path, "open")
+        af.csv2binary(data_path, "high")
+        af.csv2binary(data_path, "low")
+        af.csv2binary(data_path, "close")
+        af.csv2binary(data_path, "volume")
+        af.csv2binary(data_path, "vwap")
+        af.csv2binary(data_path, "returns")
+        af.csv2binary(data_path, "amount")
+        af.csv2binary(data_path, "turn")
+        af.csv2binary(data_path, "tcap")
+        af.csv2binary(data_path, "mcap")
         af.cache_miss()
 
 #缓存各种指标
