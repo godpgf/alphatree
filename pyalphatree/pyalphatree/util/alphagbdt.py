@@ -1,4 +1,4 @@
-#coding=utf-8
+﻿#coding=utf-8
 #author=godpgf
 from ctypes import *
 from pyalphatree.libalphatree import alphatree
