@@ -56,6 +56,9 @@ class AlphaGBDT(object):
     def train(self, daybefore, sample_size, weight, target, sign_name, bar_size = 32, min_weight = 64.0, max_depth = 8, sample_percent = 1.0, feature_percent = 1.0, boost_num = 2, boost_weight_scale = 1, cache_size = 2048):
         alphatree.trainAlphaGBDT(daybefore, sample_size, c_char_p(weight.encode()) if weight else None, c_char_p(target.encode()), c_char_p(sign_name.encode()), bar_size, c_float(min_weight), max_depth, c_float(sample_percent), c_float(feature_percent), boost_num, c_float(boost_weight_scale), cache_size)
 
+    def train_default(self, daybefore, sample_size, target, sign_name):
+        alphatree.defaultTrainAlphaGBDT(daybefore, sample_size, c_char_p(target.encode()), c_char_p(sign_name.encode()))
+
     def train_and_eval(self, daybefore, sample_size, eval_daybefore, eval_sample_size, weight, target, sign_name, bar_size = 32, min_weight = 64.0, max_depth = 8, sample_percent = 1.0, feature_percent = 1.0, boost_num = 2, boost_weight_scale = 1, cache_size = 2048):
         return alphatree.trainAndEvalAlphaGBDT(daybefore, sample_size, eval_daybefore, eval_sample_size, c_char_p(weight.encode()) if weight else None, c_char_p(target.encode()), c_char_p(sign_name.encode()), bar_size, c_float(min_weight), max_depth, c_float(sample_percent), c_float(feature_percent), boost_num, c_float(boost_weight_scale), cache_size)
 

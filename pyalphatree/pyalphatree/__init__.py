@@ -1,6 +1,6 @@
 # coding=utf-8
 # author=godpgf
-from .util import AlphaForest, AlphaArray, AlphaFilter, AlphaGBDT
+from .util import AlphaForest, AlphaArray, AlphaFilter, AlphaGBDT, AlphaPic
 import re
 
 def cache_base(data_path):
