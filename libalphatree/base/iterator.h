@@ -308,6 +308,7 @@ public:
             }
         }
         else{
+			//file_.clear();
             file_.seekg(sizeof(T) * (size + start_),ios::beg);
             curIndex_ = size;
         }
@@ -329,6 +330,7 @@ public:
 
     virtual int64_t jumpTo(T value, int64_t start, int64_t length){
         int64_t dataNum = length;
+		//file_.clear();
         file_.seekg((start_ + start) * sizeof(T), ios::beg);
         file_.read( reinterpret_cast< char* >( &realData_ ), sizeof( T ) );
         if(realData_ >= value){

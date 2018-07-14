@@ -658,6 +658,7 @@ public:
         auto mainStockMeta = des_->stockMetas[des_->mainStock];
         Iterator<int64_t> mainDateIter(date->createIter(mainStockMeta.offset, mainStockMeta.days));
         Iterator<int64_t> allDateIter(date->createIter(0, des_->offset));
+		//cout << *mainDateIter << " " << *allDateIter << endl;
         ofstream file;
         file.open(feature2path_("miss"), ios::binary | ios::out);
         for(int i = 0; i < des_->stockMetas.getSize(); ++i){
@@ -667,12 +668,15 @@ public:
             int fullDataNum = 0;
             file.write(reinterpret_cast< char* >( &fullDataNum ), sizeof( int ));
             allDateIter.skip(start, false);
-            long lastDate = *allDateIter;
+			int64_t lastDate = *allDateIter;
             int mainOffset = mainDateIter.jumpTo(lastDate);
             ++mainOffset;
             if(mainOffset > 0)
                 ++mainDateIter;
             if(*mainDateIter != lastDate){
+				//cout << *mainDateIter << " " << lastDate << " " << start << endl;
+				//allDateIter.skip(0, false);
+				//cout << *allDateIter << endl;
                 cout<<"s "<<des_->stockMetas[i].code<<"保存miss文件错误\n";
                 throw "err";
             }
@@ -737,7 +741,7 @@ public:
         for(int i = 0; i < des_->stockMetas.getSize(); ++i){
             if(stockFlag && stockFlag[i]){
                 Iterator<float> curIter(ft->createIter(des_->stockMetas[i].offset, des_->stockMetas[i].days));
-                long percentBatch = 0;
+                int64_t percentBatch = 0;
                 float hidePercent = 0;
                 int curDateIndex = 0;
 
@@ -745,7 +749,7 @@ public:
                 while (curDateIndex < seqLength - 1 && curDateIndex < curIter.size()){
                     o[curDateIndex++] = (*curIter) > 0 ? 1.f : 0.f;
                     ++curIter;
-                    convertPercentFile.write(reinterpret_cast< char* >( &percentBatch ), sizeof( long ));
+                    convertPercentFile.write(reinterpret_cast< char* >( &percentBatch ), sizeof( int64_t ));
                     for(int j = 0; j < hideStateNum; ++j){
                         hidePercentFiles[j].write(reinterpret_cast< char* >( &hidePercent ), sizeof( float ));
                     }
@@ -791,7 +795,7 @@ public:
                             percentBatch = (percentBatch << useBitSize);
                         }
                     }
-                    convertPercentFile.write(reinterpret_cast< char* >( &percentBatch ), sizeof( long ));
+                    convertPercentFile.write(reinterpret_cast< char* >( &percentBatch ), sizeof( int64_t ));
 
                     for(int j = 0; j < seqLength - 1; ++j){
                         o[j] = o[j + 1];
@@ -801,7 +805,7 @@ public:
                 for(int j = 0; j < hideStateNum; ++j){
                     hidePercentFiles[j].seekp(des_->stockMetas[i].days * sizeof( float ), ios::cur);
                 }
-                convertPercentFile.seekp(des_->stockMetas[i].days * sizeof( long ), ios::cur);
+                convertPercentFile.seekp(des_->stockMetas[i].days * sizeof( int64_t ), ios::cur);
             }
 
         }

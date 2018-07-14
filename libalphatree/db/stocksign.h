@@ -95,11 +95,14 @@ public:
     }
 
     virtual void skip(int64_t size, bool isRelative = true){
-        if(isRelative)
-            curIndex_ += size;
-        else
-            curIndex_ = size;
-
+		if (isRelative) {
+			curIndex_ += size;
+		}
+		else {
+			curIndex_ = size;
+			//file_.clear();
+		}
+            
         file_.seekg(sizeof(size_t) * (allDays_ + preSize_ + curIndex_), ios::beg);
         file_.read(reinterpret_cast< char* >( &curDataOffset_ ), sizeof( size_t ));
         //cout<<":"<<curIndex_<<" "<<size_<<endl;

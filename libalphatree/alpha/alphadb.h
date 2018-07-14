@@ -42,7 +42,7 @@ class AlphaDB{
         void csv2binary(const char* path, const char* featureName){
             if(strcmp(featureName,"date") == 0){
                 StockCache::csv2feature<int64_t>(path, featureName, des_);
-                //StockCache::testfeature<long>(path, featureName, des_);
+                //StockCache::testfeature<int64_t>(path, featureName, des_);
             } else {
                 StockCache::csv2feature<float>(path, featureName, des_);
             }
