@@ -150,6 +150,12 @@
     <ClInclude Include="libalphatree\cart\split.h">
       <Filter>头文件\cart</Filter>
     </ClInclude>
+    <ClInclude Include="libalphatree\alpha\alphapic.h">
+      <Filter>头文件\alpha</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\alphagraph.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="libalphatree\libalphatree_api.cpp">

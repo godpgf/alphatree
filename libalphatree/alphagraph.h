@@ -37,6 +37,7 @@ public:
         for(int i = 0; i < featureSize; ++i){
             delete featureIterList[i];
         }
+		return id;
     }
 
     void getKLinePic(int picId, int alphaTreeId, const char* signName, const char* openElements, const char* highElements, const char* lowElements, const char* closeElements, int elementNum, int dayBefore, int sampleSize, float* outPic, int column, float maxStdScale){

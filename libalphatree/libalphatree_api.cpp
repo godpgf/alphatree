@@ -202,7 +202,7 @@ void DLLEXPORT initializeAlphaGraph(){
 
 
 int DLLEXPORT useAlphaPic(int alphaTreeId, const char* signName, const char* features, int featureSize, int dayBefore, int sampleSize){
-    AlphaGraph::getAlphaGraph()->useAlphaPic(alphaTreeId, signName, features, featureSize, dayBefore, sampleSize);
+    return AlphaGraph::getAlphaGraph()->useAlphaPic(alphaTreeId, signName, features, featureSize, dayBefore, sampleSize);
 }
 
 void DLLEXPORT getKLinePic(int picId, int alphaTreeId, const char* signName, const char* openElements, const char* highElements, const char* lowElements, const char* closeElements, int elementNum, int dayBefore, int sampleSize, float* outPic, int column, float maxStdScale){
