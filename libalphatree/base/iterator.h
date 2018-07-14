@@ -252,7 +252,7 @@ public:
     virtual IBaseIterator<T>* clone(){ return new CSVIterator(path_, column_);}
 protected:
     void readData(int64_t& data){
-        data = atol(curData_.c_str());
+        data = atoll(curData_.c_str());
     }
     void readData(int& data){
         data = atoi(curData_.c_str());
