@@ -348,6 +348,8 @@ protected:
     }
 
 
+
+
     //alphatree的内存空间
     DCache<AlphaTree> *alphaTreeCache_ = {nullptr};
 
@@ -364,7 +366,6 @@ protected:
 };
 
 AlphaForest *AlphaForest::alphaForest_ = nullptr;
-
 
 class AlphaSignIterator : public IBaseIterator<float>{
 public:
@@ -401,7 +402,7 @@ public:
 
     virtual void operator++(){if(curIndex_ < signNum_)++curIndex_;}
     //跳过指定位置，isRelative如果是false就是从起点开始计算，否则是从当前开始计算
-    virtual void skip(long size, bool isRelative = true){
+    virtual void skip(int64_t size, bool isRelative = true){
         if(isRelative){
             curIndex_ += size;
         } else {
@@ -413,7 +414,7 @@ public:
     virtual bool isValid(){
         return curIndex_ < signNum_;
     }
-    virtual long size(){
+    virtual int64_t size(){
         return signNum_;
     }
 

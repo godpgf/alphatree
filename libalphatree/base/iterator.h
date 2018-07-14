@@ -15,9 +15,9 @@ public:
     virtual ~BaseIterator(){}
     virtual void operator++() = 0;
     //跳过指定位置，isRelative如果是false就是从起点开始计算，否则是从当前开始计算
-    virtual void skip(long size, bool isRelative = true) = 0;
+    virtual void skip(int64_t size, bool isRelative = true) = 0;
     virtual bool isValid() = 0;
-    virtual long size() = 0;
+    virtual int64_t size() = 0;
 };
 
 //只读数据访问器
@@ -54,9 +54,9 @@ template <class T>
 class OrderIterator: public IBaseIterator<T>{
 public:
     //假设数据是有序的，跳到首次某个元素，这个元素刚好最后一次小于value
-    virtual long jumpTo(T value){ return jumpTo(std::move(value), 0, this->size());}
-    //virtual long jumpTo(const T& value){ return jumpTo(std::move(value), 0, this->size());}
-    virtual long jumpTo(T value, long start, long length){ return -1;}
+    virtual int64_t jumpTo(T value){ return jumpTo(std::move(value), 0, this->size());}
+    //virtual int64_t jumpTo(const T& value){ return jumpTo(std::move(value), 0, this->size());}
+    virtual int64_t jumpTo(T value, int64_t start, int64_t length){ return -1;}
 };
 
 template <class T>
@@ -65,7 +65,7 @@ public:
     virtual void operator++() = 0;
     virtual void initialize(T&& data) = 0;
     virtual void initialize(const T& data) = 0;
-    virtual void skip(long size, bool isRelative = true) = 0;
+    virtual void skip(int64_t size, bool isRelative = true) = 0;
     virtual bool isValid() = 0;
 };
 
@@ -103,16 +103,16 @@ public:
     virtual void operator++() {
         ++(*iter_);
     }
-    virtual void skip(long size, bool isRelative = true){
+    virtual void skip(int64_t size, bool isRelative = true){
         iter_->skip(size, isRelative);
     }
     virtual bool isValid(){ return iter_->isValid();}
     virtual T&& getValue(){ return iter_->getValue();}
-    virtual long size(){ return iter_->size();}
-    virtual long jumpTo(T value){
+    virtual int64_t size(){ return iter_->size();}
+    virtual int64_t jumpTo(T value){
         return ((OrderIterator<T>*)iter_)->jumpTo(value);
     }
-    virtual long jumpTo(T value, long start, long length){
+    virtual int64_t jumpTo(T value, int64_t start, int64_t length){
         return ((OrderIterator<T>*)iter_)->jumpTo(value, start, length);
     }
 
@@ -135,7 +135,7 @@ public:
     virtual void operator++() {
         curMemory_ = curMemory_ + 1;
     }
-    virtual void skip(long size, bool isRelative = true){
+    virtual void skip(int64_t size, bool isRelative = true){
         if(isRelative)
             curMemory_ += size;
         else
@@ -165,9 +165,9 @@ public:
     virtual T&& getValue() { return std::move(*curMemory_);}
     virtual void setValue(T&& data){*curMemory_ = data;}
     virtual void setValue(const T& data){*curMemory_ = data;}
-    virtual long size(){ return size_;}
-    virtual long jumpTo(T value, long start, long length){
-        long dataNum = length;
+    virtual int64_t size(){ return size_;}
+    virtual int64_t jumpTo(T value, int64_t start, int64_t length){
+        int64_t dataNum = length;
         T* startMemory = endMemory_ - size() + start;
         if(startMemory[0] >= value){
             curMemory_ = startMemory;
@@ -176,8 +176,8 @@ public:
             curMemory_ = endMemory_ - size() + start + length - 1;
             return dataNum - 1;
         }
-        long l = 0, r = dataNum-2;
-        long curId = ((l + r) >> 1);
+        int64_t l = 0, r = dataNum-2;
+        int64_t curId = ((l + r) >> 1);
         while (l < r){
             if(curMemory_[curId] >= value)
                 r = curId - 1;
@@ -194,7 +194,7 @@ public:
 protected:
     T* curMemory_ = {nullptr};
     T* endMemory_ = {nullptr};
-    long size_;
+    int64_t size_;
 };
 
 template <class T>
@@ -231,7 +231,7 @@ public:
     virtual void operator++() {
         isValid_ = getline(inFile_, curLine_) ? true : false;
     }
-    virtual void skip(long size, bool isRelative = true){
+    virtual void skip(int64_t size, bool isRelative = true){
         if(isRelative == false)
             throw "不支持！";
         while (size && isValid_){
@@ -247,11 +247,11 @@ public:
         readData(realData_);
         return std::move(realData_);
     }
-    virtual long size(){ return -1;}
+    virtual int64_t size(){ return -1;}
 
     virtual IBaseIterator<T>* clone(){ return new CSVIterator(path_, column_);}
 protected:
-    void readData(long& data){
+    void readData(int64_t& data){
         data = atol(curData_.c_str());
     }
     void readData(int& data){
@@ -298,7 +298,7 @@ public:
         }
     }
 
-    virtual void skip(long size, bool isRelative = true){
+    virtual void skip(int64_t size, bool isRelative = true){
         if(isRelative){
             if(size > 0){
                 file_.seekg(sizeof(T) * (size-1),ios::cur);
@@ -323,12 +323,12 @@ public:
         return std::move(realData_);
     }
 
-    virtual long size(){
+    virtual int64_t size(){
         return size_;
     }
 
-    virtual long jumpTo(T value, long start, long length){
-        long dataNum = length;
+    virtual int64_t jumpTo(T value, int64_t start, int64_t length){
+        int64_t dataNum = length;
         file_.seekg((start_ + start) * sizeof(T), ios::beg);
         file_.read( reinterpret_cast< char* >( &realData_ ), sizeof( T ) );
         if(realData_ >= value){
@@ -342,7 +342,7 @@ public:
                 return curIndex_;
             }
         }
-        long l = 0, r = dataNum-2;
+        int64_t l = 0, r = dataNum-2;
         curIndex_ = ((l + r) >> 1);
         while (l < r){
             file_.seekg((start_ + start + curIndex_) * sizeof(T), ios::beg);
@@ -365,10 +365,10 @@ public:
         return curIndex_;
     }
 protected:
-    long curIndex_ = {0};
+    int64_t curIndex_ = {0};
     T realData_;
-    long start_;
-    long size_;
+    int64_t start_;
+    int64_t size_;
     ifstream file_;
     char* path_;
 };

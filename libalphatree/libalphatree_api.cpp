@@ -6,6 +6,7 @@
 
 #include "alphaforest.h"
 #include <iostream>
+#include "alphagraph.h"
 
 #ifdef ML
 #include "alphagbdt.h"
@@ -192,6 +193,32 @@ void DLLEXPORT getBag(const char* codes, int stockSize, const char* feature, con
     AlphaSignIterator asi(AlphaForest::getAlphaforest(), "sign", signName, alphatreeId, dayBefore, sampleSize, 0, signNum);
     getBags(&asi, bags, bagNum);
     AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
+}
+
+//draw graph------------------------------------------------------
+void DLLEXPORT initializeAlphaGraph(){
+    AlphaGraph::initialize(AlphaForest::getAlphaforest());
+}
+
+
+int DLLEXPORT useAlphaPic(int alphaTreeId, const char* signName, const char* features, int featureSize, int dayBefore, int sampleSize){
+    AlphaGraph::getAlphaGraph()->useAlphaPic(alphaTreeId, signName, features, featureSize, dayBefore, sampleSize);
+}
+
+void DLLEXPORT getKLinePic(int picId, int alphaTreeId, const char* signName, const char* openElements, const char* highElements, const char* lowElements, const char* closeElements, int elementNum, int dayBefore, int sampleSize, float* outPic, int column, float maxStdScale){
+    AlphaGraph::getAlphaGraph()->getKLinePic(picId, alphaTreeId, signName, openElements, highElements, lowElements, closeElements, elementNum, dayBefore, sampleSize, outPic, column, maxStdScale);
+}
+
+void DLLEXPORT getTrendPic(int picId, int alphaTreeId, const char* signName, const char* elements, int elementNum, int dayBefore, int sampleSize, float* outPic, int column, float maxStdScale){
+    AlphaGraph::getAlphaGraph()->getTrendPic(picId, alphaTreeId, signName, elements, elementNum, dayBefore, sampleSize, outPic, column, maxStdScale);
+}
+
+void DLLEXPORT releaseAlphaPic(int id){
+    AlphaGraph::getAlphaGraph()->releaseAlphaPic(id);
+}
+
+void DLLEXPORT releaseAlphaGraph(){
+    AlphaGraph::release();
 }
 
 #ifdef ML

@@ -26,7 +26,7 @@ public:
         curDataOffset_ = cache_[allDays_ + preSize_ + curIndex_];
     }
 
-    virtual void skip(long size, bool isRelative = true){
+    virtual void skip(int64_t size, bool isRelative = true){
         if(isRelative)
             curIndex_ += size;
         else
@@ -41,7 +41,7 @@ public:
     virtual size_t&& getValue(){
         return std::move(curDataOffset_);
     }
-    virtual long size(){ return size_;}
+    virtual int64_t size(){ return size_;}
 
     virtual IBaseIterator<size_t >* clone(){
         return new MemorySignIterator(cache_, dayBefore_, sampleDays_, allDays_);
@@ -94,7 +94,7 @@ public:
         //file_.read(reinterpret_cast< char* >( &curDataOffset_ ), sizeof( size_t ));
     }
 
-    virtual void skip(long size, bool isRelative = true){
+    virtual void skip(int64_t size, bool isRelative = true){
         if(isRelative)
             curIndex_ += size;
         else
@@ -110,7 +110,7 @@ public:
     virtual size_t&& getValue(){
         return std::move(curDataOffset_);
     }
-    virtual long size(){ return size_;}
+    virtual int64_t size(){ return size_;}
 
     virtual IBaseIterator<size_t >* clone(){
         return new BinarySignIterator(path_, dayBefore_, sampleDays_, allDays_);
