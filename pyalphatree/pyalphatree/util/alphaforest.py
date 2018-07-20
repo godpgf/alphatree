@@ -11,6 +11,7 @@ import json
 class AlphaForest(object):
     def __init__(self, cache_size=4, max_stock_num=4096, max_day_num=4096, max_feature_size=2048):
         alphatree.initializeAlphaforest(cache_size)
+        alphatree.initializeAlphaGraph()
 
         self.code_cache = (c_char * (max_stock_num * 64))()
         self.cur_stock_size = 0
@@ -33,6 +34,7 @@ class AlphaForest(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        alphatree.releaseAlphaGraph()
         alphatree.releaseAlphaforest()
 
 

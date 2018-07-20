@@ -201,16 +201,16 @@ void DLLEXPORT initializeAlphaGraph(){
 }
 
 
-int DLLEXPORT useAlphaPic(int alphaTreeId, const char* signName, const char* features, int featureSize, int dayBefore, int sampleSize){
-    return AlphaGraph::getAlphaGraph()->useAlphaPic(alphaTreeId, signName, features, featureSize, dayBefore, sampleSize);
+int DLLEXPORT useAlphaPic(const char* signName, const char* features, int featureSize, int dayBefore, int sampleSize){
+    return AlphaGraph::getAlphaGraph()->useAlphaPic(signName, features, featureSize, dayBefore, sampleSize);
 }
 
-void DLLEXPORT getKLinePic(int picId, int alphaTreeId, const char* signName, const char* openElements, const char* highElements, const char* lowElements, const char* closeElements, int elementNum, int dayBefore, int sampleSize, float* outPic, int column, float maxStdScale){
-    AlphaGraph::getAlphaGraph()->getKLinePic(picId, alphaTreeId, signName, openElements, highElements, lowElements, closeElements, elementNum, dayBefore, sampleSize, outPic, column, maxStdScale);
+void DLLEXPORT getKLinePic(int picId, const char* signName, const char* openElements, const char* highElements, const char* lowElements, const char* closeElements, int elementNum, int dayBefore, int sampleSize, float* outPic, int column, float maxStdScale){
+    AlphaGraph::getAlphaGraph()->getKLinePic(picId, signName, openElements, highElements, lowElements, closeElements, elementNum, dayBefore, sampleSize, outPic, column, maxStdScale);
 }
 
-void DLLEXPORT getTrendPic(int picId, int alphaTreeId, const char* signName, const char* elements, int elementNum, int dayBefore, int sampleSize, float* outPic, int column, float maxStdScale){
-    AlphaGraph::getAlphaGraph()->getTrendPic(picId, alphaTreeId, signName, elements, elementNum, dayBefore, sampleSize, outPic, column, maxStdScale);
+void DLLEXPORT getTrendPic(int picId, const char* signName, const char* elements, int elementNum, int dayBefore, int sampleSize, float* outPic, int column, float maxStdScale){
+    AlphaGraph::getAlphaGraph()->getTrendPic(picId, signName, elements, elementNum, dayBefore, sampleSize, outPic, column, maxStdScale);
 }
 
 void DLLEXPORT releaseAlphaPic(int id){

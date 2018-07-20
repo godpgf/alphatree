@@ -584,6 +584,9 @@ protected:
     }
 
     int cast(AlphaDB *alphaDataBase, int nodeId, AlphaCache *cache) {
+//        char tmp[100];
+//        sprintf(tmp,"start %d %s\n", nodeId, nodeList_[nodeId].getName());
+//        cout<<tmp;
         //cout<<"start "<<nodeId<<" "<<nodeList_[nodeId].getName()<<endl;
         int dateSize = GET_HISTORY_SIZE(getMaxHistoryDays(), cache->getAlphaDays()) - getMaxFutureDays();
         //float* curResultCache = getNodeCacheMemory(nodeId, dateSize, cache->stockSize, cache->result);
@@ -666,6 +669,8 @@ protected:
                 curDayFlagCache[i] = CacheFlag::HAS_CAL;
         }
         //cout<<nodeId<<" "<<nodeList_[nodeId].getName()<<" out "<<outMemoryId<<endl;
+//        sprintf(tmp,"finish %d %s out %d\n", nodeId, nodeList_[nodeId].getName(), outMemoryId);
+//        cout<<tmp;
         return outMemoryId;
     }
 

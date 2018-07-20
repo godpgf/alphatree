@@ -547,7 +547,7 @@ void* delay(void** pars, float coff, int historySize, int stockSize, CacheFlag* 
                 memcpy(pout + i * stockSize, pleft + (i - d) * stockSize, stockSize * sizeof(float));
             }
         }
-    } else {
+    } else if(d < 0) {
         for(int i = 0; i < historySize + d; ++i){
             if(pflag[i] == CacheFlag::NEED_CAL){
                 memcpy(pout + i * stockSize, pleft + (i - d) * stockSize, stockSize * sizeof(float));

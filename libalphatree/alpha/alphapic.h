@@ -29,6 +29,7 @@ public:
         }
         meanValue = sum;
         stdValue = sqrtf(sumSqr  - meanValue * meanValue);
+        //cout<<meanValue<<" "<<stdValue<<endl;
     }
 
     void getKLinePic(IVector<IBaseIterator<float>*>* openElement, IVector<IBaseIterator<float>*>* highElement, IVector<IBaseIterator<float>*>* lowElement, IVector<IBaseIterator<float>*>* closeElement, float* outPic, int column, float maxStdScale){
@@ -38,6 +39,7 @@ public:
         float* curPic = outPic;
         while ((*openElement)[0]->isValid()){
             for(int dayindex = 0; dayindex < elementSize; ++dayindex){
+                //cout<<"o:"<<(*openElement)[dayindex]->getValue()<<" h:"<<(*highElement)[dayindex]->getValue()<<" l:"<<(*lowElement)[dayindex]->getValue()<<" c:"<<(*closeElement)[dayindex]->getValue()<<endl;
                 int openIndex = data2index((*openElement)[dayindex]->getValue(), column, maxStdScale);
                 int highIndex = data2index((*highElement)[dayindex]->getValue(), column, maxStdScale);
                 int lowIndex = data2index((*lowElement)[dayindex]->getValue(), column, maxStdScale);
@@ -105,6 +107,7 @@ public:
     }
 protected:
     int data2index(float data, int column, float maxStdScale){
+        //cout<<data<<" "<<meanValue<<" "<<stdValue * maxStdScale<<endl;
         return (int)((std::min(std::max((data - meanValue) / (stdValue * maxStdScale), -1.0f), 1.0f) + 1.0f) * 0.4999f * column);
     }
     float meanValue;

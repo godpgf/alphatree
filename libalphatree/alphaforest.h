@@ -394,6 +394,7 @@ public:
             curBlockIndex_ = (curIndex_ / cacheSize_) * cacheSize_;
             af_->calAlpha(alphaTreeId_, cacheId, daybefore_, sampleSize_, startIndex_ +  curBlockIndex_, std::min(cacheSize_, signNum_ - curBlockIndex_), 1, signName_);
             const float* alpha = af_->getAlpha(alphaTreeId_, rootName_, cacheId);
+            af_->synchroAlpha(alphaTreeId_, cacheId);
             memcpy(cache_, alpha, std::min(cacheSize_, signNum_ - curBlockIndex_) * sizeof(float));
             af_->releaseCache(cacheId);
         }

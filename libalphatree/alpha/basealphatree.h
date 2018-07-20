@@ -194,6 +194,7 @@ public:
 
     //必须先解码子树再解码主树
     void decode(const char* rootName, const char* line, HashMap<IAlphaElement*>& alphaElementMap){
+//        cout<<line<<"---"<<endl;
         int outCache[(MAX_CHILD_NUM+1) * 2];
         char optCache[MAX_OPT_STR_LEN];
         char normalizeLine[MAX_NODE_STR_LEN];

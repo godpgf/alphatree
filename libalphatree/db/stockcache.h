@@ -449,6 +449,7 @@ protected:
     //在dayBefore前的daySize天取样信号，向前取信号发生时特征(featureName)的historyDays条数据,向后取-futureDays的数据（不考虑数据缺失！）
     template <class F>
     void fill_(int dayBefore, int daySize, int historyDays, int futureDays, size_t startIndex, size_t signNum, const char* signName, const char* featureName, F&& f){
+        //cout<<dayBefore<<" "<<daySize<<" "<<historyDays<<" "<<futureDays<<" "<<endl;
         StockFeature<float> *ft = nullptr;
 
         auto** pHashNameNode = feature_.find(featureName);
@@ -482,6 +483,7 @@ protected:
         size_t curIndex = 0;
         curSignIter.skip(startIndex);
         while (curSignIter.isValid() && curIndex < signNum){
+            //cout<<curIndex<<"/"<<signNum<<endl;
             size_t offset = *curSignIter;
             curMissIter.skip(offset, false);
             curFeatureIter.skip(offset, false);
@@ -540,16 +542,17 @@ protected:
                 ++curMissIter;
                 if(*curMissIter > 0){
                     ++curFeatureIter;
+                    f(dayindex * signNum + curIndex, *curFeatureIter);
+                    ++dayindex;
                 } else {
-                    int missDays = -*curMissIter;
+                    int missDays = min(-*curMissIter, historyDays - futureDays - dayindex);
                     for(int i = 0; i < missDays; ++i){
                         f((dayindex + i)*signNum + curIndex, *curFeatureIter);
                     }
                     dayindex += missDays;
                     ++curFeatureIter;
                 }
-                f(dayindex * signNum + curIndex, *curFeatureIter);
-                ++dayindex;
+
             }
 
             ++curIndex;
