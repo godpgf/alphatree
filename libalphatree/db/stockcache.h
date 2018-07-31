@@ -120,6 +120,7 @@ public:
 
     size_t getSignNum(int dayBefore, size_t sampleSize, const char* signName){
         size_t allDays = des_->stockMetas[des_->mainStock].days;
+        //cout<<allDays<<endl;
         StockSign* ss = nullptr;
         auto ** pSignHashNameNode = sign_.find(signName);
         if(*pSignHashNameNode == nullptr){

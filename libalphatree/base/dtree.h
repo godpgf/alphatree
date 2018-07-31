@@ -110,6 +110,11 @@ public:
         return childId;
     }
     int getParent(int rootId){ return nodeMemoryBuf_[rootId].preId;}
+    int getRoot(int nodeId){
+        while (getParent(nodeId) >= 0)
+            nodeId = getParent(nodeId);
+        return nodeId;
+    }
     void removeChild(int rootId, int childIndex){
         std::unique_lock<std::mutex> lock{nodeMemoryBuf_[rootId].nodeMutex};
         cleanNode(getChild(rootId, childIndex));

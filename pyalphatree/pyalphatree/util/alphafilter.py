@@ -3,22 +3,33 @@
 # 对alpha做初步筛选，保留好的并且不怎么相关的alpha
 from ctypes import *
 from pyalphatree.libalphatree import alphatree
-import math
+import numpy as np
+
 
 class AlphaFilter(object):
-    def __init__(self, alphaforest, sign_name, test_daybefore, test_sample_size, max_alpha_num = 64, max_corr_coff = 0.3, eval_formula = "noise_valid(%s, mfe_5, mae_5, 64)", test_corr_days = 25):
-        self.alphaforest = alphaforest
-        self.sign_name = sign_name
-        self.test_daybefore = test_daybefore
-        self.test_sample_size = test_sample_size
-        self.max_alpha_num = max_alpha_num
-        self.max_corr_coff = max_corr_coff
-        self.eval_formula = eval_formula
-        self.alpha_tree_list = []
-        self.alpha_tree_score = []
-        self.min_score = None
-        #测试相关性的天数，为了效率，最好就用默认即可
-        self.test_corr_days = min(test_corr_days, test_sample_size)
+    def __init__(self, alphatree_list, target, opentree = None, alpha_tree_flag = None):
+        self.is_open_buy = False if opentree is None else True
+        alphatree_char_num = 0
+        for at in alphatree_list:
+            alphatree_char_num += len(at) + 1
+
+        if alpha_tree_flag is None:
+            alpha_tree_flag = [3] * len(alphatree_list)
+
+        alphatree_cache = (c_char * alphatree_char_num)()
+        cur_alpha_index = 0
+        for at in alphatree_list:
+            code_list = list(at.encode('utf-8'))
+            for c in code_list:
+                alphatree_cache[cur_alpha_index] = c
+                cur_alpha_index += 1
+            alphatree_cache[cur_alpha_index] = b'\0'
+            cur_alpha_index += 1
+        self.alphatree_num = len(alphatree_list)
+        flag_cache = (c_int32 * len(alphatree_list))()
+        for id, f in enumerate(alpha_tree_flag):
+            flag_cache[id] = f
+        alphatree.initializeAlphaFilter(alphatree_cache, flag_cache, len(alphatree_list), c_char_p(target.encode()), None if opentree is None else c_char_p(opentree.encode()))
 
     def __del__(self):
         pass
@@ -27,50 +38,32 @@ class AlphaFilter(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
+        alphatree.releaseAlphaFilter()
 
-    def add_alpha(self, line):
-        score = self.alphaforest.process_alpha(self.eval_formula%line, self.test_daybefore, self.test_sample_size, self.sign_name)
-        if len(self.alpha_tree_list) < self.max_alpha_num:
-            self.alpha_tree_list.append(line)
-            self.alpha_tree_score.append(score)
-            if self.min_score is None or self.min_score > score:
-                self.min_score = score
-            return True
-        elif score > self.min_score:
-            max_corr_value = self.max_corr_coff
-            max_corr_id = -1
-            is_similar = False
-            min_score_id = -1
-            for id, alpha_tree in enumerate(self.alpha_tree_list):
-                corr_value = math.fabs(self.alphaforest.process_alpha("alpha_correlation(%s, %s)"%(alpha_tree, line), self.test_daybefore, self.test_sample_size, self.sign_name))
-                if corr_value > max_corr_value:
-                    is_similar = True
-                    if score > self.alpha_tree_score[id]:
-                        max_corr_value = corr_value
-                        max_corr_id = id
-                if min_score_id == -1 or self.alpha_tree_score[id] < self.alpha_tree_score[min_score_id]:
-                    min_score_id = id
-            if is_similar:
-                #替换相关性最大的
-                if max_corr_id != -1:
-                    self.alpha_tree_list[max_corr_id] = line
-                    if self.alpha_tree_score[max_corr_id] == self.min_score:
-                        self.alpha_tree_score[max_corr_id] = score
-                        self._refresh_min_score()
-                    else:
-                        self.alpha_tree_score[max_corr_id] = score
-                    return True
-            else:
-                #替换分数最低的
-                self.alpha_tree_list[min_score_id] = line
-                self.alpha_tree_score[min_score_id] = score
-                self._refresh_min_score()
-                return True
-        return False
+    def train(self, sign_name, daybefore, sample_size, sample_time, support, confidence, first_hero_confidence, second_hero_confidence):
+        alphatree.trainAlphaFilter(c_char_p(sign_name.encode()), daybefore, sample_size, sample_time, c_float(support), c_float(confidence), c_float(first_hero_confidence), c_float(second_hero_confidence))
 
-    def _refresh_min_score(self):
-        self.min_score = None
-        for score in self.alpha_tree_score:
-            if self.min_score is None or self.min_score > score:
-                self.min_score = score
+    def pred(self, sign_name, daybefore, sample_size):
+        sign_num = alphatree.getSignNum(daybefore, sample_size, c_char_p(sign_name.encode()))
+        alpha_cache = (c_float * sign_num)()
+        min_open_value_cache = (c_float * sign_num)() if self.is_open_buy else None
+        max_open_value_cache = (c_float * sign_num)() if self.is_open_buy else None
+        alphatree.predAlphaFilter(c_char_p(sign_name.encode()), daybefore, sample_size, alpha_cache, min_open_value_cache, max_open_value_cache)
+        #res = np.array([alpha_cache[i] for i in range(sign_num)])
+        if self.is_open_buy:
+            return np.array(alpha_cache), np.array(min_open_value_cache), np.array(max_open_value_cache)
+        return np.array(alpha_cache)
+
+    def save_model(self, path):
+        alphatree.saveFilterModel(c_char_p(path.encode()))
+
+    def load_model(self, path):
+        alphatree.loadFilterModel(c_char_p(path.encode()))
+
+    def __str__(self):
+        alphatree_cache = (c_char * 131072)()
+        char_num = alphatree.alphaFilter2String(alphatree_cache)
+        return "".join([alphatree_cache[i] for i in range(char_num)])
+
+    def __repr__(self):
+        return str(self)

@@ -37,14 +37,14 @@ inline void _sign(float *dst, const float *src, int size){
 inline void _signAnd(float* dst, const float* l, const float* r, int size){
     for(int i = 0; i < size; ++i){
         //cout<<l[i]<<" "<<r[i]<<" "<<endl;
-        dst[i] = ((l[i] > 0 && r[i] > 0) ? 1.f : 0.f);
+        dst[i] = ((l[i] > 0.5f && r[i] > 0.5f) ? 1.f : 0.f);
         //cout<<dst[i]<<endl;
     }
 }
 
 inline void _signOr(float* dst, const float* l, const float* r, int size){
     for(int i = 0; i < size; ++i)
-        dst[i] = ((l[i] > 0 || r[i] > 0) ? 1.f : 0.f);
+        dst[i] = ((l[i] > 0.5f || r[i] > 0.5f) ? 1.f : 0.f);
 }
 
 inline void _add(float* dst, const float* src, int size){
