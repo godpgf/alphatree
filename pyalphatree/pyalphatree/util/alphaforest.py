@@ -157,8 +157,15 @@ class AlphaForest(object):
     def decode_alphatree(self, alphatree_id, root_name, line):
         alphatree.decodeAlphatree(alphatree_id, c_char_p(root_name.encode('utf-8')), c_char_p(line.encode('utf-8')))
 
-    def get_max_history_days(self, alphatree_id):
-        return alphatree.getMaxHistoryDays(alphatree_id)
+    def get_max_history_days(self, line):
+        alphatree_id = self.create_alphatree()
+        self.decode_alphatree(alphatree_id,"t",line)
+        days = alphatree.getMaxHistoryDays(alphatree_id)
+        self.release_alphatree(alphatree_id)
+        return days
+
+    def get_all_days(self):
+        return alphatree.getAllDays()
 
     def get_sign_num(self, day_before, sample_days, sign_name):
         return alphatree.getSignNum(day_before, sample_days, c_char_p(sign_name.encode('utf-8')))
@@ -180,10 +187,10 @@ class AlphaForest(object):
         alphatree.calSignAlpha(alphatree_id, cache_id, daybefore, sample_size, sign_history_days, c_char_p(sign_name.encode('utf-8')))
 
 
-    def optimize_alpha(self, alphatree_id, cache_id, root_name, daybefore, sample_size, codes, exploteRatio = 0.1, errTryTime = 64):
-        stock_size = len(codes)
-        self._write_codes(codes)
-        return alphatree.optimizeAlpha(alphatree_id, cache_id, c_char_p(root_name.encode('utf-8')), daybefore, sample_size, self.code_cache, stock_size, c_float(exploteRatio), errTryTime)
+    # def optimize_alpha(self, alphatree_id, cache_id, root_name, daybefore, sample_size, codes, exploteRatio = 0.1, errTryTime = 64):
+    #     stock_size = len(codes)
+    #     self._write_codes(codes)
+    #     return alphatree.optimizeAlpha(alphatree_id, cache_id, c_char_p(root_name.encode('utf-8')), daybefore, sample_size, self.code_cache, stock_size, c_float(exploteRatio), errTryTime)
 
     def get_root_alpha(self, alphatree_id, root_name, cache_id, sample_size):
         data_size = alphatree.getAlpha(alphatree_id, c_char_p(root_name.encode('utf-8')), cache_id, self.alpha_cache)
@@ -219,6 +226,25 @@ class AlphaForest(object):
     def get_process(self, alphatree_id, process_name, cache_id):
         alphatree.getRootProcess(alphatree_id, c_char_p(process_name.encode('utf-8')), cache_id, self.process_cache)
         return self._read_str(self.process_cache)
+
+    def get_distinguish(self, sign_name, feature, target, daybefore, sample_size, sample_time):
+        return alphatree.getDistinguish(c_char_p(sign_name.encode()), c_char_p(feature.encode()), c_char_p(target.encode()), daybefore, sample_size, sample_time)
+
+    def get_confidence(self, sign_name, feature, target, daybefore, sample_size, sample_time, support, std_scale = 2.0):
+        return alphatree.getConfidence(c_char_p(sign_name.encode()), c_char_p(feature.encode()), c_char_p(target.encode()), daybefore, sample_size, sample_time, c_float(support), c_float(std_scale))
+
+    def get_correlation(self, sign_name, a, b, daybefore, sample_size, sample_time):
+        return alphatree.getCorrelation(c_char_p(sign_name.encode()), c_char_p(a.encode()), c_char_p(b.encode()), daybefore, sample_size, sample_time)
+
+    def optimize_distinguish(self, sign_name, feature, target, daybefore, sample_size, sample_time, max_history_days = 75, explote_ratio = 0.1, err_try_time = 64):
+        str_len = alphatree.optimizeDistinguish(c_char_p(sign_name.encode()), c_char_p(feature.encode()), c_char_p(target.encode()), daybefore, sample_size, sample_time, self.encode_cache, c_int32(max_history_days), c_float(explote_ratio), c_int32(err_try_time))
+        str_list = [self.encode_cache[i].decode() for i in range(str_len)]
+        return "".join(str_list)
+
+    def optimize_confidence(self, sign_name, feature, target, daybefore, sample_size, sample_time, support, std_scale = 2.0, explote_ratio = 0.1, err_try_time = 64):
+        str_len = alphatree.optimizeConfidence(c_char_p(sign_name.encode()), c_char_p(feature.encode()), c_char_p(target.encode()), daybefore, sample_size, sample_time, c_float(support), c_float(std_scale), self.encode_cache, c_float(explote_ratio), c_int32(err_try_time))
+        str_list = [self.encode_cache[i].decode() for i in range(str_len)]
+        return "".join(str_list)
 
     def _read_alpha(self, sample_size, stock_size):
         alpha_list = list()

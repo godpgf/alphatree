@@ -7,9 +7,6 @@
 
 #include "alphadb.h"
 #include "atom/alpha.h"
-#include "atom/optimizealpha.h"
-#include "atom/sample.h"
-#include "atom/backtrace.h"
 
 
 //系数单位
@@ -67,7 +64,7 @@ class AlphaAtom: public IAlphaElement{
             switch (coffUnit){
                 case CoffUnit::COFF_DAY:
                     minCoff_ = 1;
-                    maxCoff_ = 250;
+                    maxCoff_ = 50;
                     break;
                 case CoffUnit::COFF_VAR:
                     minCoff_ = 0;
@@ -196,22 +193,22 @@ AlphaAtom AlphaAtom::alphaAtomList[] = {
         AlphaAtom("indneutralize", indneutralize, 1, 0, CoffUnit::COFF_INDCLASS),
         AlphaAtom("lstsq", lstsq, 4, 0, CoffUnit::COFF_DAY),
         AlphaAtom("wait", wait, 2, 1),
-        AlphaAtom("noise_valid", noiseValid, 4, 3, CoffUnit::COFF_CONST),
-        AlphaAtom("alpha_correlation", alphaCorrelation, 2, 0, CoffUnit::COFF_NONE),
-
-        AlphaAtom("amplitude_sample", amplitudeSample, 1, 0, CoffUnit::COFF_CONST),
-        AlphaAtom("random_sign", randomSign, 1, 0, CoffUnit::COFF_CONST),
+//        AlphaAtom("noise_valid", noiseValid, 4, 3, CoffUnit::COFF_CONST),
+//        AlphaAtom("alpha_correlation", alphaCorrelation, 2, 0, CoffUnit::COFF_NONE),
+//
+//        AlphaAtom("amplitude_sample", amplitudeSample, 1, 0, CoffUnit::COFF_CONST),
+//        AlphaAtom("random_sign", randomSign, 1, 0, CoffUnit::COFF_CONST),
         //AlphaAtom("up_mean", upMean, 1, CoffUnit::COFF_DAY),
 
         //todo delete later
-        AlphaAtom("kd", kd, 2, 1, CoffUnit::COFF_NONE, DateRange::CUR_AND_BEFORE_DAY),
-        AlphaAtom("cross", cross, 2, 0, CoffUnit::COFF_DAY, DateRange::CUR_AND_BEFORE_DAY),
-        AlphaAtom("cross_from", crossFrom, 1, 0, CoffUnit::COFF_DAY, DateRange::CUR_AND_BEFORE_DAY),
-        AlphaAtom("cross_to", crossTo, 1, 0, CoffUnit::COFF_DAY, DateRange::CUR_AND_BEFORE_DAY),
-        AlphaAtom("match", match, 2),
-        AlphaAtom("ft_sharp", ftSharp, 3, 2),
-        AlphaAtom("res_eratio", resEratio, 4, 3),
-        AlphaAtom("opt_sharp", optShape, 2),
+//        AlphaAtom("kd", kd, 2, 1, CoffUnit::COFF_NONE, DateRange::CUR_AND_BEFORE_DAY),
+//        AlphaAtom("cross", cross, 2, 0, CoffUnit::COFF_DAY, DateRange::CUR_AND_BEFORE_DAY),
+//        AlphaAtom("cross_from", crossFrom, 1, 0, CoffUnit::COFF_DAY, DateRange::CUR_AND_BEFORE_DAY),
+//        AlphaAtom("cross_to", crossTo, 1, 0, CoffUnit::COFF_DAY, DateRange::CUR_AND_BEFORE_DAY),
+//        AlphaAtom("match", match, 2),
+//        AlphaAtom("ft_sharp", ftSharp, 3, 2),
+//        AlphaAtom("res_eratio", resEratio, 4, 3),
+//        AlphaAtom("opt_sharp", optShape, 2),
 };
 
 //参数alpha

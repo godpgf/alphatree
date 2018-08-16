@@ -195,6 +195,11 @@ public:
         BaseAlphaTree::clean();
     }
 
+    virtual void setCoff(int index, float coff){
+        maxHistoryDay_ = -1;
+        BaseAlphaTree::setCoff(index, coff);
+    }
+
     //返回需要使用的历史天数
     int getMaxHistoryDays() {
         if (maxHistoryDay_ == -1) {
@@ -384,6 +389,7 @@ public:
         alphaDataBase->releaseCacheFile(file);
     }
 
+    /*
     float optimizeAlpha(const char *rootName, AlphaDB *alphaDataBase, size_t dayBefore, size_t sampleSize, const char *codes, size_t stockSize,
                        AlphaCache *cache, ThreadPool *threadPool, float exploteRatio = 0.1f, int errTryTime = 64) {
         float* bestCoffList = new float[coffList_.getSize()];
@@ -466,7 +472,7 @@ public:
         delete []bestCoffList;
         //cout<<"finish opt"<<bestRes<<endl;
         return bestRes;
-    }
+    }*/
 
     void synchroAlpha(AlphaCache *cache){
         for(auto i = 0; i < subtreeList_.getSize(); ++i)

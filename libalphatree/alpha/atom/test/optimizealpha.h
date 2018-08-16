@@ -5,7 +5,7 @@
 #ifndef ALPHATREE_OPTIMIZEALPHA_H
 #define ALPHATREE_OPTIMIZEALPHA_H
 
-#include "../../base/normal.h"
+#include "normal.h"
 #include "alpha.h"
 
 #define MIN_DATA_NUM_IN_BAR 5

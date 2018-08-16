@@ -591,10 +591,18 @@ void* correlation(void** pars, float coff, int historySize, int stockSize, Cache
                     //cov /= (d+1);
                     float xDiff2 = (sumSqrLeft - meanLeft*meanLeft*(d+1));
                     float yDiff2 = (sumSqrRight - meanRight*meanRight*(d+1));
-                    if(xDiff2 < 0.000000001 || yDiff2 < 0.000000001)
-                        pout[i * stockSize + j] = 0;
+
+
+                    if(isnormal(cov) && isnormal(xDiff2) && isnormal(yDiff2))
+                    {
+                        float corr = cov / sqrtf(xDiff2) / sqrtf(yDiff2);
+                        if(isnormal(corr))
+                            pout[i * stockSize + j] =  fmaxf(fminf(corr, 1.0f), -1.0f);
+                        else
+                            pout[i * stockSize + j] = 1.0f;
+                    }
                     else
-                        pout[i * stockSize + j] = cov / sqrtf(xDiff2) / sqrtf(yDiff2);
+                        pout[i * stockSize + j] = 1.0f;
                 }
             }
         }

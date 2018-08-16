@@ -17,6 +17,8 @@
 #include <vector>
 #include <iostream>
 #include <string.h>
+#include <math.h>
+#include <algorithm>
 
 using namespace std;
 
@@ -45,6 +47,9 @@ public:
         getAlphaTree(treeId)->decode(name, line, alphaElementMap_);
     }
 
+    AlphaTree *getAlphaTree(int id) {
+        return &alphaTreeCache_->getCacheMemory(id);
+    }
 
     //归还一个alphatree
     void releaseAlphaTree(int id) {
@@ -98,9 +103,9 @@ public:
         getAlphaTree(alphaTreeId)->testCacheSign(&alphaDataBase_, alphaCache_->getCacheMemory(cacheId), &threadPool_, featureName, testFeatureName);
     }
 
-    float optimizeAlpha(int alphaTreeId, int cacheId, const char *rootName, size_t dayBefore, size_t sampleSize, const char *codes, size_t stockSize, float exploteRatio, int errTryTime){
-        return getAlphaTree(alphaTreeId)->optimizeAlpha(rootName, &alphaDataBase_, dayBefore, sampleSize, codes, stockSize, alphaCache_->getCacheMemory(cacheId), &threadPool_, exploteRatio, errTryTime);
-    }
+//    float optimizeAlpha(int alphaTreeId, int cacheId, const char *rootName, size_t dayBefore, size_t sampleSize, const char *codes, size_t stockSize, float exploteRatio, int errTryTime){
+//        return getAlphaTree(alphaTreeId)->optimizeAlpha(rootName, &alphaDataBase_, dayBefore, sampleSize, codes, stockSize, alphaCache_->getCacheMemory(cacheId), &threadPool_, exploteRatio, errTryTime);
+//    }
 
     const float *getAlpha(int alphaTreeId, const char *rootName, int cacheId) {
         auto curCache = alphaCache_->getCacheMemory(cacheId);
@@ -343,13 +348,6 @@ protected:
         }
     }
 
-    AlphaTree *getAlphaTree(int id) {
-        return &alphaTreeCache_->getCacheMemory(id);
-    }
-
-
-
-
     //alphatree的内存空间
     DCache<AlphaTree> *alphaTreeCache_ = {nullptr};
 
@@ -382,6 +380,7 @@ public:
         delete []cache_;
         delete []signName_;
         delete []rootName_;
+
     }
 
     virtual IBaseIterator<float>* clone(){
@@ -419,8 +418,225 @@ public:
         return signNum_;
     }
 
+    virtual float getAvg(){
+        const double maxSubCnt = 1024;
+        double avg = 0;
+        double cnt = size();
+        double subAvg = 0;
+        double subCnt = 0;
+        while (isValid()){
+            subAvg += getValue();
+            subCnt += 1;
+            if(subCnt > maxSubCnt){
+                avg += (subAvg / subCnt) * (subCnt / cnt);
+                //cout<<subAvg / subCnt<<endl;
+                subAvg = 0;
+                subCnt = 0;
+            }
+            skip(1);
+        }
+        if(subCnt > 0){
+            avg += (subAvg / subCnt) * (subCnt / cnt);
+        }
+        skip(0, false);
+        return avg;
+    }
+
+    virtual void getAvgAndStd(float& avg, float& std){
+        const double maxSubCnt = 1024;
+        const double cnt = size();
+        avg = 0;
+        std = 0;
+        double subX = 0;
+        double subXSqr = 0;
+        double subCnt = 0;
+        while (isValid()){
+            subX += getValue();
+            subCnt += 1;
+            subXSqr += getValue() * getValue();
+            if(subCnt > maxSubCnt){
+                avg += (subX / subCnt) * (subCnt / cnt);
+                std += (subXSqr / subCnt) * (subCnt / cnt);
+                subX = 0;
+                subXSqr = 0;
+            }
+            skip(1);
+        }
+        if(subCnt > 0){
+            avg += (subX / subCnt) * (subCnt / cnt);
+            std += (subXSqr / subCnt) * (subCnt / cnt);
+        }
+        skip(0, false);
+        std = sqrtf(std - avg * avg);
+    }
+
     int getAlphaTreeId(){
         return alphaTreeId_;
+    }
+
+    static float getCorrelation(IBaseIterator<float>* a, IBaseIterator<float>* b){
+        //计算当前股票的均值和方差
+        double meanLeft = 0;
+        double meanRight = 0;
+        double sumSqrLeft = 0;
+        double sumSqrRight = 0;
+        for(int j = 0; j < a->size(); ++j){
+            meanLeft += a->getValue();
+            sumSqrLeft += a->getValue() * a->getValue();
+            meanRight += b->getValue();
+            sumSqrRight += b->getValue() * b->getValue();
+            a->skip(1);
+            b->skip(1);
+        }
+        a->skip(0, false);
+        b->skip(0, false);
+        meanLeft /= a->size();
+        meanRight /= a->size();
+
+        float cov = 0;
+        for(int k = 0; k < a->size(); ++k){
+            cov += (a->getValue() - meanLeft) * (b->getValue() - meanRight);
+            a->skip(1);
+            b->skip(1);
+        }
+        a->skip(0, false);
+        b->skip(0, false);
+        float xDiff2 = (sumSqrLeft - meanLeft*meanLeft*a->size());
+        float yDiff2 = (sumSqrRight - meanRight*meanRight*a->size());
+
+        if(isnormal(cov) && isnormal(xDiff2) && isnormal(yDiff2))
+        {
+            float corr = cov / sqrtf(xDiff2) / sqrtf(yDiff2);
+            if(isnormal(corr)){
+                return fmaxf(fminf(corr, 1.0f), -1.0f);
+            }
+
+            return 1;
+        }
+        return 1;
+    }
+
+    static float getDistinguish(IBaseIterator<float>* feature, float slpitValue, IBaseIterator<float>* target){
+        float avg_l = 0;
+        float cnt_l = 0;
+        float avg_r = 0;
+        float cnt_r = 0;
+        if(!isnormal(slpitValue))
+            return 0;
+        float minTarget = FLT_MAX;
+        while (feature->isValid()){
+            if(feature->getValue() > slpitValue){
+                avg_r += target->getValue();
+                cnt_r += 1;
+            } else {
+                avg_l += target->getValue();
+                cnt_l += 1;
+            }
+            minTarget = min(minTarget, target->getValue());
+            //cout<<feature->getValue()<<endl;
+            feature->skip(1);
+            target->skip(1);
+        }
+        feature->skip(0, false);
+        target->skip(0, false);
+        //cout<<avg_l<<" "<<cnt_l<<" "<<avg_r<<" "<<cnt_r<<" "<<minTarget<<endl;
+        if(min(cnt_l, cnt_r) / max(cnt_l, cnt_r) < 0.32f)
+            return 0;
+        avg_l = avg_l / cnt_l - minTarget;
+        avg_r = avg_r / cnt_r - minTarget;
+        return avg_r / avg_l;
+    }
+
+    static float getDistinguish(AlphaForest* af, const char* signName, int alphatreeId, int targetId, int daybefore, int sampleSize, int sampleTime){
+//        AlphaSignIterator allFeature(af, "t", signName, alphatreeId, daybefore, sampleSize * sampleTime, 0, af->getAlphaDataBase()->getSignNum(daybefore, sampleSize *sampleTime, signName));
+//        float avg = allFeature.getAvg();
+        //cout<<"avg:"<<avg<<endl;
+
+        bool isProportion = false;
+        float distinguish = -1;
+
+        //cout<<af->getAlphaDataBase()->getSignNum(daybefore + 11 * sampleSize, sampleSize, signName)<<endl;
+        for(int i = 0; i < sampleTime; ++i){
+            //cout<<"s"<<i<<endl;
+            AlphaSignIterator feature(af, "t", signName, alphatreeId, daybefore + i * sampleSize, sampleSize, 0, af->getAlphaDataBase()->getSignNum(daybefore + i * sampleSize, sampleSize, signName));
+            AlphaSignIterator target(af, "t", signName, targetId, daybefore + i * sampleSize, sampleSize, 0, af->getAlphaDataBase()->getSignNum(daybefore + i * sampleSize, sampleSize, signName));
+            float avg = feature.getAvg();
+
+            float dist = AlphaSignIterator::getDistinguish(&feature, avg, &target);
+            //cout<<"e"<<i<<" "<<dist<<endl;
+            if(dist == 0){
+                return 0.0f;
+            }
+
+            if(distinguish < 0){
+                isProportion = dist > 1;
+                distinguish = isProportion ? dist : 1 / dist;
+            } else  {
+                distinguish = min(distinguish, isProportion ? dist : 1 / dist);
+                if(distinguish < 1.f){
+                    break;
+                }
+            }
+        }
+        return distinguish;
+    }
+
+
+    static void getConfidence(IBaseIterator<float>* feature, float slpitValue, IBaseIterator<float>* target, bool isMore, float& support, float& confidence){
+        int pred_cnt = 0;
+        int right_cnt = 0;
+        while (feature->isValid()){
+            if((feature->getValue() > slpitValue && isMore) || (feature->getValue() < slpitValue && !isMore)){
+                ++pred_cnt;
+                if(target->getValue() > 0.5f){
+                    ++right_cnt;
+                }
+            }
+            feature->skip(1);
+            target->skip(1);
+        }
+        feature->skip(0, false);
+        target->skip(0, false);
+        support = ((float)pred_cnt) / feature->size();
+        confidence = ((float)right_cnt) / pred_cnt;
+    }
+
+
+    static float getConfidence(AlphaForest* af, const char* signName, int alphatreeId, int targetId, int daybefore, int sampleSize, int sampleTime, float support, float stdScale = 2.0){
+        AlphaSignIterator allFeature(af, "t", signName, alphatreeId, daybefore, sampleSize * sampleTime, 0, af->getAlphaDataBase()->getSignNum(daybefore, sampleSize *sampleTime, signName));
+        float avg, std;
+        allFeature.getAvgAndStd(avg, std);
+        AlphaSignIterator allTarget(af, "t", signName, targetId, daybefore, sampleSize * sampleTime, 0, af->getAlphaDataBase()->getSignNum(daybefore, sampleSize *sampleTime, signName));
+
+        float rSupport, rConfidence, lSupport, lConfidence;
+        getConfidence(&allFeature, avg + stdScale * std, &allTarget, true, rSupport, rConfidence);
+        if(rSupport <= support)
+            return 0;
+        getConfidence(&allFeature, avg - stdScale * std, &allTarget, false, lSupport, lConfidence);
+        if(lSupport <= support)
+            return 0;
+
+        bool isProportion = rSupport > lSupport;
+
+        float confidence = isProportion ? rConfidence : lConfidence;
+
+        for(int i = 0; i < sampleTime; ++i){
+            AlphaSignIterator feature(af, "t", signName, alphatreeId, daybefore + i * sampleSize, sampleSize, 0, af->getAlphaDataBase()->getSignNum(daybefore + i * sampleSize, sampleSize, signName));
+            AlphaSignIterator target(af, "t", signName, targetId, daybefore + i * sampleSize, sampleSize, 0, af->getAlphaDataBase()->getSignNum(daybefore + i * sampleSize, sampleSize, signName));
+
+            if(isProportion){
+                getConfidence(&feature, avg + stdScale * std, &target, true, rSupport, rConfidence);
+                if(rSupport <= support)
+                    return 0;
+                confidence = min(confidence, rConfidence);
+            } else {
+                getConfidence(&feature, avg - stdScale * std, &target, false, lSupport, lConfidence);
+                if(lSupport <= support)
+                    return 0;
+                confidence = min(confidence, lConfidence);
+            }
+        }
+        return confidence;
     }
 protected:
     AlphaForest* af_;

@@ -18,16 +18,14 @@ except OSError as e:
         lib_path + 'libalphatree_api.dll') if sysstr == "Windows" else ctypes.cdll.LoadLibrary(
         lib_path + 'libalphatree_api.so')
 
-alphatree.optimizeAlpha.restype = c_float
+alphatree.getMaxHistoryDays.restype = c_int32
+alphatree.getAllDays.restype = c_int32
 alphatree.getSignNum.restype = c_int32
 alphatree.trainAndEvalAlphaGBDT.restype = c_float
 alphatree.evalAlphaGBDT.restype = c_float
-# alphatree.alphaRFT2String.restype = c_int32
-# alphatree.getBalance.restype = c_float
-# alphatree.createSignFeatureIter.restype = c_void_p
-# alphatree.createFeatureIter.restype = c_void_p
-# alphatree.iterIsValid.restype = c_bool
-# alphatree.iterSize.restype = c_int32
+alphatree.getDistinguish.restype = c_float
+alphatree.getConfidence.restype = c_float
+alphatree.getCorrelation.restype = c_float
 
-#alphatree.iterValue.restype = c_float
-# alphatree.iterSmooth.restype = c_float
+alphatree.optimizeDistinguish.restype = c_int32
+alphatree.optimizeConfidence.restype = c_int32

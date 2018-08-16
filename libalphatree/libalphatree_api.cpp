@@ -131,6 +131,8 @@ int DLLEXPORT getIndustryCodes(const char *industryName, char *codes) {
 
 int DLLEXPORT getMaxHistoryDays(int alphaTreeId) { return AlphaForest::getAlphaforest()->getMaxHistoryDays(alphaTreeId); }
 
+int DLLEXPORT getAllDays(){ return AlphaForest::getAlphaforest()->getAlphaDataBase()->getDays();}
+
 int DLLEXPORT getSignNum(int dayBefore, int sampleSize, const char* signName){
     return AlphaForest::getAlphaforest()->getAlphaDataBase()->getSignNum(dayBefore, sampleSize, signName);
 }
@@ -157,9 +159,9 @@ void DLLEXPORT cacheCodesSign(int alphaTreeId, int cacheId, const char* signName
 }
 
 
-float DLLEXPORT optimizeAlpha(int alphaTreeId, int cacheId, const char *rootName, int dayBefore, int sampleSize, const char *codes, size_t stockSize, float exploteRatio, int errTryTime){
-    return AlphaForest::getAlphaforest()->optimizeAlpha(alphaTreeId, cacheId, rootName, dayBefore, sampleSize, codes, stockSize, exploteRatio, errTryTime);
-}
+//float DLLEXPORT optimizeAlpha(int alphaTreeId, int cacheId, const char *rootName, int dayBefore, int sampleSize, const char *codes, size_t stockSize, float exploteRatio, int errTryTime){
+//    return AlphaForest::getAlphaforest()->optimizeAlpha(alphaTreeId, cacheId, rootName, dayBefore, sampleSize, codes, stockSize, exploteRatio, errTryTime);
+//}
 
 int DLLEXPORT getAlpha(int alphaTreeId, const char *rootName, int cacheId, float *alpha) {
     const float *res = AlphaForest::getAlphaforest()->getAlpha(alphaTreeId, rootName, cacheId);
@@ -221,6 +223,243 @@ void DLLEXPORT releaseAlphaGraph(){
     AlphaGraph::release();
 }
 
+float DLLEXPORT getCorrelation(const char* signName, const char* a, const char* b, int daybefore, int sampleSize, int sampleTime){
+    AlphaForest* af = AlphaForest::getAlphaforest();
+    int aId = af->useAlphaTree();
+    int bId = af->useAlphaTree();
+    af->decode(aId, "t", a);
+    af->decode(bId, "t", b);
+
+    float corr = 0;
+    for(int i = 0; i < sampleTime; ++i){
+        AlphaSignIterator afeature(af, "t", signName, aId, daybefore + i * sampleSize, sampleSize, 0, af->getAlphaDataBase()->getSignNum(daybefore + i * sampleSize, sampleSize, signName));
+        AlphaSignIterator bfeature(af, "t", signName, bId, daybefore + i * sampleSize, sampleSize, 0, af->getAlphaDataBase()->getSignNum(daybefore + i * sampleSize, sampleSize, signName));
+
+        float curCorr = AlphaSignIterator::getCorrelation(&afeature, &bfeature);
+        //cout<<curCorr<<"/"<<corr<<endl;
+        if(fabsf(curCorr) > fabsf(corr)){
+            corr = curCorr;
+        }
+    }
+
+    af->releaseAlphaTree(aId);
+    af->releaseAlphaTree(bId);
+    //cout<<endl;
+    return corr;
+}
+
+float DLLEXPORT getDistinguish(const char* signName, const char* feature, const char* target, int daybefore, int sampleSize, int sampleTime){
+    AlphaForest* af = AlphaForest::getAlphaforest();
+    int alphatreeId = af->useAlphaTree();
+    int targetId = af->useAlphaTree();
+
+    af->decode(alphatreeId, "t", feature);
+    af->decode(targetId, "t", target);
+    float distinguish = AlphaSignIterator::getDistinguish(af, signName, alphatreeId, targetId, daybefore, sampleSize, sampleTime);
+    af->releaseAlphaTree(alphatreeId);
+    af->releaseAlphaTree(targetId);
+    return distinguish;
+}
+
+int DLLEXPORT optimizeDistinguish(const char* signName, const char* feature, const char* target, int daybefore, int sampleSize, int sampleTime,  char* outFeature, int maxHistoryDays = 75, float exploteRatio = 0.1f, int errTryTime = 64){
+    AlphaForest* af = AlphaForest::getAlphaforest();
+    int alphatreeId = af->useAlphaTree();
+    auto* alphatree = af->getAlphaTree(alphatreeId);
+    int targetId = af->useAlphaTree();
+    af->decode(alphatreeId, "t", feature);
+    af->decode(targetId, "t", target);
+
+    float* bestCoffList = new float[alphatree->getCoffSize()];
+    for(int i = 0; i < alphatree->getCoffSize(); ++i){
+        bestCoffList[i] = alphatree->getCoff(i);
+    }
+
+    float bestRes = AlphaSignIterator::getDistinguish(af, signName, alphatreeId, targetId, daybefore, sampleSize, sampleTime);
+
+    if(alphatree->getCoffSize() > 0){
+        RandomChoose rc = RandomChoose(2 * alphatree->getCoffSize());
+
+        auto curErrTryTime = errTryTime;
+        while (curErrTryTime > 0){
+            //修改参数
+            float lastCoffValue = NAN;
+            int curIndex = 0;
+            bool isAdd = false;
+            while(isnan(lastCoffValue)){
+                curIndex = rc.choose();
+                isAdd = curIndex < alphatree->getCoffSize();
+                curIndex = curIndex % alphatree->getCoffSize();
+                if(isAdd && alphatree->getCoff(curIndex) < alphatree->getMaxCoff(curIndex)){
+                    lastCoffValue = alphatree->getCoff(curIndex);
+                    float curCoff = lastCoffValue;
+                    if(alphatree->getCoffUnit(curIndex) == CoffUnit::COFF_VAR){
+                        curCoff += 0.016f;
+                    } else {
+                        curCoff += 1.f;
+                    }
+                    alphatree->setCoff(curIndex, std::min(curCoff, alphatree->getMaxCoff(curIndex)));
+                    if(alphatree->getMaxHistoryDays() > maxHistoryDays){
+                        alphatree->setCoff(curIndex, lastCoffValue);
+                    }
+                }
+                if(!isAdd && alphatree->getCoff(curIndex) > alphatree->getMinCoff(curIndex)){
+                    lastCoffValue = alphatree->getCoff(curIndex);
+                    float curCoff = lastCoffValue;
+                    if(alphatree->getCoffUnit(curIndex) == CoffUnit::COFF_VAR){
+                        curCoff -= 0.016f;
+                    } else {
+                        curCoff -= 1;
+                    }
+                    alphatree->setCoff(curIndex, std::max(curCoff, alphatree->getMinCoff(curIndex)));
+                }
+                if(isnan(lastCoffValue)){
+                    curIndex = isAdd ? curIndex : alphatree->getCoffSize() + curIndex;
+                    rc.reduce(curIndex);
+                }
+
+            }
+
+            float res = AlphaSignIterator::getDistinguish(af, signName, alphatreeId, targetId, daybefore, sampleSize, sampleTime);
+
+            if(res > bestRes){
+                //cout<<"best res "<<res<<endl;
+                curErrTryTime = errTryTime;
+                bestRes = res;
+                for(int i = 0; i < alphatree->getCoffSize(); ++i){
+                    bestCoffList[i] = alphatree->getCoff(i);
+                }
+                //根据当前情况决定调整该参数的概率
+                curIndex = isAdd ? curIndex : alphatree->getCoffSize() + curIndex;
+                rc.add(curIndex);
+            } else{
+                --curErrTryTime;
+                if(!rc.isExplote(exploteRatio)){
+                    //恢复现场
+                    alphatree->setCoff(curIndex, lastCoffValue);
+                }
+                curIndex = isAdd ? curIndex : alphatree->getCoffSize() + curIndex;
+                rc.reduce(curIndex);
+            }
+
+        }
+
+        for(int i = 0; i < alphatree->getCoffSize(); ++i){
+            alphatree->setCoff(i, bestCoffList[i]);
+        }
+    }
+    alphatree->encode("t", outFeature);
+
+    delete[] bestCoffList;
+    af->releaseAlphaTree(alphatreeId);
+    af->releaseAlphaTree(targetId);
+    return strlen(outFeature);
+}
+
+float DLLEXPORT getConfidence(const char* signName, const char* feature, const char* target, int daybefore, int sampleSize, int sampleTime, float support, float stdScale){
+    AlphaForest* af = AlphaForest::getAlphaforest();
+    int alphatreeId = af->useAlphaTree();
+    int targetId = af->useAlphaTree();
+    af->decode(alphatreeId, "t", feature);
+    af->decode(targetId, "t", target);
+
+    float confidence = AlphaSignIterator::getConfidence(af, signName, alphatreeId, targetId, daybefore, sampleSize, sampleTime, support, stdScale);
+
+    af->releaseAlphaTree(alphatreeId);
+    af->releaseAlphaTree(targetId);
+    return confidence;
+}
+
+int DLLEXPORT optimizeConfidence(const char* signName, const char* feature, const char* target, int daybefore, int sampleSize, int sampleTime, float support, float stdScale,  char* outFeature, float exploteRatio = 0.1f, int errTryTime = 64){
+    AlphaForest* af = AlphaForest::getAlphaforest();
+    int alphatreeId = af->useAlphaTree();
+    auto* alphatree = af->getAlphaTree(alphatreeId);
+    int targetId = af->useAlphaTree();
+    af->decode(alphatreeId, "t", feature);
+    af->decode(targetId, "t", target);
+
+    float* bestCoffList = new float[alphatree->getCoffSize()];
+    for(int i = 0; i < alphatree->getCoffSize(); ++i){
+        bestCoffList[i] = alphatree->getCoff(i);
+    }
+
+    float bestRes = AlphaSignIterator::getConfidence(af, signName, alphatreeId, targetId, daybefore, sampleSize, sampleTime, support, stdScale);
+
+    if(alphatree->getCoffSize() > 0){
+        RandomChoose rc = RandomChoose(2 * alphatree->getCoffSize());
+
+        auto curErrTryTime = errTryTime;
+        while (curErrTryTime > 0){
+            //修改参数
+            float lastCoffValue = NAN;
+            int curIndex = 0;
+            bool isAdd = false;
+            while(isnan(lastCoffValue)){
+                curIndex = rc.choose();
+                isAdd = curIndex < alphatree->getCoffSize();
+                curIndex = curIndex % alphatree->getCoffSize();
+                if(isAdd && alphatree->getCoff(curIndex) < alphatree->getMaxCoff(curIndex)){
+                    lastCoffValue = alphatree->getCoff(curIndex);
+                    float curCoff = lastCoffValue;
+                    if(alphatree->getCoffUnit(curIndex) == CoffUnit::COFF_VAR){
+                        curCoff += 0.016f;
+                    } else {
+                        curCoff += 1.f;
+                    }
+                    alphatree->setCoff(curIndex, std::min(curCoff, alphatree->getMaxCoff(curIndex)));
+                }
+                if(!isAdd && alphatree->getCoff(curIndex) > alphatree->getMinCoff(curIndex)){
+                    lastCoffValue = alphatree->getCoff(curIndex);
+                    float curCoff = lastCoffValue;
+                    if(alphatree->getCoffUnit(curIndex) == CoffUnit::COFF_VAR){
+                        curCoff -= 0.016f;
+                    } else {
+                        curCoff -= 1;
+                    }
+                    alphatree->setCoff(curIndex, std::max(curCoff, alphatree->getMinCoff(curIndex)));
+                }
+                if(isnan(lastCoffValue)){
+                    curIndex = isAdd ? curIndex : alphatree->getCoffSize() + curIndex;
+                    rc.reduce(curIndex);
+                }
+
+            }
+
+            float res = AlphaSignIterator::getConfidence(af, signName, alphatreeId, targetId, daybefore, sampleSize, sampleTime, support, stdScale);
+
+            if(res > bestRes){
+                //cout<<"best res "<<res<<endl;
+                curErrTryTime = errTryTime;
+                bestRes = res;
+                for(int i = 0; i < alphatree->getCoffSize(); ++i){
+                    bestCoffList[i] = alphatree->getCoff(i);
+                }
+                //根据当前情况决定调整该参数的概率
+                curIndex = isAdd ? curIndex : alphatree->getCoffSize() + curIndex;
+                rc.add(curIndex);
+            } else{
+                --curErrTryTime;
+                if(!rc.isExplote(exploteRatio)){
+                    //恢复现场
+                    alphatree->setCoff(curIndex, lastCoffValue);
+                }
+                curIndex = isAdd ? curIndex : alphatree->getCoffSize() + curIndex;
+                rc.reduce(curIndex);
+            }
+
+        }
+
+        for(int i = 0; i < alphatree->getCoffSize(); ++i){
+            alphatree->setCoff(i, bestCoffList[i]);
+        }
+    }
+    alphatree->encode("t", outFeature);
+
+    delete[] bestCoffList;
+    af->releaseAlphaTree(alphatreeId);
+    af->releaseAlphaTree(targetId);
+    return strlen(outFeature);
+}
+
 #ifdef ML
 void DLLEXPORT initializeAlphaGBDT(const char* alphatreeList, int alphatreeNum, float gamma, float lambda, int threadNum, const char* lossFunName = "binary:logistic") {
     AlphaGBDT::initialize(AlphaForest::getAlphaforest(), alphatreeList, alphatreeNum, gamma, lambda, threadNum, lossFunName);
@@ -273,5 +512,32 @@ int DLLEXPORT alphaGBDT2String(char* pout){
     return AlphaGBDT::getAlphaGBDT()->tostring(pout);
 }
 
+//void DLLEXPORT initializeAlphaFilter(const char *alphatreeList, const int* alphatreeFlag,  int alphatreeNum, const char *target, const char *open){
+//    AlphaFilter::initialize(AlphaForest::getAlphaforest(), alphatreeList, alphatreeFlag, alphatreeNum, target, open);
+//}
+//
+//void DLLEXPORT releaseAlphaFilter(){
+//    AlphaFilter::release();
+//}
+//
+//void DLLEXPORT trainAlphaFilter(const char* signName, int daybefore, int sampleSize, int sampleTime, float support, float confidence, float firstHeroConfidence, float secondHeroConfidence){
+//    AlphaFilter::getAlphaFilter()->train(signName, daybefore, sampleSize, sampleTime, support, confidence, firstHeroConfidence, secondHeroConfidence);
+//}
+//
+//int DLLEXPORT predAlphaFilter(const char* signName, int daybefore, int sampleSize, float* predOut, float* openMinValue, float* openMaxValue){
+//    return AlphaFilter::getAlphaFilter()->pred(signName, daybefore, sampleSize, predOut, openMinValue, openMaxValue);
+//}
+//
+//void DLLEXPORT saveFilterModel(const char* path){
+//    AlphaFilter::getAlphaFilter()->saveModel(path);
+//}
+//
+//void DLLEXPORT loadFilterModel(const char* path){
+//    AlphaFilter::getAlphaFilter()->loadModel(path);
+//}
+//
+//int DLLEXPORT alphaFilter2String(char* pout){
+//    return AlphaFilter::getAlphaFilter()->tostring(pout);
+//}
 #endif
 }

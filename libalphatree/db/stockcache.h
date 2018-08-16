@@ -694,6 +694,7 @@ public:
                     file.write(reinterpret_cast< char* >( &fullDataNum ), sizeof( int ));
                 } else {
                     fullDataNum = 0;
+                    //cout<<*mainDateIter<<" "<<*allDateIter<<endl;
                     int skip = mainDateIter.jumpTo(*allDateIter, mainOffset, mainDateIter.size() - mainOffset);
                     if(skip < 0){
                         cout<<"m "<<des_->stockMetas[i].code<<"保存miss文件错误\n";

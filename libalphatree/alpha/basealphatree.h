@@ -183,12 +183,28 @@ public:
     int getSubtreeSize(){ return subtreeList_.getSize();}
     const char* getSubtreeName(int index){ return subtreeList_[index].name;}
 
-    void setCoff(int index, float coff){
+    virtual void setCoff(int index, float coff){
         coffList_[index].coffValue = coff;
     }
 
     float getCoff(int index){
         return coffList_[index].coffValue;
+    }
+
+    float getMaxCoff(int index){
+        return nodeList_[coffList_[index].srcNodeIndex].getElement()->getMaxCoff();
+    }
+
+    float getMinCoff(int index){
+        return nodeList_[coffList_[index].srcNodeIndex].getElement()->getMinCoff();
+    }
+
+    CoffUnit getCoffUnit(int index){
+        return nodeList_[coffList_[index].srcNodeIndex].getElement()->getCoffUnit();
+    }
+
+    int getCoffSize(){
+        return coffList_.getSize();
     }
 
 

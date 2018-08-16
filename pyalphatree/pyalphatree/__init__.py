@@ -51,8 +51,10 @@ def cache_indicator(indicator_path, data_path):
                     af.cache_alpha(tmp[0].strip(), tmp[1].strip())
                 line = f.readline()
 
+
 def read_alpha_tree_list(path):
     return read_alpha_list(path, lambda line: re.search(r"(?P<alpha>\w+): (?P<content>.*)", line).group('content'))
+
 
 def write_alpha_tree_list(alphatree_list, path):
     try:
@@ -61,6 +63,45 @@ def write_alpha_tree_list(alphatree_list, path):
             f.write("Alpha#%d: %s\n"%(id+1,alphatree))
     finally:
         f.close()
+
+def filter_corr_alphatree_list(alphatree_score_list, filter_list, corr_fun, start_index = 0, cur_depth = 0, max_corr = 0.32, is_use_hero_feature = True):
+    max_depth = len(filter_list)
+    if cur_depth == max_depth:
+        #print(filter_list)
+        return filter_list[:]
+    best_filter_list = None
+    for index in range(start_index, len(alphatree_score_list) - (max_depth - cur_depth - 1)):
+
+        is_corr = False
+        cur_corr = 0
+        for depth in range(0, cur_depth):
+            cur_corr = max(cur_corr, corr_fun(filter_list[depth][0], alphatree_score_list[index][0]))
+            if cur_corr >= max_corr:
+                is_corr = True
+                break
+        print("%s%d/%d corr:%.4f" % (
+        ''.join([" " for i in range(cur_depth)]), index, len(alphatree_score_list) - (max_depth - cur_depth - 1), cur_corr))
+        if not is_corr:
+            filter_list[cur_depth] = alphatree_score_list[index]
+            cur_filter_list = filter_corr_alphatree_list(alphatree_score_list, filter_list, corr_fun, index + 1, cur_depth + 1, max_corr, is_use_hero_feature)
+            if best_filter_list is None:
+                best_filter_list = cur_filter_list
+                # if cur_depth == 0:
+                #     print(best_filter_list)
+            elif cur_filter_list is not None:
+                delta_score = 0
+                for i in range(max_depth):
+                    delta_score += best_filter_list[i][1] - cur_filter_list[i][1]
+                if delta_score < 0:
+                    best_filter_list = cur_filter_list
+            if best_filter_list is not None and (is_use_hero_feature or cur_depth == max_depth - 1):
+                return best_filter_list
+                    # if cur_depth == 0:
+                    #     print(best_filter_list)
+    return best_filter_list
+
+
+
 
 def read_alpha_tree_dict(path):
     alpha_tree = {}
