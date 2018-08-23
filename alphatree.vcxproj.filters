@@ -13,9 +13,6 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="头文件\hmm">
-      <UniqueIdentifier>{4a7809b2-d89b-43e8-8649-817fac00e5db}</UniqueIdentifier>
-    </Filter>
     <Filter Include="头文件\db">
       <UniqueIdentifier>{7dfc93f4-083e-4e1b-99a1-12a56898dad5}</UniqueIdentifier>
     </Filter>
@@ -35,15 +32,6 @@
   <ItemGroup>
     <ClInclude Include="libalphatree\alphaforest.h">
       <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="libalphatree\hmm\eventhmm.h">
-      <Filter>头文件\hmm</Filter>
-    </ClInclude>
-    <ClInclude Include="libalphatree\hmm\gaussianhmm.h">
-      <Filter>头文件\hmm</Filter>
-    </ClInclude>
-    <ClInclude Include="libalphatree\hmm\hmmbase.h">
-      <Filter>头文件\hmm</Filter>
     </ClInclude>
     <ClInclude Include="libalphatree\db\stockcache.h">
       <Filter>头文件\db</Filter>
@@ -75,16 +63,7 @@
     <ClInclude Include="libalphatree\alpha\atom\alpha.h">
       <Filter>头文件\alpha\atom</Filter>
     </ClInclude>
-    <ClInclude Include="libalphatree\alpha\atom\backtrace.h">
-      <Filter>头文件\alpha\atom</Filter>
-    </ClInclude>
     <ClInclude Include="libalphatree\alpha\atom\base.h">
-      <Filter>头文件\alpha\atom</Filter>
-    </ClInclude>
-    <ClInclude Include="libalphatree\alpha\atom\optimizealpha.h">
-      <Filter>头文件\alpha\atom</Filter>
-    </ClInclude>
-    <ClInclude Include="libalphatree\alpha\atom\sample.h">
       <Filter>头文件\alpha\atom</Filter>
     </ClInclude>
     <ClInclude Include="libalphatree\base\cache.h">
@@ -149,12 +128,6 @@
     </ClInclude>
     <ClInclude Include="libalphatree\cart\split.h">
       <Filter>头文件\cart</Filter>
-    </ClInclude>
-    <ClInclude Include="libalphatree\alpha\alphapic.h">
-      <Filter>头文件\alpha</Filter>
-    </ClInclude>
-    <ClInclude Include="libalphatree\alphagraph.h">
-      <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

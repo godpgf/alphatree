@@ -123,16 +123,11 @@
   <ItemGroup>
     <ClInclude Include="libalphatree\alphaforest.h" />
     <ClInclude Include="libalphatree\alphagbdt.h" />
-    <ClInclude Include="libalphatree\alphagraph.h" />
     <ClInclude Include="libalphatree\alpha\alphaatom.h" />
     <ClInclude Include="libalphatree\alpha\alphadb.h" />
-    <ClInclude Include="libalphatree\alpha\alphapic.h" />
     <ClInclude Include="libalphatree\alpha\alphatree.h" />
     <ClInclude Include="libalphatree\alpha\atom\alpha.h" />
-    <ClInclude Include="libalphatree\alpha\atom\backtrace.h" />
     <ClInclude Include="libalphatree\alpha\atom\base.h" />
-    <ClInclude Include="libalphatree\alpha\atom\optimizealpha.h" />
-    <ClInclude Include="libalphatree\alpha\atom\sample.h" />
     <ClInclude Include="libalphatree\alpha\basealphatree.h" />
     <ClInclude Include="libalphatree\alpha\converter.h" />
     <ClInclude Include="libalphatree\base\bag.h" />
@@ -159,9 +154,6 @@
     <ClInclude Include="libalphatree\db\stockdes.h" />
     <ClInclude Include="libalphatree\db\stockfeature.h" />
     <ClInclude Include="libalphatree\db\stocksign.h" />
-    <ClInclude Include="libalphatree\hmm\eventhmm.h" />
-    <ClInclude Include="libalphatree\hmm\gaussianhmm.h" />
-    <ClInclude Include="libalphatree\hmm\hmmbase.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="libalphatree\libalphatree_api.cpp" />
