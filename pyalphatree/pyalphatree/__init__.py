@@ -1,23 +1,13 @@
 ﻿# coding=utf-8
 # author=godpgf
-from .util import AlphaForest, AlphaArray, AlphaFilter, AlphaGBDT, AlphaPic
+from .util import AlphaForest, AlphaArray, AlphaGBDT
 import re
 
-def cache_base(data_path):
+def cache_base(data_path, titles = ["date","open","high","low","close","volume","vwap","returns","amount","turn","tcap","mcap"]):
     with AlphaForest() as af:
         af.load_db(data_path)
-        af.csv2binary(data_path, "date")
-        af.csv2binary(data_path, "open")
-        af.csv2binary(data_path, "high")
-        af.csv2binary(data_path, "low")
-        af.csv2binary(data_path, "close")
-        af.csv2binary(data_path, "volume")
-        af.csv2binary(data_path, "vwap")
-        af.csv2binary(data_path, "returns")
-        af.csv2binary(data_path, "amount")
-        af.csv2binary(data_path, "turn")
-        af.csv2binary(data_path, "tcap")
-        af.csv2binary(data_path, "mcap")
+        for title in titles:
+            af.csv2binary(data_path, title)
         af.cache_miss()
 
 #缓存各种指标
@@ -151,85 +141,85 @@ def get_sub_alphatree(alphatree_Str, subalphatree_dict):
     return sub_alpha_dict
 
 #day pic-------------------------------------------------------------------------------------------------------------------
-def ini_day_price_pic(daybefore, sample_size, sign_name):
-    return AlphaPic(sign_name, ["(high / delay(close, 1))", "(low / delay(close, 1))"],
-             daybefore, sample_size)
+# def ini_day_price_pic(daybefore, sample_size, sign_name):
+#     return AlphaPic(sign_name, ["(high / delay(close, 1))", "(low / delay(close, 1))"],
+#              daybefore, sample_size)
 
 
-def get_day_price_pic(daybefore, sample_size, element_daybefore, element_days, sign_name, alpha_pic, column, max_std_scale):
-    open_elements = ["(delay(open, %d) / delay(close, %d))" % (-i, -i + 1) for i in
-                     range(-element_daybefore, -element_daybefore + element_days)]
-    high_elements = ["(delay(high, %d) / delay(close, %d))" % (-i, -i + 1) for i in
-                     range(-element_daybefore, -element_daybefore + element_days)]
-    low_elements = ["(delay(low, %d) / delay(close, %d))" % (-i, -i + 1) for i in
-                     range(-element_daybefore, -element_daybefore + element_days)]
-    close_elements = ["(delay(close, %d) / delay(close, %d))" % (-i, -i + 1) for i in
-                     range(-element_daybefore, -element_daybefore + element_days)]
-    return alpha_pic.get_k_line(sign_name, open_elements, high_elements, low_elements, close_elements, daybefore, sample_size,
-                                column, max_std_scale)
+# def get_day_price_pic(daybefore, sample_size, element_daybefore, element_days, sign_name, alpha_pic, column, max_std_scale):
+#     open_elements = ["(delay(open, %d) / delay(close, %d))" % (-i, -i + 1) for i in
+#                      range(-element_daybefore, -element_daybefore + element_days)]
+#     high_elements = ["(delay(high, %d) / delay(close, %d))" % (-i, -i + 1) for i in
+#                      range(-element_daybefore, -element_daybefore + element_days)]
+#     low_elements = ["(delay(low, %d) / delay(close, %d))" % (-i, -i + 1) for i in
+#                      range(-element_daybefore, -element_daybefore + element_days)]
+#     close_elements = ["(delay(close, %d) / delay(close, %d))" % (-i, -i + 1) for i in
+#                      range(-element_daybefore, -element_daybefore + element_days)]
+#     return alpha_pic.get_k_line(sign_name, open_elements, high_elements, low_elements, close_elements, daybefore, sample_size,
+#                                 column, max_std_scale)
 
 
-def ini_day_volume_pic(daybefore, sample_size, sign_name):
-    return AlphaPic(sign_name, ["(((delay(volume, 1) > 0) & (volume > 0)) ? (volume / delay(volume, 1)) : 1)"],
-             daybefore, sample_size)
+# def ini_day_volume_pic(daybefore, sample_size, sign_name):
+#     return AlphaPic(sign_name, ["(((delay(volume, 1) > 0) & (volume > 0)) ? (volume / delay(volume, 1)) : 1)"],
+#              daybefore, sample_size)
 
 
-def get_day_volume_pic(daybefore, sample_size, element_daybefore, element_days, sign_name, alpha_pic, column, max_std_scale):
-    elements = ["delay((((delay(volume, 1) > 0) & (volume > 0)) ? (volume / delay(volume, 1)) : 1), %d)" % (-i) for i in range(-element_daybefore, -element_daybefore + element_days)]
-    return alpha_pic.get_trend(sign_name, elements, daybefore, sample_size, column, max_std_scale)
+# def get_day_volume_pic(daybefore, sample_size, element_daybefore, element_days, sign_name, alpha_pic, column, max_std_scale):
+#     elements = ["delay((((delay(volume, 1) > 0) & (volume > 0)) ? (volume / delay(volume, 1)) : 1), %d)" % (-i) for i in range(-element_daybefore, -element_daybefore + element_days)]
+#     return alpha_pic.get_trend(sign_name, elements, daybefore, sample_size, column, max_std_scale)
 
 
 #week pic-------------------------------------------------------------------------------------------------------------------
-def ini_week_price_pic(daybefore, sample_size, sign_name):
-    return AlphaPic(sign_name, ["(ts_max(high, 4) / delay(close, 5))", "(ts_min(low, 4) / delay(close, 5))"],
-             daybefore, sample_size)
+# def ini_week_price_pic(daybefore, sample_size, sign_name):
+#     return AlphaPic(sign_name, ["(ts_max(high, 4) / delay(close, 5))", "(ts_min(low, 4) / delay(close, 5))"],
+#              daybefore, sample_size)
+#
+# def get_week_price_pic(daybefore, sample_size, element_daybefore, element_days, sign_name, alpha_pic,  column, max_std_scale):
+#     open_elements = ["(delay(open, %d) / delay(close, %d))" % ((1 - i) * 5 - 1, (1 - i) * 5) for i
+#                      in range(-element_daybefore, -element_daybefore + element_days)]
+#     high_elements = ["delay((ts_max(high, 4) / delay(close, 5)), %d)" % (- i * 5) for i in
+#                      range(-element_daybefore, -element_daybefore + element_days)]
+#     low_elements = ["delay((ts_min(low, 4) / delay(close, 5)), %d)" % (- i * 5) for i in
+#                      range(-element_daybefore, -element_daybefore + element_days)]
+#     close_elements = ["delay((close / delay(close, 5)), %d)" % (- i * 5) for i in
+#                      range(-element_daybefore, -element_daybefore + element_days)]
+#     return alpha_pic.get_k_line(sign_name, open_elements, high_elements, low_elements, close_elements, daybefore, sample_size,
+#                                 column, max_std_scale)
 
-def get_week_price_pic(daybefore, sample_size, element_daybefore, element_days, sign_name, alpha_pic,  column, max_std_scale):
-    open_elements = ["(delay(open, %d) / delay(close, %d))" % ((1 - i) * 5 - 1, (1 - i) * 5) for i
-                     in range(-element_daybefore, -element_daybefore + element_days)]
-    high_elements = ["delay((ts_max(high, 4) / delay(close, 5)), %d)" % (- i * 5) for i in
-                     range(-element_daybefore, -element_daybefore + element_days)]
-    low_elements = ["delay((ts_min(low, 4) / delay(close, 5)), %d)" % (- i * 5) for i in
-                     range(-element_daybefore, -element_daybefore + element_days)]
-    close_elements = ["delay((close / delay(close, 5)), %d)" % (- i * 5) for i in
-                     range(-element_daybefore, -element_daybefore + element_days)]
-    return alpha_pic.get_k_line(sign_name, open_elements, high_elements, low_elements, close_elements, daybefore, sample_size,
-                                column, max_std_scale)
+# def ini_week_volume_pic(daybefore, sample_size, sign_name):
+#     return AlphaPic(sign_name, ["(((delay(sum(volume, 4), 5) > 0) & (sum(volume, 4) > 0)) ? (sum(volume, 4) / delay(sum(volume, 4), 5)) : 1)"],
+#              daybefore, sample_size)
+#
 
-def ini_week_volume_pic(daybefore, sample_size, sign_name):
-    return AlphaPic(sign_name, ["(((delay(sum(volume, 4), 5) > 0) & (sum(volume, 4) > 0)) ? (sum(volume, 4) / delay(sum(volume, 4), 5)) : 1)"],
-             daybefore, sample_size)
-
-
-def get_week_volume_pic(daybefore, sample_size, element_daybefore, element_days, sign_name, alpha_pic, column, max_std_scale):
-    elements = ["delay((((delay(sum(volume, 4), 5) > 0) & (sum(volume, 4) > 0)) ? (sum(volume, 4) / delay(sum(volume, 4), 5)) : 1), %d)" % (- i * 5) for i in
-                     range(-element_daybefore, -element_daybefore + element_days)]
-    return alpha_pic.get_trend(sign_name, elements, daybefore, sample_size, column, max_std_scale)
-
+# def get_week_volume_pic(daybefore, sample_size, element_daybefore, element_days, sign_name, alpha_pic, column, max_std_scale):
+#     elements = ["delay((((delay(sum(volume, 4), 5) > 0) & (sum(volume, 4) > 0)) ? (sum(volume, 4) / delay(sum(volume, 4), 5)) : 1), %d)" % (- i * 5) for i in
+#                      range(-element_daybefore, -element_daybefore + element_days)]
+#     return alpha_pic.get_trend(sign_name, elements, daybefore, sample_size, column, max_std_scale)
+#
 #month pic-------------------------------------------------------------------------------------------------------------------
-def ini_month_price_pic(daybefore, sample_size, sign_name):
-    return AlphaPic(sign_name, ["(ts_max(high, 24) / delay(close, 25))", "(ts_min(low, 24) / delay(close, 25))"],
-             daybefore, sample_size)
-
-def get_month_price_pic(daybefore, sample_size, element_daybefore, element_days, sign_name, alpha_pic,  column, max_std_scale):
-    open_elements = ["(delay(open, %d) / delay(close, %d))" % ((1 - i) * 25 - 1, (1 - i) * 25) for i
-                     in range(-element_daybefore, -element_daybefore + element_days)]
-    high_elements = ["delay((ts_max(high, 24) / delay(close, 25)), %d)" % (- i * 25) for i in
-                     range(-element_daybefore, -element_daybefore + element_days)]
-    low_elements = ["delay((ts_min(low, 24) / delay(close, 25)), %d)" % (- i * 25) for i in
-                     range(-element_daybefore, -element_daybefore + element_days)]
-    close_elements = ["delay((close / delay(close, 25)), %d)" % (- i * 25) for i in
-                     range(-element_daybefore, -element_daybefore + element_days)]
-    return alpha_pic.get_k_line(sign_name, open_elements, high_elements, low_elements, close_elements, daybefore, sample_size,
-                                column, max_std_scale)
-
-
-def ini_month_volume_pic(daybefore, sample_size, sign_name):
-    return AlphaPic(sign_name, ["(((delay(sum(volume, 24), 25) > 0) & (sum(volume, 24) > 0)) ? (sum(volume, 24) / delay(sum(volume, 24), 25)) : 1)"],
-             daybefore, sample_size)
-
-
-def get_month_volume_pic(daybefore, sample_size, element_daybefore, element_days, sign_name, alpha_pic, column, max_std_scale):
-    elements = ["delay((((delay(sum(volume, 24), 25) > 0) & (sum(volume, 24) > 0)) ? (sum(volume, 24) / delay(sum(volume, 24), 25)) : 1), %d)" % (- i * 25) for i in
-                     range(-element_daybefore, -element_daybefore + element_days)]
-    return alpha_pic.get_trend(sign_name, elements, daybefore, sample_size, column, max_std_scale)
+# def ini_month_price_pic(daybefore, sample_size, sign_name):
+#     return AlphaPic(sign_name, ["(ts_max(high, 24) / delay(close, 25))", "(ts_min(low, 24) / delay(close, 25))"],
+#              daybefore, sample_size)
+#
+# def get_month_price_pic(daybefore, sample_size, element_daybefore, element_days, sign_name, alpha_pic,  column, max_std_scale):
+#     open_elements = ["(delay(open, %d) / delay(close, %d))" % ((1 - i) * 25 - 1, (1 - i) * 25) for i
+#                      in range(-element_daybefore, -element_daybefore + element_days)]
+#     high_elements = ["delay((ts_max(high, 24) / delay(close, 25)), %d)" % (- i * 25) for i in
+#                      range(-element_daybefore, -element_daybefore + element_days)]
+#     low_elements = ["delay((ts_min(low, 24) / delay(close, 25)), %d)" % (- i * 25) for i in
+#                      range(-element_daybefore, -element_daybefore + element_days)]
+#     close_elements = ["delay((close / delay(close, 25)), %d)" % (- i * 25) for i in
+#                      range(-element_daybefore, -element_daybefore + element_days)]
+#     return alpha_pic.get_k_line(sign_name, open_elements, high_elements, low_elements, close_elements, daybefore, sample_size,
+#                                 column, max_std_scale)
+#
+#
+# def ini_month_volume_pic(daybefore, sample_size, sign_name):
+#     return AlphaPic(sign_name, ["(((delay(sum(volume, 24), 25) > 0) & (sum(volume, 24) > 0)) ? (sum(volume, 24) / delay(sum(volume, 24), 25)) : 1)"],
+#              daybefore, sample_size)
+#
+#
+# def get_month_volume_pic(daybefore, sample_size, element_daybefore, element_days, sign_name, alpha_pic, column, max_std_scale):
+#     elements = ["delay((((delay(sum(volume, 24), 25) > 0) & (sum(volume, 24) > 0)) ? (sum(volume, 24) / delay(sum(volume, 24), 25)) : 1), %d)" % (- i * 25) for i in
+#                      range(-element_daybefore, -element_daybefore + element_days)]
+#     return alpha_pic.get_trend(sign_name, elements, daybefore, sample_size, column, max_std_scale)

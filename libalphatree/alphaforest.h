@@ -13,6 +13,7 @@
 #include "alpha/alphadb.h"
 #include "base/hashmap.h"
 #include "base/bag.h"
+#include "base/vector.h"
 #include <set>
 #include <vector>
 #include <iostream>
@@ -117,15 +118,15 @@ public:
         getAlphaTree(alphaTreeId)->synchroAlpha(curCache);
     }
 
-    const float *getAlphaSum(int alphaTreeId, const char *rootName, int cacheId){
-        auto curCache = alphaCache_->getCacheMemory(cacheId);
-        return getAlphaTree(alphaTreeId)->getAlphaSum(rootName, curCache);
-    }
-
-    void getAlphaSmooth(int alphaTreeId, const char *rootName, int cacheId, int smoothNum, float* smooth){
-        auto curCache = alphaCache_->getCacheMemory(cacheId);
-        return getAlphaTree(alphaTreeId)->getAlphaSmooth(rootName, curCache, smoothNum, smooth);
-    }
+//    const float *getAlphaSum(int alphaTreeId, const char *rootName, int cacheId){
+//        auto curCache = alphaCache_->getCacheMemory(cacheId);
+//        return getAlphaTree(alphaTreeId)->getAlphaSum(rootName, curCache);
+//    }
+//
+//    void getAlphaSmooth(int alphaTreeId, const char *rootName, int cacheId, int smoothNum, float* smooth){
+//        auto curCache = alphaCache_->getCacheMemory(cacheId);
+//        return getAlphaTree(alphaTreeId)->getAlphaSmooth(rootName, curCache, smoothNum, smooth);
+//    }
 
 //    const char* getProcess(int alphaTreeId, const char *rootName, int cacheId){
 //        auto curCache = alphaCache_->getCacheMemory(cacheId);
@@ -141,6 +142,7 @@ public:
         return (int) getAlphaTree(alphaTreeId)->getMaxHistoryDays();
     }
 
+    /*
     void getReturns(const char* codes, int stockSize, int dayBefore, int sampleSize,  const char* buySignList, int buySignNum, const char* sellSignList, int sellSignNum, float maxReturn, float maxDrawdown, int maxHoldDays, float* returns, const char* price = "close"){
         int maxNameLen = max(buySignNum, sellSignNum) / 10 + 3;
         int maxSignLen = (max(buySignNum, sellSignNum) / 10 + 3 + 6) * max(buySignNum, sellSignNum);
@@ -247,7 +249,7 @@ public:
         delete []name;
         delete []sign;
         delete []tmp;
-    }
+    }*/
 
 
 //    int summarySubAlphaTree(const int *alphatreeIds, int len, int minDepth, char *subAlphatreeStr) {
@@ -316,9 +318,9 @@ public:
 protected:
     AlphaForest(int cacheSize) : threadPool_(cacheSize) {
         initAlphaElement();
-        //申请alphatree的内存
+        //申请alphatree的内存。注意：一个alphatree其实就是一个股票的公式集
         alphaTreeCache_ = DCache<AlphaTree>::create();
-        //申请中间结果的内存,有多少个cacheSize就可以同时计算几个alphatree
+        //申请中间结果的内存,有多少个cacheSize就可以同时计算几个alphatree（公式集）
         alphaCache_ = Cache<AlphaCache>::create(cacheSize);
 
         char *p = alphaCache_->getBuff();
@@ -341,6 +343,9 @@ protected:
 
     }
 
+    /*
+     * 将公式名和公式的函数指针做映射
+     * */
     void initAlphaElement() {
         int alphaAtomNum = sizeof(AlphaAtom::alphaAtomList) / sizeof(AlphaAtom);
         for (auto i = 0; i < alphaAtomNum; i++) {
@@ -516,66 +521,130 @@ public:
         return 1;
     }
 
-    static float getDistinguish(IBaseIterator<float>* feature, float slpitValue, IBaseIterator<float>* target){
+    static float getDistinguish(AlphaForest* af, const char* signName, int alphatreeId, int targetId, int daybefore, int sampleSize, int sampleTime, int allowFailTime){
+        Vector<double> avg(sampleTime);
+        double curSum = 0;
+        int curCnt = 0;
+
         float avg_l = 0;
         float cnt_l = 0;
         float avg_r = 0;
         float cnt_r = 0;
-        if(!isnormal(slpitValue))
-            return 0;
         float minTarget = FLT_MAX;
-        while (feature->isValid()){
-            if(feature->getValue() > slpitValue){
-                avg_r += target->getValue();
-                cnt_r += 1;
-            } else {
-                avg_l += target->getValue();
-                cnt_l += 1;
-            }
-            minTarget = min(minTarget, target->getValue());
-            //cout<<feature->getValue()<<endl;
-            feature->skip(1);
-            target->skip(1);
-        }
-        feature->skip(0, false);
-        target->skip(0, false);
-        //cout<<avg_l<<" "<<cnt_l<<" "<<avg_r<<" "<<cnt_r<<" "<<minTarget<<endl;
-        if(min(cnt_l, cnt_r) / max(cnt_l, cnt_r) < 0.32f)
-            return 0;
-        avg_l = avg_l / cnt_l - minTarget;
-        avg_r = avg_r / cnt_r - minTarget;
-        return avg_r / avg_l;
-    }
+        int sampleDays = sampleSize * sampleTime;
+        int curTimeIndex = 0;
 
-    static float getDistinguish(AlphaForest* af, const char* signName, int alphatreeId, int targetId, int daybefore, int sampleSize, int sampleTime){
-//        AlphaSignIterator allFeature(af, "t", signName, alphatreeId, daybefore, sampleSize * sampleTime, 0, af->getAlphaDataBase()->getSignNum(daybefore, sampleSize *sampleTime, signName));
-//        float avg = allFeature.getAvg();
-        //cout<<"avg:"<<avg<<endl;
+        AlphaSignIterator feature(af, "t", signName, alphatreeId, daybefore, sampleDays, 0, af->getAlphaDataBase()->getSignNum(daybefore, sampleDays, signName));
+        AlphaSignIterator target(af, "t", signName, targetId, daybefore, sampleDays, 0, af->getAlphaDataBase()->getSignNum(daybefore, sampleDays, signName));
+
+//        cout<<sampleDays<<"="<<feature.size()<<endl;
+
+        for(int i = 0;i < feature.size(); ++i){
+            curSum += *feature;
+            ++curCnt;
+            feature.skip(1);
+            if((int)(i * sampleTime / (feature.size() - 1.0f)) > curTimeIndex){
+                avg[curTimeIndex] = curSum / curCnt;
+                ++curTimeIndex;
+                curSum = 0;
+                curCnt = 0;
+//                cout<<"avg:"<<avg[curTimeIndex-1]<<endl;
+            }
+        }
+        feature.skip(0, false);
 
         bool isProportion = false;
+        Vector<float> minDist(allowFailTime + 1);
+        int curFailTime = 0;
         float distinguish = -1;
 
-        //cout<<af->getAlphaDataBase()->getSignNum(daybefore + 11 * sampleSize, sampleSize, signName)<<endl;
-        for(int i = 0; i < sampleTime; ++i){
-            //cout<<"s"<<i<<endl;
-            AlphaSignIterator feature(af, "t", signName, alphatreeId, daybefore + i * sampleSize, sampleSize, 0, af->getAlphaDataBase()->getSignNum(daybefore + i * sampleSize, sampleSize, signName));
-            AlphaSignIterator target(af, "t", signName, targetId, daybefore + i * sampleSize, sampleSize, 0, af->getAlphaDataBase()->getSignNum(daybefore + i * sampleSize, sampleSize, signName));
-            float avg = feature.getAvg();
-
-            float dist = AlphaSignIterator::getDistinguish(&feature, avg, &target);
-            //cout<<"e"<<i<<" "<<dist<<endl;
-            if(dist == 0){
-                return 0.0f;
+        curTimeIndex = 0;
+        for(int i = 0; i < feature.size(); ++i){
+            if(feature.getValue() > avg[curTimeIndex]){
+                avg_r += target.getValue();
+                cnt_r += 1;
+            } else {
+                avg_l += target.getValue();
+                cnt_l += 1;
             }
+//            if(curTimeIndex == 0){
+//                cout<<feature.getValue()<<" "<<avg[curTimeIndex]<<" "<<target.getValue()<<endl;
+//            }
+            minTarget = min(minTarget, target.getValue());
 
-            if(distinguish < 0){
-                isProportion = dist > 1;
-                distinguish = isProportion ? dist : 1 / dist;
-            } else  {
-                distinguish = min(distinguish, isProportion ? dist : 1 / dist);
-                if(distinguish < 1.f){
-                    break;
+            feature.skip(1);
+            target.skip(1);
+
+            if((int)(i * sampleTime / (feature.size() - 1.0f)) > curTimeIndex){
+//                cout<<"i:"<<i<<" "<<i * sampleTime / (feature.size() - 1.0f)<<">"<<curTimeIndex<<endl;
+                if(avg_r == 0 || avg_l == 0)
+                    return 0;
+                if(min(cnt_l, cnt_r) / max(cnt_l, cnt_r) < 0.32f)
+                    return 0;
+                avg_l = avg_l / cnt_l - minTarget;
+                avg_r = avg_r / cnt_r - minTarget;
+                float dist = avg_r / avg_l;
+                if(dist == 0)
+                    return 0;
+
+                if(distinguish < 0){
+                    isProportion = (dist > 1);
+                    distinguish = isProportion ? dist : 1 / dist;
+                    minDist[curFailTime] = distinguish;
+                }else  {
+                    distinguish = isProportion ? dist : 1 / dist;
+                    if(curFailTime < allowFailTime){
+                        //insert
+                        bool isInsert = false;
+                        for(int j = curFailTime; j >= 0; --j){
+                            if(distinguish >= minDist[j]){
+                                minDist[j+1] = distinguish;
+                                isInsert = true;
+                                break;
+                            } else{
+                                minDist[j+1] = minDist[j];
+                            }
+                        }
+                        if(isInsert == false){
+                            minDist[0] = distinguish;
+                        }
+                        ++curFailTime;
+                    } else{
+                        bool isReplace = false;
+                        for(int j = allowFailTime; j >= 0; --j){
+                            if(isReplace == false){
+                                if(distinguish >= minDist[j])
+                                    break;
+                                else{
+                                    minDist[j] = distinguish;
+                                    isReplace = true;
+                                }
+                            }
+                            else if(j > 0 && minDist[j] < minDist[j - 1]){
+                                distinguish = minDist[j];
+                                minDist[j] = minDist[j-1];
+                                minDist[j-1] = distinguish;
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+//                    distinguish = min(distinguish, isProportion ? dist : 1 / dist);
+//                    if(distinguish < 1.f){
+//                        break;
+//                    }
                 }
+
+//                if(daybefore > 100)
+//                    cout<<"dis"<<distinguish<<endl;
+                if(curFailTime == allowFailTime && minDist[curFailTime] < 1.0)
+                    return minDist[curFailTime];
+                avg_l = 0;
+                cnt_l = 0;
+                avg_r = 0;
+                cnt_r = 0;
+                minTarget = FLT_MAX;
+                ++curTimeIndex;
             }
         }
         return distinguish;
@@ -602,6 +671,7 @@ public:
     }
 
 
+    /*
     static float getConfidence(AlphaForest* af, const char* signName, int alphatreeId, int targetId, int daybefore, int sampleSize, int sampleTime, float support, float stdScale = 2.0){
         AlphaSignIterator allFeature(af, "t", signName, alphatreeId, daybefore, sampleSize * sampleTime, 0, af->getAlphaDataBase()->getSignNum(daybefore, sampleSize *sampleTime, signName));
         float avg, std;
@@ -637,7 +707,7 @@ public:
             }
         }
         return confidence;
-    }
+    }*/
 protected:
     AlphaForest* af_;
     char* rootName_;

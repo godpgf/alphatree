@@ -8,7 +8,7 @@
 #include "../base/hashmap.h"
 #include "stockfeature.h"
 #include "stocksign.h"
-#include "../hmm/eventhmm.h"
+//#include "../hmm/eventhmm.h"
 #include <map>
 #include <algorithm>
 
@@ -492,7 +492,9 @@ protected:
             int missFlag = *curMissIter;
             //在信号发生当天之前，还需要signBeforeday这么多天的数据
             int signBeforeday = historyDays - 1;
+//            cout<<"sb:"<<signBeforeday<<endl;
             while (signBeforeday > 0 && missFlag != 0){
+//                cout<<"miss"<<missFlag<<endl;
                 if(missFlag > 0){
                     if(missFlag >= signBeforeday){
                         offset -= signBeforeday;
@@ -515,6 +517,7 @@ protected:
                 missFlag = *curMissIter;
             }
 
+//            cout<<"cur miss:"<<missFlag<<" cur feature:"<<*curFeatureIter<<endl;
             //先填写历史数据,迭代器最后
             if(missFlag == 0){
                 //没有历史数据，用第一条数据补上
@@ -527,31 +530,42 @@ protected:
                     throw "err";
                 }
                 curFeatureIter.skip(offset-1, false);
+                curMissIter.skip(offset,false);
                 for(int i = 0; i < signBeforeday; ++i){
                     f(i * signNum + curIndex, *curFeatureIter);
                 }
                 ++curFeatureIter;
                 f(signBeforeday * signNum + curIndex, *curFeatureIter);
             } else {
+//                cout<<*curMissIter<<" "<<*curFeatureIter<<endl;
                 f(signBeforeday * signNum + curIndex, *curFeatureIter);
             }
 
+//            cout<<"dayindex:"<<signBeforeday+1<<"/"<<historyDays - futureDays<<endl;
             //往后填写剩下的数据
             int dayindex = signBeforeday + 1;
             while (dayindex < historyDays - futureDays){
                 //定位当前的miss迭代器，方便得到当前缺失天数
                 ++curMissIter;
+//                cout<<"miss"<<*curMissIter<<endl;
                 if(*curMissIter > 0){
                     ++curFeatureIter;
+//                    cout<<*curMissIter<<" "<<*curFeatureIter<<endl;
                     f(dayindex * signNum + curIndex, *curFeatureIter);
                     ++dayindex;
                 } else {
+                    //先补缺失数据
                     int missDays = min(-*curMissIter, historyDays - futureDays - dayindex);
+//                    cout<<missDays<<" "<<*curMissIter<<" "<<*curFeatureIter<<endl;
                     for(int i = 0; i < missDays; ++i){
                         f((dayindex + i)*signNum + curIndex, *curFeatureIter);
                     }
                     dayindex += missDays;
                     ++curFeatureIter;
+                    //再补当前条目的数据
+                    f(dayindex*signNum + curIndex, *curFeatureIter);
+                    //跳转到下一个条目
+                    ++dayindex;
                 }
 
             }
@@ -708,6 +722,7 @@ public:
                     }
                     mainOffset += skip;
                     skip = -skip;
+                    //skip是负的多少表示缺了多少数据
                     file.write(reinterpret_cast< char* >( &skip ), sizeof( int ));
                 }
             }
@@ -715,6 +730,7 @@ public:
         file.close();
     }
 
+    /*
     void boolhmm2binary(const char* featureName, int hideStateNum, size_t seqLength, bool* stockFlag, int epochNum = 8){
         StockFeature<float> *ft = nullptr;
         auto** pHashNameNode = feature_.find(featureName);
@@ -775,18 +791,6 @@ public:
                     //写入隐藏状态的概率
                     _ranksort(curEventArgSortIndex, curEvent, hideStateNum);
 
-                    /*{
-                        for(int j = 0; j < hideStateNum; ++j){
-                            cout<<curEvent[j]<<" ";
-                        }
-                        cout<<endl;
-
-                        for(int j = 0; j < hideStateNum; ++j){
-                            cout<<curEventArgSortIndex[j]<<" ";
-                        }
-                        cout<<endl;
-                    }*/
-
                     for(int j = 0; j < hideStateNum; ++j){
                         hidePercent = hmm.getGamma((int)curEventArgSortIndex[j], seqLength-1);
                         hidePercentFiles[j].write(reinterpret_cast< char* >( &hidePercent ), sizeof( float ));
@@ -825,7 +829,7 @@ public:
         for(int i = 0; i < hideStateNum; ++i)
             hidePercentFiles[i].close();
         delete []hidePercentFiles;
-    }
+    }*/
 
     template <class T>
     static void csv2feature(const char* path, const char* featureName, StockDes* des){

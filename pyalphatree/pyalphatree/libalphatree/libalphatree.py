@@ -24,8 +24,5 @@ alphatree.getSignNum.restype = c_int32
 alphatree.trainAndEvalAlphaGBDT.restype = c_float
 alphatree.evalAlphaGBDT.restype = c_float
 alphatree.getDistinguish.restype = c_float
-alphatree.getConfidence.restype = c_float
 alphatree.getCorrelation.restype = c_float
-
 alphatree.optimizeDistinguish.restype = c_int32
-alphatree.optimizeConfidence.restype = c_int32

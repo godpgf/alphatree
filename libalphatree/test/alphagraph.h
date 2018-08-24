@@ -5,8 +5,8 @@
 #ifndef ALPHATREE_ALPHAGRAPH_H
 #define ALPHATREE_ALPHAGRAPH_H
 
-#include "alphaforest.h"
-#include "alpha/alphapic.h"
+#include "../alphaforest.h"
+#include "test/alphapic.h"
 
 class AlphaGraph{
 public:

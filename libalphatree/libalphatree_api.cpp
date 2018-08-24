@@ -6,7 +6,6 @@
 
 #include "alphaforest.h"
 #include <iostream>
-#include "alphagraph.h"
 
 #ifdef ML
 #include "alphagbdt.h"
@@ -22,147 +21,128 @@ using namespace std;
 #define DLLEXPORT __declspec(dllexport)
 #endif
 
-//#define MAX_TREE_SIZE 32768
-//#define MAX_SUB_TREE_SIZE 16
-//#define MAX_NODE_SIZE 64
-//#define MAX_STOCK_SIZE 3600
-//#define MAX_HISTORY_DAYS 250
-//#define MAX_SAMPLE_DAYS 2500
-//#define MAX_FUTURE_DAYS 80
-//#define CODE_LEN 64
-
 
 extern "C"
 {
 
+/*
+ * 股票数据在做加减乘除等等计算时会有很多中间结果，需要巨大的缓存空间，这里先申请cacheSize个缓存空间
+ * 这样就可以用多线程同时计算cacheSize个公式集合
+ */
 void DLLEXPORT initializeAlphaforest(int cacheSize) {
     AlphaForest::initialize(cacheSize);
 }
+
 
 void DLLEXPORT releaseAlphaforest() {
     AlphaForest::release();
 }
 
+/*
+ * 加载股票的描述文件，只要包括股票代码是什么，对应的市场代码是什么，包含多少条数据等基本信息
+ * */
 void DLLEXPORT loadDataBase(const char *path) {
     AlphaForest::getAlphaforest()->getAlphaDataBase()->loadDataBase(path);
 }
 
+/*
+ * 将多个csv文件中的某一列数据变成一个二进制文件作为一个“特征”，比如日期，比如收盘价。
+ * 文件格式很简单，就是按照loadDataBase中加载的股票顺序，将每个条数据再按先后写入。
+ * 比如有三中股票收盘价分别是，000001【1,2,3,4】,000002[2,3,2,1】，000003[7,2】
+ * 二进制文件中的数据就是【1,2,3,4,2,3,2,1,7,2】
+ * */
 void DLLEXPORT csv2binary(const char *path, const char* featureName){
     AlphaForest::getAlphaforest()->getAlphaDataBase()->csv2binary(path, featureName);
 }
 
+/*
+ * 缓存缺失数据描述，首元素的值是0，如果当前数据前n天的数据都是完整的，文件中值就是n，如果缺失了m天，特征就是-m
+ * 比如有三中股票收盘价分别是，000001【1,2,x,x,3,4】,000002[2,3,2,x,1】，000003[7,2】（x表示缺失）
+ * 二进制文件数据就是[0,1,-2,1,0,1,2,-1,0,1]
+ * */
 void DLLEXPORT cacheMiss(){
     AlphaForest::getAlphaforest()->getAlphaDataBase()->miss2binary();
 }
 
-void DLLEXPORT cacheBoolHMM(const char* featureName, int hideStateNum, size_t seqLength, const char* codes, int codesNum, int epochNum = 8){
-    AlphaForest::getAlphaforest()->getAlphaDataBase()->boolhmm2binary(featureName, hideStateNum, seqLength, codes, codesNum, epochNum);
-}
-
+/*
+ * 把一个“特征”加载到内存（比如收盘价或者某些高级的特征），公式中如果用到了这个特征就可以不用读文件了
+ * */
 void DLLEXPORT loadFeature(const char* featureName){
     AlphaForest::getAlphaforest()->getAlphaDataBase()->loadFeature(featureName);
 }
 
+/*
+ * 把一个特征从内存中卸载掉
+ * */
 void DLLEXPORT releaseFeature(const char* featureName){
     AlphaForest::getAlphaforest()->getAlphaDataBase()->releaseFeature(featureName);
 }
 
+
+//更新内存中的特征
 void DLLEXPORT updateFeature(const char* featureName){
     AlphaForest::getAlphaforest()->getAlphaDataBase()->updateFeature(featureName);
 }
 
+//卸载所有特征
 void DLLEXPORT releaseAllFeature(){
     AlphaForest::getAlphaforest()->getAlphaDataBase()->releaseAllFeature();
 }
 
-void DLLEXPORT loadSign(const char* signName){
-    AlphaForest::getAlphaforest()->getAlphaDataBase()->loadSign(signName);
-}
-
-void DLLEXPORT releaseAllSign(){
-    AlphaForest::getAlphaforest()->getAlphaDataBase()->releaseAllSign();
-}
-
+//创建一个alphatree（公式集），并得到它的id
 int DLLEXPORT createAlphatree() {
     return AlphaForest::getAlphaforest()->useAlphaTree();
 }
 
+//回收一个alphatree，下次再需要用到时还可以再次使用，不会反复申请释放内存
 void DLLEXPORT releaseAlphatree(int alphatreeId) {
     AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
 }
 
-int DLLEXPORT useCache() {
-    return AlphaForest::getAlphaforest()->useCache();
+/*
+ * 给alphatree添加一条公式，比如rootName="f1",line="((close - open) / 2)"
+ * alphatree会将这条公式解码成一棵公式树，“f1”就是这棵树的名字。alphatree中可以有多棵公式树。
+ * */
+void DLLEXPORT decodeAlphatree(int alphaTreeId, const char *rootName, const char *line) {
+    AlphaForest::getAlphaforest()->decode(alphaTreeId, rootName, line);
 }
 
-void DLLEXPORT releaseCache(int cacheId) {
-    AlphaForest::getAlphaforest()->releaseCache(cacheId);
-}
-
+//将一课公式树重新编码成字符串
 int DLLEXPORT encodeAlphatree(int alphatreeId, const char *rootName, char *out) {
     const char *res = AlphaForest::getAlphaforest()->encodeAlphaTree(alphatreeId, rootName, out);
     return strlen(res);
 }
 
-void DLLEXPORT decodeAlphatree(int alphaTreeId, const char *rootName, const char *line) {
-    AlphaForest::getAlphaforest()->decode(alphaTreeId, rootName, line);
+//创建缓存，返回它的id。缓存是用了记录alphatree各种运算的中间结果的内存空间。
+int DLLEXPORT useCache() {
+    return AlphaForest::getAlphaforest()->useCache();
 }
 
-int DLLEXPORT getStockCodes(char *codes) {
-    return AlphaForest::getAlphaforest()->getAlphaDataBase()->getStockCodes(codes);
+//回收缓存（不会释放，下次还可以接着使用）
+void DLLEXPORT releaseCache(int cacheId) {
+    AlphaForest::getAlphaforest()->releaseCache(cacheId);
 }
 
-int DLLEXPORT getStockIds(int dayBefore, int sampleSize, const char* signName, int* dst){
-    return AlphaForest::getAlphaforest()->getAlphaDataBase()->getStockIds(dayBefore, sampleSize, signName, dst);
-}
-
-int DLLEXPORT getCode(int id, char* codes){
-    strcpy(codes, AlphaForest::getAlphaforest()->getAlphaDataBase()->getCode(id));
-    return strlen(codes);
-}
-
-int DLLEXPORT getMarketCodes(const char *marketName, char *codes) {
-    return AlphaForest::getAlphaforest()->getAlphaDataBase()->getMarketCodes(marketName, codes);
-}
-
-int DLLEXPORT getIndustryCodes(const char *industryName, char *codes) {
-    return AlphaForest::getAlphaforest()->getAlphaDataBase()->getIndustryCodes(industryName, codes);
-}
-
-int DLLEXPORT getMaxHistoryDays(int alphaTreeId) { return AlphaForest::getAlphaforest()->getMaxHistoryDays(alphaTreeId); }
-
-int DLLEXPORT getAllDays(){ return AlphaForest::getAlphaforest()->getAlphaDataBase()->getDays();}
-
-int DLLEXPORT getSignNum(int dayBefore, int sampleSize, const char* signName){
-    return AlphaForest::getAlphaforest()->getAlphaDataBase()->getSignNum(dayBefore, sampleSize, signName);
-}
-
-
+/*
+ * 计算alphatree中所有的公式，并将结果保持到缓存中。
+ * alphaTreeId：需要计算的alphatree
+ * cacheId：分配给alphatree用来存放中间结果的缓存
+ * dayBefore：计算多少天前的数据
+ * sampleSize：计算多少天的数据
+ * codes：所有需要计算的股票码，比如"000001\0000002\0000003\0"每个股票码以“\0”结尾
+ * */
 void DLLEXPORT calAlpha(int alphaTreeId, int cacheId, int dayBefore, int sampleSize, const char *codes, int stockSize) {
     AlphaForest::getAlphaforest()->calAlpha(alphaTreeId, cacheId, dayBefore, sampleSize, codes, stockSize);
 }
 
-void DLLEXPORT calSignAlpha(int alphaTreeId, int cacheId, int dayBefore, int sampleSize, int startIndex, int signNum, int signHistoryDays, const char* signName){
-    AlphaForest::getAlphaforest()->calAlpha(alphaTreeId, cacheId, dayBefore, sampleSize, startIndex, signNum, signHistoryDays, signName);
-}
-
-void DLLEXPORT cacheAlpha(int alphaTreeId, int cacheId, const char* featureName) {
-    AlphaForest::getAlphaforest()->cacheAlpha(alphaTreeId, cacheId, featureName);
-}
-
-void DLLEXPORT cacheSign(int alphaTreeId, int cacheId, const char* signName){
-    AlphaForest::getAlphaforest()->cacheSign(alphaTreeId, cacheId, signName);
-}
-
-void DLLEXPORT cacheCodesSign(int alphaTreeId, int cacheId, const char* signName, const char* codes, int codesNum){
-    AlphaForest::getAlphaforest()->cacheSign(alphaTreeId, cacheId, signName, codes, codesNum);
-}
-
-
-//float DLLEXPORT optimizeAlpha(int alphaTreeId, int cacheId, const char *rootName, int dayBefore, int sampleSize, const char *codes, size_t stockSize, float exploteRatio, int errTryTime){
-//    return AlphaForest::getAlphaforest()->optimizeAlpha(alphaTreeId, cacheId, rootName, dayBefore, sampleSize, codes, stockSize, exploteRatio, errTryTime);
-//}
-
+/*
+ * 得到某个公式的计算结果
+ * alphaTreeId：公式所在的alphatree（公式集）
+ * rootName：公式名
+ * cacheId：分配给alphatree用来存放中间结果的缓存
+ * alpha：输出计算结果的内存。
+ * 计算结果的格式是：第一天所有股票的计算结果[c1_1,c2_1,c3_1,...,cn_1]，第二天所有股票的计算结果[c1_2,c2_2,c3_2,...,cn_2],...
+ * */
 int DLLEXPORT getAlpha(int alphaTreeId, const char *rootName, int cacheId, float *alpha) {
     const float *res = AlphaForest::getAlphaforest()->getAlpha(alphaTreeId, rootName, cacheId);
     auto *cache = AlphaForest::getAlphaforest()->getCache(cacheId);
@@ -171,58 +151,133 @@ int DLLEXPORT getAlpha(int alphaTreeId, const char *rootName, int cacheId, float
     return dataSize;
 }
 
+//等待所有线程把alphatree中的所有公式计算完成
 void DLLEXPORT synchroAlpha(int alphaTreeId, int cacheId){
     AlphaForest::getAlphaforest()->synchroAlpha(alphaTreeId, cacheId);
 }
 
-void DLLEXPORT getAlphaSum(int alphaTreeId, const char *rootName, int cacheId, float* alpha){
-    const float* res = AlphaForest::getAlphaforest()->getAlphaSum(alphaTreeId, rootName, cacheId);
-    memcpy(alpha, res, 2 * sizeof(float));
+/*
+ * 某个公式对于所有股票所有日期的计算结果保存到二进制文件，变成一个“特征”（类似之前的收盘价也是一个特征）
+ * alphaTreeId：这个公式所在的alphatree
+ * cacheId：用来保存中间结果的缓存
+ * featureName：公式名，见decodeAlphatree注释中的“f1”，同时也是缓存成特征的特征名
+ * */
+void DLLEXPORT cacheAlpha(int alphaTreeId, int cacheId, const char* featureName) {
+    AlphaForest::getAlphaforest()->cacheAlpha(alphaTreeId, cacheId, featureName);
 }
 
-void DLLEXPORT getAlphaSmooth(int alphaTreeId, const char *rootName, int cacheId, int smoothNum, float* smooth){
-    return AlphaForest::getAlphaforest()->getAlphaSmooth(alphaTreeId, rootName, cacheId, smoothNum, smooth);
+/*
+ * 将公式的计算结果保存成信号。
+ * 信号是用来过滤数据的，比如某个公式f2=(close > open)
+ * 把f2保存成信号我们就能把每天收盘大于开盘的股票数据筛选出来，并在此基础上再做别的运算。
+ * alphaTreeId：这个公式所在的alphatree
+ * cacheId：用来保存中间结果的缓存
+ * signName：公式名，同时也是需要保存成信号二进制文件的文件名
+ * 信号文件的格式比较复杂，如下：
+ * 文件头：（有多少个交易日就有多少数据）
+ * [第1个交易日和它之前所有信号数量,第2个交易日和它之前所有信号数量,......]
+ * 文件体：
+ * [第1个交易日第1个信号的文件偏移，第1个交易日第2个信号的文件偏移，……，第n个交易日第m个信号的文件偏移]
+ * 文件偏移定义：
+ * 就是数据在特征文件中的序号，见csv2binary中的注释
+ * */
+void DLLEXPORT cacheSign(int alphaTreeId, int cacheId, const char* signName){
+    AlphaForest::getAlphaforest()->cacheSign(alphaTreeId, cacheId, signName);
 }
 
-void DLLEXPORT getReturns(const char* codes, int stockSize, int dayBefore, int sampleSize,  const char* buySignList, int buySignNum, const char* sellSignList, int sellSignNum, float maxReturn, float maxDrawdown, int maxHoldDays, float* returns, const char* price = "close"){
-    AlphaForest::getAlphaforest()->getReturns(codes, stockSize, dayBefore, sampleSize, buySignList, buySignNum, sellSignList, sellSignNum, maxReturn, maxDrawdown, maxHoldDays, returns, price);
+//同上，只不过指定了能发出信号的股票代码
+void DLLEXPORT cacheCodesSign(int alphaTreeId, int cacheId, const char* signName, const char* codes, int codesNum){
+    AlphaForest::getAlphaforest()->cacheSign(alphaTreeId, cacheId, signName, codes, codesNum);
 }
 
-void DLLEXPORT getBag(const char* codes, int stockSize, const char* feature, const char* signName, int dayBefore, int sampleSize, int bagNum, float* bags){
-    int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
-    AlphaForest::getAlphaforest()->decode(alphatreeId,"sign",feature);
-    size_t signNum = AlphaForest::getAlphaforest()->getAlphaDataBase()->getSignNum(dayBefore, sampleSize, signName);
-    AlphaSignIterator asi(AlphaForest::getAlphaforest(), "sign", signName, alphatreeId, dayBefore, sampleSize, 0, signNum);
-    getBags(&asi, bags, bagNum);
-    AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
+/*
+ * 计算在某个信号过滤之下，alphatree的所有公式
+ * alphaTreeId：需要计算的alphatree
+ * cacheId：分配给alphatree用来存放中间结果的缓存
+ * dayBefore：计算多少天前的数据
+ * sampleSize：计算多少天的数据
+ * startIndex：信号中有很多数据，从第几条开始计算
+ * signNum：一共计算多少条数据
+ * signHistoryDays：同时计算信号发生前多少天的数据
+ * signName：信号名
+ *
+ * 注意，经过计算后，getAlpha的到的数据结构就是：
+ * 第1天：[信号1的数据计算结果，信号2的数据计算结果，...],第2天：[信号1的数据计算结果，信号2的数据计算结果，...],...第signHistoryDays天[...]
+ * */
+void DLLEXPORT calSignAlpha(int alphaTreeId, int cacheId, int dayBefore, int sampleSize, int startIndex, int signNum, int signHistoryDays, const char* signName){
+    AlphaForest::getAlphaforest()->calAlpha(alphaTreeId, cacheId, dayBefore, sampleSize, startIndex, signNum, signHistoryDays, signName);
 }
 
-//draw graph------------------------------------------------------
-void DLLEXPORT initializeAlphaGraph(){
-    AlphaGraph::initialize(AlphaForest::getAlphaforest());
+//将信号加载到内存
+void DLLEXPORT loadSign(const char* signName){
+    AlphaForest::getAlphaforest()->getAlphaDataBase()->loadSign(signName);
+}
+
+//从内存中卸载所有信号
+void DLLEXPORT releaseAllSign(){
+    AlphaForest::getAlphaforest()->getAlphaDataBase()->releaseAllSign();
+}
+
+/*
+ * 得到信号数量
+ * dayBefore：计算多少天前的数据
+ * sampleSize：计算多少天的数据
+ * */
+int DLLEXPORT getSignNum(int dayBefore, int sampleSize, const char* signName){
+    return AlphaForest::getAlphaforest()->getAlphaDataBase()->getSignNum(dayBefore, sampleSize, signName);
 }
 
 
-int DLLEXPORT useAlphaPic(const char* signName, const char* features, int featureSize, int dayBefore, int sampleSize){
-    return AlphaGraph::getAlphaGraph()->useAlphaPic(signName, features, featureSize, dayBefore, sampleSize);
+//得到所有股票代码，并返回数量
+int DLLEXPORT getStockCodes(char *codes) {
+    return AlphaForest::getAlphaforest()->getAlphaDataBase()->getStockCodes(codes);
 }
 
-void DLLEXPORT getKLinePic(int picId, const char* signName, const char* openElements, const char* highElements, const char* lowElements, const char* closeElements, int elementNum, int dayBefore, int sampleSize, float* outPic, int column, float maxStdScale){
-    AlphaGraph::getAlphaGraph()->getKLinePic(picId, signName, openElements, highElements, lowElements, closeElements, elementNum, dayBefore, sampleSize, outPic, column, maxStdScale);
+//得到某段时间发出信号的股票id
+int DLLEXPORT getStockIds(int dayBefore, int sampleSize, const char* signName, int* dst){
+    return AlphaForest::getAlphaforest()->getAlphaDataBase()->getStockIds(dayBefore, sampleSize, signName, dst);
 }
 
-void DLLEXPORT getTrendPic(int picId, const char* signName, const char* elements, int elementNum, int dayBefore, int sampleSize, float* outPic, int column, float maxStdScale){
-    AlphaGraph::getAlphaGraph()->getTrendPic(picId, signName, elements, elementNum, dayBefore, sampleSize, outPic, column, maxStdScale);
+//得到股票id对应的股票代码
+int DLLEXPORT getCode(int id, char* codes){
+    strcpy(codes, AlphaForest::getAlphaforest()->getAlphaDataBase()->getCode(id));
+    return strlen(codes);
 }
 
-void DLLEXPORT releaseAlphaPic(int id){
-    AlphaGraph::getAlphaGraph()->releaseAlphaPic(id);
+//得到所有市场的股票代码，比如上证就是0000001
+int DLLEXPORT getMarketCodes(const char *marketName, char *codes) {
+    return AlphaForest::getAlphaforest()->getAlphaDataBase()->getMarketCodes(marketName, codes);
 }
 
-void DLLEXPORT releaseAlphaGraph(){
-    AlphaGraph::release();
+//得到所有行业的股票代码
+int DLLEXPORT getIndustryCodes(const char *industryName, char *codes) {
+    return AlphaForest::getAlphaforest()->getAlphaDataBase()->getIndustryCodes(industryName, codes);
 }
 
+//得到某个alphatree计算时最多使用的历史数据天数
+int DLLEXPORT getMaxHistoryDays(int alphaTreeId) { return AlphaForest::getAlphaforest()->getMaxHistoryDays(alphaTreeId); }
+
+//得到所有交易日的数量
+int DLLEXPORT getAllDays(){ return AlphaForest::getAlphaforest()->getAlphaDataBase()->getDays();}
+
+
+//void DLLEXPORT getBag(const char* codes, int stockSize, const char* feature, const char* signName, int dayBefore, int sampleSize, int bagNum, float* bags){
+//    int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
+//    AlphaForest::getAlphaforest()->decode(alphatreeId,"sign",feature);
+//    size_t signNum = AlphaForest::getAlphaforest()->getAlphaDataBase()->getSignNum(dayBefore, sampleSize, signName);
+//    AlphaSignIterator asi(AlphaForest::getAlphaforest(), "sign", signName, alphatreeId, dayBefore, sampleSize, 0, signNum);
+//    getBags(&asi, bags, bagNum);
+//    AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
+//}
+
+/*
+ * 得到某个信号下，a、b两个特征的相关性
+ * daybefore：使用多少天前的数据
+ * sampleSize：计算相关性使用的天数
+ * sampleTime：一共计算多少次（使用相关性最大的一次作为结果）
+ * 比如：
+ * sampleSize=128，sampleTime=2，表示第一个128天计算一个相关性，往前推128天后再计算第二个128天的相关性，返回最大的那个
+ * */
 float DLLEXPORT getCorrelation(const char* signName, const char* a, const char* b, int daybefore, int sampleSize, int sampleTime){
     AlphaForest* af = AlphaForest::getAlphaforest();
     int aId = af->useAlphaTree();
@@ -230,10 +285,13 @@ float DLLEXPORT getCorrelation(const char* signName, const char* a, const char* 
     af->decode(aId, "t", a);
     af->decode(bId, "t", b);
 
+    int signNum = af->getAlphaDataBase()->getSignNum(daybefore , sampleSize * sampleTime, signName);
+    int dataNum = signNum / sampleTime;
+
     float corr = 0;
     for(int i = 0; i < sampleTime; ++i){
-        AlphaSignIterator afeature(af, "t", signName, aId, daybefore + i * sampleSize, sampleSize, 0, af->getAlphaDataBase()->getSignNum(daybefore + i * sampleSize, sampleSize, signName));
-        AlphaSignIterator bfeature(af, "t", signName, bId, daybefore + i * sampleSize, sampleSize, 0, af->getAlphaDataBase()->getSignNum(daybefore + i * sampleSize, sampleSize, signName));
+        AlphaSignIterator afeature(af, "t", signName, aId, daybefore, sampleSize * sampleTime, i * dataNum, dataNum);
+        AlphaSignIterator bfeature(af, "t", signName, bId, daybefore, sampleSize * sampleTime, i * dataNum, dataNum);
 
         float curCorr = AlphaSignIterator::getCorrelation(&afeature, &bfeature);
         //cout<<curCorr<<"/"<<corr<<endl;
@@ -248,20 +306,30 @@ float DLLEXPORT getCorrelation(const char* signName, const char* a, const char* 
     return corr;
 }
 
-float DLLEXPORT getDistinguish(const char* signName, const char* feature, const char* target, int daybefore, int sampleSize, int sampleTime){
+/*
+ * 计算某个信号下(signName)，某个特征(feature)对于某个分类(target)的区分度
+ * daybefore：使用多少天前的数据
+ * sampleSize：计算相关性使用的天数
+ * sampleTime：一共计算多少次（使用贡献度第allowFailTime小的一次作为结果）
+ * allowFailTime：选择第几小的数据作为返回
+ * 比如：
+ * sampleSize=128，sampleTime=2，表示第一个128天计算一个贡献度，往前推128天后再计算第二个128天的贡献度
+ * */
+float DLLEXPORT getDistinguish(const char* signName, const char* feature, const char* target, int daybefore, int sampleSize, int sampleTime, int allowFailTime){
     AlphaForest* af = AlphaForest::getAlphaforest();
     int alphatreeId = af->useAlphaTree();
     int targetId = af->useAlphaTree();
 
     af->decode(alphatreeId, "t", feature);
     af->decode(targetId, "t", target);
-    float distinguish = AlphaSignIterator::getDistinguish(af, signName, alphatreeId, targetId, daybefore, sampleSize, sampleTime);
+    float distinguish = AlphaSignIterator::getDistinguish(af, signName, alphatreeId, targetId, daybefore, sampleSize, sampleTime, allowFailTime);
     af->releaseAlphaTree(alphatreeId);
     af->releaseAlphaTree(targetId);
     return distinguish;
 }
 
-int DLLEXPORT optimizeDistinguish(const char* signName, const char* feature, const char* target, int daybefore, int sampleSize, int sampleTime,  char* outFeature, int maxHistoryDays = 75, float exploteRatio = 0.1f, int errTryTime = 64){
+//优化feature中的参数，使得贡献度最大
+int DLLEXPORT optimizeDistinguish(const char* signName, const char* feature, const char* target, int daybefore, int sampleSize, int sampleTime, int allowFailTime,  char* outFeature, int maxHistoryDays = 75, float exploteRatio = 0.1f, int errTryTime = 64){
     AlphaForest* af = AlphaForest::getAlphaforest();
     int alphatreeId = af->useAlphaTree();
     auto* alphatree = af->getAlphaTree(alphatreeId);
@@ -274,7 +342,9 @@ int DLLEXPORT optimizeDistinguish(const char* signName, const char* feature, con
         bestCoffList[i] = alphatree->getCoff(i);
     }
 
-    float bestRes = AlphaSignIterator::getDistinguish(af, signName, alphatreeId, targetId, daybefore, sampleSize, sampleTime);
+    float bestResL = AlphaSignIterator::getDistinguish(af, signName, alphatreeId, targetId, daybefore, sampleSize, sampleTime, allowFailTime);
+    float bestResR = AlphaSignIterator::getDistinguish(af, signName, alphatreeId, targetId, daybefore + sampleSize / 2, sampleSize, sampleTime, allowFailTime);
+    float bestRes = min(bestResL, bestResR);
 
     if(alphatree->getCoffSize() > 0){
         RandomChoose rc = RandomChoose(2 * alphatree->getCoffSize());
@@ -319,7 +389,9 @@ int DLLEXPORT optimizeDistinguish(const char* signName, const char* feature, con
 
             }
 
-            float res = AlphaSignIterator::getDistinguish(af, signName, alphatreeId, targetId, daybefore, sampleSize, sampleTime);
+            float resL = AlphaSignIterator::getDistinguish(af, signName, alphatreeId, targetId, daybefore, sampleSize, sampleTime, allowFailTime);
+            float resR = AlphaSignIterator::getDistinguish(af, signName, alphatreeId, targetId, daybefore + sampleSize / 2, sampleSize, sampleTime, allowFailTime);
+            float res = min(resL, resR);
 
             if(res > bestRes){
                 //cout<<"best res "<<res<<endl;
@@ -355,6 +427,7 @@ int DLLEXPORT optimizeDistinguish(const char* signName, const char* feature, con
     return strlen(outFeature);
 }
 
+/*
 float DLLEXPORT getConfidence(const char* signName, const char* feature, const char* target, int daybefore, int sampleSize, int sampleTime, float support, float stdScale){
     AlphaForest* af = AlphaForest::getAlphaforest();
     int alphatreeId = af->useAlphaTree();
@@ -459,7 +532,9 @@ int DLLEXPORT optimizeConfidence(const char* signName, const char* feature, cons
     af->releaseAlphaTree(targetId);
     return strlen(outFeature);
 }
+*/
 
+//将xgboost集成进来，由于老大坚持用第三方xgb，所以暂时没用，不过是可用的，并已经测试过------------------------------------------------------------------------
 #ifdef ML
 void DLLEXPORT initializeAlphaGBDT(const char* alphatreeList, int alphatreeNum, float gamma, float lambda, int threadNum, const char* lossFunName = "binary:logistic") {
     AlphaGBDT::initialize(AlphaForest::getAlphaforest(), alphatreeList, alphatreeNum, gamma, lambda, threadNum, lossFunName);
@@ -512,32 +587,5 @@ int DLLEXPORT alphaGBDT2String(char* pout){
     return AlphaGBDT::getAlphaGBDT()->tostring(pout);
 }
 
-//void DLLEXPORT initializeAlphaFilter(const char *alphatreeList, const int* alphatreeFlag,  int alphatreeNum, const char *target, const char *open){
-//    AlphaFilter::initialize(AlphaForest::getAlphaforest(), alphatreeList, alphatreeFlag, alphatreeNum, target, open);
-//}
-//
-//void DLLEXPORT releaseAlphaFilter(){
-//    AlphaFilter::release();
-//}
-//
-//void DLLEXPORT trainAlphaFilter(const char* signName, int daybefore, int sampleSize, int sampleTime, float support, float confidence, float firstHeroConfidence, float secondHeroConfidence){
-//    AlphaFilter::getAlphaFilter()->train(signName, daybefore, sampleSize, sampleTime, support, confidence, firstHeroConfidence, secondHeroConfidence);
-//}
-//
-//int DLLEXPORT predAlphaFilter(const char* signName, int daybefore, int sampleSize, float* predOut, float* openMinValue, float* openMaxValue){
-//    return AlphaFilter::getAlphaFilter()->pred(signName, daybefore, sampleSize, predOut, openMinValue, openMaxValue);
-//}
-//
-//void DLLEXPORT saveFilterModel(const char* path){
-//    AlphaFilter::getAlphaFilter()->saveModel(path);
-//}
-//
-//void DLLEXPORT loadFilterModel(const char* path){
-//    AlphaFilter::getAlphaFilter()->loadModel(path);
-//}
-//
-//int DLLEXPORT alphaFilter2String(char* pout){
-//    return AlphaFilter::getAlphaFilter()->tostring(pout);
-//}
 #endif
 }

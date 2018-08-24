@@ -483,13 +483,13 @@ public:
         return getAlpha(getSubtreeRootId(rootName), cache);
     }
 
-    const float *getAlphaSum(const char *rootName, AlphaCache *cache){
-        return getAlphaSum(getSubtreeRootId(rootName), cache);
-    }
-
-    void getAlphaSmooth(const char *rootName, AlphaCache *cache, int smoothNum, float* smooth){
-        return getAlphaSmooth(getSubtreeRootId(rootName), cache, smoothNum, smooth);
-    }
+//    const float *getAlphaSum(const char *rootName, AlphaCache *cache){
+//        return getAlphaSum(getSubtreeRootId(rootName), cache);
+//    }
+//
+//    void getAlphaSmooth(const char *rootName, AlphaCache *cache, int smoothNum, float* smooth){
+//        return getAlphaSmooth(getSubtreeRootId(rootName), cache, smoothNum, smooth);
+//    }
 
 //    const char *getProcess(const char *rootName, AlphaCache *cache) {
 //        return getProcess(getSubtreeRootId(rootName), cache);
@@ -504,7 +504,7 @@ public:
     }
 
     //读取alpha的累加和平方累加
-    float* getAlphaSum(int nodeId, AlphaCache *cache){
+    /*float* getAlphaSum(int nodeId, AlphaCache *cache){
         float *alpha = getAlpha(nodeId, cache);
         float sum = 0;
         float sqrSum = 0;
@@ -521,11 +521,8 @@ public:
     void getAlphaSmooth(int nodeId, AlphaCache *cache, int smoothNum, float* smooth){
         getAlphaSmooth(nodeId,cache, smoothNum, smooth, true);
         getAlphaSmooth(nodeId,cache,smoothNum,smooth + smoothNum, false);
-    }
+    }*/
 
-//    const char *getProcess(int nodeId, AlphaCache *cache) {
-//        return cache->getMemort<char>(cache->nodeRes[nodeId].get());
-//    }
 
     static const float *getAlpha(const float *res, size_t sampleIndex, size_t stockSize) {
         return res + (sampleIndex * stockSize);
@@ -605,6 +602,7 @@ protected:
             //如果是变量，不需要初始化
             if(!nodeList_[nodeId].isEmpty()){
                 if(cache->isSign()){
+                    //cout<<cache->dayBefore<<" "<<getMaxHistoryDays()<<" "<<getMaxFutureDays()<<" "<<cache->getAlphaDays()<<endl;
                     alphaDataBase->getStock(cache->dayBefore,
                                             getMaxHistoryDays(),
                                             getMaxFutureDays(),

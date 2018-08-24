@@ -5,8 +5,8 @@
 #ifndef ALPHATREE_HMMBASE_H
 #define ALPHATREE_HMMBASE_H
 
-#include "../base/matrix.h"
-#include "../base/vector.h"
+#include "matrix.h"
+#include "vector.h"
 
 class HMMModel {
 public:

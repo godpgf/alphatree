@@ -52,6 +52,7 @@ class AlphaDB{
             cache_->miss2file();
         }
 
+        /*
         void boolhmm2binary(const char* featureName, int hideStateNum, size_t seqLength, const char* codes, int codesNum, int epochNum = 8){
             bool* stockFlag = nullptr;
             if(codes != nullptr){
@@ -61,7 +62,7 @@ class AlphaDB{
             cache_->boolhmm2binary(featureName, hideStateNum, seqLength, stockFlag, epochNum);
             if(stockFlag != nullptr)
                 delete []stockFlag;
-        }
+        }*/
 
         size_t getAllCodes(char* codes){
             char* curCode = codes;

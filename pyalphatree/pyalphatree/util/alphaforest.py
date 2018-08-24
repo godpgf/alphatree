@@ -2,7 +2,6 @@
 # author=godpgf
 from ctypes import *
 from pyalphatree.libalphatree import alphatree
-from stdb import *
 import numpy as np
 import math
 import json
@@ -11,7 +10,7 @@ import json
 class AlphaForest(object):
     def __init__(self, cache_size=4, max_stock_num=4096, max_day_num=4096, max_feature_size=2048):
         alphatree.initializeAlphaforest(cache_size)
-        alphatree.initializeAlphaGraph()
+        # alphatree.initializeAlphaGraph()
 
         self.code_cache = (c_char * (max_stock_num * 64))()
         self.cur_stock_size = 0
@@ -34,7 +33,7 @@ class AlphaForest(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        alphatree.releaseAlphaGraph()
+        # alphatree.releaseAlphaGraph()
         alphatree.releaseAlphaforest()
 
 
@@ -127,15 +126,15 @@ class AlphaForest(object):
         self.cur_stock_size = len(codes)
         self._write_codes(codes)
 
-    def process_alpha(self, line, daybefore, sample_size, sign_name):
-        alphatree_id = alphatree.createAlphatree()
-        alphatree.decodeAlphatree(alphatree_id, c_char_p(b"_process"), c_char_p(line.encode('utf-8')))
-        cache_id = alphatree.useCache()
-        alphatree.calSignAlpha(alphatree_id, cache_id, daybefore, sample_size, 0, self.get_sign_num(daybefore, sample_size, sign_name), 1, c_char_p(sign_name.encode('utf-8')))
-        alphatree.getAlpha(alphatree_id, c_char_p(b"_process"), cache_id, self.alpha_cache)
-        alphatree.releaseAlphatree(alphatree_id)
-        alphatree.releaseCache(cache_id)
-        return self.alpha_cache[0]
+    # def process_alpha(self, line, daybefore, sample_size, sign_name):
+    #     alphatree_id = alphatree.createAlphatree()
+    #     alphatree.decodeAlphatree(alphatree_id, c_char_p(b"_process"), c_char_p(line.encode('utf-8')))
+    #     cache_id = alphatree.useCache()
+    #     alphatree.calSignAlpha(alphatree_id, cache_id, daybefore, sample_size, 0, self.get_sign_num(daybefore, sample_size, sign_name), 1, c_char_p(sign_name.encode('utf-8')))
+    #     alphatree.getAlpha(alphatree_id, c_char_p(b"_process"), cache_id, self.alpha_cache)
+    #     alphatree.releaseAlphatree(alphatree_id)
+    #     alphatree.releaseCache(cache_id)
+    #     return self.alpha_cache[0]
 
     def create_alphatree(self):
         return alphatree.createAlphatree()
@@ -171,10 +170,10 @@ class AlphaForest(object):
         return alphatree.getSignNum(day_before, sample_days, c_char_p(sign_name.encode('utf-8')))
 
 
-    def cache_bool_hmm(self, feature_name, codes, hide_state_num = 3, seq_len = 750, epoch_num = 64):
-        stock_size = len(codes)
-        self._write_codes(codes)
-        alphatree.cacheBoolHMM(c_char_p(feature_name.encode('utf-8')), hide_state_num, seq_len, self.code_cache, stock_size, epoch_num)
+    # def cache_bool_hmm(self, feature_name, codes, hide_state_num = 3, seq_len = 750, epoch_num = 64):
+    #     stock_size = len(codes)
+    #     self._write_codes(codes)
+    #     alphatree.cacheBoolHMM(c_char_p(feature_name.encode('utf-8')), hide_state_num, seq_len, self.code_cache, stock_size, epoch_num)
 
 
     def cal_alpha(self, alphatree_id, cache_id, daybefore, sample_size, codes):
@@ -197,54 +196,54 @@ class AlphaForest(object):
         stock_size = data_size / sample_size
         return self._read_alpha(sample_size, stock_size)
 
-    def get_returns(self, codes, daybefore, sample_size, buysign_list, sellsign_list, max_return, max_drawdown, max_holdday, price = "close"):
-        stock_size = len(codes)
-        self._write_codes(codes)
-        alphatree.getReturns(self.code_cache, stock_size, daybefore, sample_size, self.alphalist2char(buysign_list), len(buysign_list), self.alphalist2char(sellsign_list), len(sellsign_list), c_float(max_return), c_float(max_drawdown), c_int32(max_holdday), self.alpha_cache, c_char_p(price.encode('utf-8')))
-        returns = []
-        for i in range(sample_size):
-            returns.append(self.alpha_cache[i])
-        return np.array(returns)
+    # def get_returns(self, codes, daybefore, sample_size, buysign_list, sellsign_list, max_return, max_drawdown, max_holdday, price = "close"):
+    #     stock_size = len(codes)
+    #     self._write_codes(codes)
+    #     alphatree.getReturns(self.code_cache, stock_size, daybefore, sample_size, self.alphalist2char(buysign_list), len(buysign_list), self.alphalist2char(sellsign_list), len(sellsign_list), c_float(max_return), c_float(max_drawdown), c_int32(max_holdday), self.alpha_cache, c_char_p(price.encode('utf-8')))
+    #     returns = []
+    #     for i in range(sample_size):
+    #         returns.append(self.alpha_cache[i])
+    #     return np.array(returns)
 
-    def get_bag(self, codes, daybefore, sample_size, bag_size, sign_name, feature_name):
-        stock_size = len(codes)
-        self._write_codes(codes)
-        alphatree.getBag(self.code_cache, stock_size, c_char_p(feature_name.encode()), c_char_p(sign_name.encode()), c_int32(daybefore), c_int32(sample_size), c_int32(bag_size), self.alpha_cache)
-        bags = []
-        for i in range(bag_size):
-            bags.append(self.alpha_cache[i])
-        return np.array(bags)
+    # def get_bag(self, codes, daybefore, sample_size, bag_size, sign_name, feature_name):
+    #     stock_size = len(codes)
+    #     self._write_codes(codes)
+    #     alphatree.getBag(self.code_cache, stock_size, c_char_p(feature_name.encode()), c_char_p(sign_name.encode()), c_int32(daybefore), c_int32(sample_size), c_int32(bag_size), self.alpha_cache)
+    #     bags = []
+    #     for i in range(bag_size):
+    #         bags.append(self.alpha_cache[i])
+    #     return np.array(bags)
 
-    def get_node_alpha(self, alphatree_id, node_id, cache_id, sample_size):
-        data_size = alphatree.getNodeAlpha(alphatree_id, node_id, cache_id, sample_size)
-        stock_size = data_size / sample_size
-        return self._read_alpha(sample_size, stock_size)
+    # def get_node_alpha(self, alphatree_id, node_id, cache_id, sample_size):
+    #     data_size = alphatree.getNodeAlpha(alphatree_id, node_id, cache_id, sample_size)
+    #     stock_size = data_size / sample_size
+    #     return self._read_alpha(sample_size, stock_size)
 
     #def process_alpha(self, alphatree_id, cache_id):
     #    alphatree.processAlpha(alphatree_id, cache_id)
 
-    def get_process(self, alphatree_id, process_name, cache_id):
-        alphatree.getRootProcess(alphatree_id, c_char_p(process_name.encode('utf-8')), cache_id, self.process_cache)
-        return self._read_str(self.process_cache)
+    # def get_process(self, alphatree_id, process_name, cache_id):
+    #     alphatree.getRootProcess(alphatree_id, c_char_p(process_name.encode('utf-8')), cache_id, self.process_cache)
+    #     return self._read_str(self.process_cache)
 
-    def get_distinguish(self, sign_name, feature, target, daybefore, sample_size, sample_time):
-        return alphatree.getDistinguish(c_char_p(sign_name.encode()), c_char_p(feature.encode()), c_char_p(target.encode()), daybefore, sample_size, sample_time)
+    def get_distinguish(self, sign_name, feature, target, daybefore, sample_size, sample_time, allow_fail_time = 2):
+        return alphatree.getDistinguish(c_char_p(sign_name.encode()), c_char_p(feature.encode()), c_char_p(target.encode()), daybefore, sample_size, sample_time, allow_fail_time)
 
-    def get_confidence(self, sign_name, feature, target, daybefore, sample_size, sample_time, support, std_scale = 2.0):
-        return alphatree.getConfidence(c_char_p(sign_name.encode()), c_char_p(feature.encode()), c_char_p(target.encode()), daybefore, sample_size, sample_time, c_float(support), c_float(std_scale))
+    # def get_confidence(self, sign_name, feature, target, daybefore, sample_size, sample_time, support, std_scale = 2.0):
+    #     return alphatree.getConfidence(c_char_p(sign_name.encode()), c_char_p(feature.encode()), c_char_p(target.encode()), daybefore, sample_size, sample_time, c_float(support), c_float(std_scale))
 
     def get_correlation(self, sign_name, a, b, daybefore, sample_size, sample_time):
         return alphatree.getCorrelation(c_char_p(sign_name.encode()), c_char_p(a.encode()), c_char_p(b.encode()), daybefore, sample_size, sample_time)
 
-    def optimize_distinguish(self, sign_name, feature, target, daybefore, sample_size, sample_time, max_history_days = 75, explote_ratio = 0.1, err_try_time = 64):
-        str_len = alphatree.optimizeDistinguish(c_char_p(sign_name.encode()), c_char_p(feature.encode()), c_char_p(target.encode()), daybefore, sample_size, sample_time, self.encode_cache, c_int32(max_history_days), c_float(explote_ratio), c_int32(err_try_time))
+    def optimize_distinguish(self, sign_name, feature, target, daybefore, sample_size, sample_time, allow_fail_time = 2, max_history_days = 75, explote_ratio = 0.1, err_try_time = 64):
+        str_len = alphatree.optimizeDistinguish(c_char_p(sign_name.encode()), c_char_p(feature.encode()), c_char_p(target.encode()), daybefore, sample_size, sample_time, allow_fail_time, self.encode_cache, c_int32(max_history_days), c_float(explote_ratio), c_int32(err_try_time))
         str_list = [self.encode_cache[i].decode() for i in range(str_len)]
         return "".join(str_list)
 
-    def optimize_confidence(self, sign_name, feature, target, daybefore, sample_size, sample_time, support, std_scale = 2.0, explote_ratio = 0.1, err_try_time = 64):
-        str_len = alphatree.optimizeConfidence(c_char_p(sign_name.encode()), c_char_p(feature.encode()), c_char_p(target.encode()), daybefore, sample_size, sample_time, c_float(support), c_float(std_scale), self.encode_cache, c_float(explote_ratio), c_int32(err_try_time))
-        str_list = [self.encode_cache[i].decode() for i in range(str_len)]
-        return "".join(str_list)
+    # def optimize_confidence(self, sign_name, feature, target, daybefore, sample_size, sample_time, support, std_scale = 2.0, explote_ratio = 0.1, err_try_time = 64):
+    #     str_len = alphatree.optimizeConfidence(c_char_p(sign_name.encode()), c_char_p(feature.encode()), c_char_p(target.encode()), daybefore, sample_size, sample_time, c_float(support), c_float(std_scale), self.encode_cache, c_float(explote_ratio), c_int32(err_try_time))
+    #     str_list = [self.encode_cache[i].decode() for i in range(str_len)]
+    #     return "".join(str_list)
 
     def _read_alpha(self, sample_size, stock_size):
         alpha_list = list()

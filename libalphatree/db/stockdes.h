@@ -69,6 +69,7 @@ public:
             //cout<<market<<market.length()<<industry<<industry.length()<<endl;
             if(market.length() != 0 && industry.length() == 0){
                 sm.stockType = StockMeta::StockType::MARKET;
+                strcpy(sm.marker, market.c_str());
             } else {
                 if(market.length() == 0 && industry.length() != 0){
                     sm.stockType = StockMeta::StockType::INDUSTRY;
