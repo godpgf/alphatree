@@ -66,7 +66,7 @@ public:
 			//godpgf
 			//cout << code << " " << sm.days << endl;
             //offset += sm.days;
-            //cout<<market<<market.length()<<industry<<industry.length()<<endl;
+            //cout<<market<<" "<<market.length()<<" "<<industry<<" "<<industry.length()<<endl;
             if(market.length() != 0 && industry.length() == 0){
                 sm.stockType = StockMeta::StockType::MARKET;
                 strcpy(sm.marker, market.c_str());
@@ -79,7 +79,7 @@ public:
                     strcpy(sm.industry, industry.c_str());
                 }
             }
-
+            //cout<<sm.code<<" "<<(int)sm.stockType<<endl;
             stockMetas[sm.code] = sm;
         }
 
