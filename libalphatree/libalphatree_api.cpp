@@ -5,6 +5,7 @@
 #define ML
 
 #include "alphaforest.h"
+#include "alphabi.h"
 #include <iostream>
 
 #ifdef ML
@@ -31,10 +32,12 @@ extern "C"
  */
 void DLLEXPORT initializeAlphaforest(int cacheSize) {
     AlphaForest::initialize(cacheSize);
+    AlphaBI::initialize();
 }
 
 
 void DLLEXPORT releaseAlphaforest() {
+    AlphaBI::release();
     AlphaForest::release();
 }
 
@@ -62,6 +65,13 @@ void DLLEXPORT csv2binary(const char *path, const char* featureName){
  * */
 void DLLEXPORT cacheMiss(){
     AlphaForest::getAlphaforest()->getAlphaDataBase()->miss2binary();
+}
+
+/*
+ * 每个股票每天的数据分配一个随机数，用来取样
+ * */
+void DLLEXPORT cacheRand(){
+    AlphaForest::getAlphaforest()->getAlphaDataBase()->rand2binary();
 }
 
 /*
@@ -270,6 +280,7 @@ int DLLEXPORT getAllDays(){ return AlphaForest::getAlphaforest()->getAlphaDataBa
 //    AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
 //}
 
+
 /*
  * 得到某个信号下，a、b两个特征的相关性
  * daybefore：使用多少天前的数据
@@ -279,31 +290,7 @@ int DLLEXPORT getAllDays(){ return AlphaForest::getAlphaforest()->getAlphaDataBa
  * sampleSize=128，sampleTime=2，表示第一个128天计算一个相关性，往前推128天后再计算第二个128天的相关性，返回最大的那个
  * */
 float DLLEXPORT getCorrelation(const char* signName, const char* a, const char* b, int daybefore, int sampleSize, int sampleTime){
-    AlphaForest* af = AlphaForest::getAlphaforest();
-    int aId = af->useAlphaTree();
-    int bId = af->useAlphaTree();
-    af->decode(aId, "t", a);
-    af->decode(bId, "t", b);
-
-    int signNum = af->getAlphaDataBase()->getSignNum(daybefore , sampleSize * sampleTime, signName);
-    int dataNum = signNum / sampleTime;
-
-    float corr = 0;
-    for(int i = 0; i < sampleTime; ++i){
-        AlphaSignIterator afeature(af, "t", signName, aId, daybefore, sampleSize * sampleTime, i * dataNum, dataNum);
-        AlphaSignIterator bfeature(af, "t", signName, bId, daybefore, sampleSize * sampleTime, i * dataNum, dataNum);
-
-        float curCorr = AlphaSignIterator::getCorrelation(&afeature, &bfeature);
-        //cout<<curCorr<<"/"<<corr<<endl;
-        if(fabsf(curCorr) > fabsf(corr)){
-            corr = curCorr;
-        }
-    }
-
-    af->releaseAlphaTree(aId);
-    af->releaseAlphaTree(bId);
-    //cout<<endl;
-    return corr;
+    return AlphaBI::getAlphaBI()->getCorrelation(signName, a, b, daybefore, sampleSize, sampleTime);
 }
 
 /*
@@ -315,116 +302,13 @@ float DLLEXPORT getCorrelation(const char* signName, const char* a, const char* 
  * 比如：
  * sampleSize=128，sampleTime=2，表示第一个128天计算一个贡献度，往前推128天后再计算第二个128天的贡献度
  * */
-float DLLEXPORT getDistinguish(const char* signName, const char* feature, const char* target, int daybefore, int sampleSize, int sampleTime, int allowFailTime){
-    AlphaForest* af = AlphaForest::getAlphaforest();
-    int alphatreeId = af->useAlphaTree();
-    int targetId = af->useAlphaTree();
-
-    af->decode(alphatreeId, "t", feature);
-    af->decode(targetId, "t", target);
-    float distinguish = AlphaSignIterator::getDistinguish(af, signName, alphatreeId, targetId, daybefore, sampleSize, sampleTime, allowFailTime);
-    af->releaseAlphaTree(alphatreeId);
-    af->releaseAlphaTree(targetId);
-    return distinguish;
+float DLLEXPORT getDiscrimination(const char* signName, const char* feature, const char* target, int daybefore, int sampleSize, int sampleTime, float support){
+    return AlphaBI::getAlphaBI()->getDiscrimination(signName, feature, target, daybefore, sampleSize, sampleTime, support);
 }
 
 //优化feature中的参数，使得贡献度最大
-int DLLEXPORT optimizeDistinguish(const char* signName, const char* feature, const char* target, int daybefore, int sampleSize, int sampleTime, int allowFailTime,  char* outFeature, int maxHistoryDays = 75, float exploteRatio = 0.1f, int errTryTime = 64){
-    AlphaForest* af = AlphaForest::getAlphaforest();
-    int alphatreeId = af->useAlphaTree();
-    auto* alphatree = af->getAlphaTree(alphatreeId);
-    int targetId = af->useAlphaTree();
-    af->decode(alphatreeId, "t", feature);
-    af->decode(targetId, "t", target);
-
-    float* bestCoffList = new float[alphatree->getCoffSize()];
-    for(int i = 0; i < alphatree->getCoffSize(); ++i){
-        bestCoffList[i] = alphatree->getCoff(i);
-    }
-
-    float bestResL = AlphaSignIterator::getDistinguish(af, signName, alphatreeId, targetId, daybefore, sampleSize, sampleTime, allowFailTime);
-    float bestResR = AlphaSignIterator::getDistinguish(af, signName, alphatreeId, targetId, daybefore + sampleSize / 2, sampleSize, sampleTime, allowFailTime);
-    float bestRes = min(bestResL, bestResR);
-
-    if(alphatree->getCoffSize() > 0){
-        RandomChoose rc = RandomChoose(2 * alphatree->getCoffSize());
-
-        auto curErrTryTime = errTryTime;
-        while (curErrTryTime > 0){
-            //修改参数
-            float lastCoffValue = NAN;
-            int curIndex = 0;
-            bool isAdd = false;
-            while(isnan(lastCoffValue)){
-                curIndex = rc.choose();
-                isAdd = curIndex < alphatree->getCoffSize();
-                curIndex = curIndex % alphatree->getCoffSize();
-                if(isAdd && alphatree->getCoff(curIndex) < alphatree->getMaxCoff(curIndex)){
-                    lastCoffValue = alphatree->getCoff(curIndex);
-                    float curCoff = lastCoffValue;
-                    if(alphatree->getCoffUnit(curIndex) == CoffUnit::COFF_VAR){
-                        curCoff += 0.016f;
-                    } else {
-                        curCoff += 1.f;
-                    }
-                    alphatree->setCoff(curIndex, std::min(curCoff, alphatree->getMaxCoff(curIndex)));
-                    if(alphatree->getMaxHistoryDays() > maxHistoryDays){
-                        alphatree->setCoff(curIndex, lastCoffValue);
-                    }
-                }
-                if(!isAdd && alphatree->getCoff(curIndex) > alphatree->getMinCoff(curIndex)){
-                    lastCoffValue = alphatree->getCoff(curIndex);
-                    float curCoff = lastCoffValue;
-                    if(alphatree->getCoffUnit(curIndex) == CoffUnit::COFF_VAR){
-                        curCoff -= 0.016f;
-                    } else {
-                        curCoff -= 1;
-                    }
-                    alphatree->setCoff(curIndex, std::max(curCoff, alphatree->getMinCoff(curIndex)));
-                }
-                if(isnan(lastCoffValue)){
-                    curIndex = isAdd ? curIndex : alphatree->getCoffSize() + curIndex;
-                    rc.reduce(curIndex);
-                }
-
-            }
-
-            float resL = AlphaSignIterator::getDistinguish(af, signName, alphatreeId, targetId, daybefore, sampleSize, sampleTime, allowFailTime);
-            float resR = AlphaSignIterator::getDistinguish(af, signName, alphatreeId, targetId, daybefore + sampleSize / 2, sampleSize, sampleTime, allowFailTime);
-            float res = min(resL, resR);
-
-            if(res > bestRes){
-                //cout<<"best res "<<res<<endl;
-                curErrTryTime = errTryTime;
-                bestRes = res;
-                for(int i = 0; i < alphatree->getCoffSize(); ++i){
-                    bestCoffList[i] = alphatree->getCoff(i);
-                }
-                //根据当前情况决定调整该参数的概率
-                curIndex = isAdd ? curIndex : alphatree->getCoffSize() + curIndex;
-                rc.add(curIndex);
-            } else{
-                --curErrTryTime;
-                if(!rc.isExplote(exploteRatio)){
-                    //恢复现场
-                    alphatree->setCoff(curIndex, lastCoffValue);
-                }
-                curIndex = isAdd ? curIndex : alphatree->getCoffSize() + curIndex;
-                rc.reduce(curIndex);
-            }
-
-        }
-
-        for(int i = 0; i < alphatree->getCoffSize(); ++i){
-            alphatree->setCoff(i, bestCoffList[i]);
-        }
-    }
-    alphatree->encode("t", outFeature);
-
-    delete[] bestCoffList;
-    af->releaseAlphaTree(alphatreeId);
-    af->releaseAlphaTree(targetId);
-    return strlen(outFeature);
+int DLLEXPORT optimizeDiscrimination(const char* signName, const char* feature, const char* target, int daybefore, int sampleSize, int sampleTime, float support,  char* outFeature, int maxHistoryDays = 75, float exploteRatio = 0.1f, int errTryTime = 64){
+    return AlphaBI::getAlphaBI()->optimizeDiscrimination(signName, feature, target, daybefore, sampleSize, sampleTime, support, outFeature, maxHistoryDays, exploteRatio, errTryTime);
 }
 
 /*

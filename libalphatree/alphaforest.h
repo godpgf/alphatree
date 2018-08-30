@@ -479,6 +479,7 @@ public:
         return alphaTreeId_;
     }
 
+    /*
     static float getCorrelation(IBaseIterator<float>* a, IBaseIterator<float>* b){
         //计算当前股票的均值和方差
         double meanLeft = 0;
@@ -519,8 +520,9 @@ public:
             return 1;
         }
         return 1;
-    }
+    }*/
 
+    /*
     static float getDistinguish(AlphaForest* af, const char* signName, int alphatreeId, int targetId, int daybefore, int sampleSize, int sampleTime, int allowFailTime){
         Vector<double> avg(sampleTime);
         double curSum = 0;
@@ -668,7 +670,7 @@ public:
         target->skip(0, false);
         support = ((float)pred_cnt) / feature->size();
         confidence = ((float)right_cnt) / pred_cnt;
-    }
+    }*/
 
 
     /*

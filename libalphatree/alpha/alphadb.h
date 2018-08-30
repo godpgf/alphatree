@@ -52,6 +52,10 @@ class AlphaDB{
             cache_->miss2file();
         }
 
+        void rand2binary(){
+            cache_->rand2file();
+        }
+
         /*
         void boolhmm2binary(const char* featureName, int hideStateNum, size_t seqLength, const char* codes, int codesNum, int epochNum = 8){
             bool* stockFlag = nullptr;

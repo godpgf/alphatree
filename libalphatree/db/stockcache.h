@@ -670,6 +670,20 @@ protected:
         return path;
     }
 public:
+    //给每个股票数据分陪一个0到1的随机数
+    void rand2file(){
+        ofstream file;
+        file.open(feature2path_("rand"), ios::binary | ios::out);
+        for(int i = 0; i < des_->stockMetas.getSize(); ++i){
+            auto meta = des_->stockMetas[i];
+            for(int j = 0; j < meta.days; ++j){
+                float r = ((double)rand())/RAND_MAX;
+                file.write(reinterpret_cast< char* >( &r ), sizeof( float ));
+            }
+        }
+        file.close();
+    }
+
     //将缺失数据描述写入文件，如果当前数据前n天的数据都是完整的，文件中特征就是n，如果缺失了m天，特征就是-m。如果是首个元素就是0
     void miss2file(){
         StockFeature<int64_t> *date = date_ ? date_ : new StockFeature<int64_t>(feature2path_("date").c_str());

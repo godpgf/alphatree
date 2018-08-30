@@ -9,6 +9,6 @@ find_package(Threads REQUIRED)
 
 #set(SOURCE_FILES libalphatree/libalphatree_api.cpp libalphatree/alphaforest.h libalphatree/alphagbdt.h)
 #ADD_LIBRARY(alphatree ${SOURCE_FILES})
-set(SOURCE_FILES test.cpp libalphatree/alphaforest.h libalphatree/alphagbdt.h)
+set(SOURCE_FILES test.cpp libalphatree/alphaforest.h libalphatree/alphagbdt.h libalphatree/alphabi.h)
 ADD_EXECUTABLE(alphatree ${SOURCE_FILES})
 target_link_libraries(alphatree Threads::Threads)

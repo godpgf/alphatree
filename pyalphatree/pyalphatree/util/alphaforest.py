@@ -48,6 +48,10 @@ class AlphaForest(object):
     def cache_miss(self):
         alphatree.cacheMiss()
 
+    #每个股票每天数据分配随机数
+    def cache_rand(self):
+        alphatree.cacheRand()
+
     #将某个公式的计算结果保持在文件
     def cache_alpha(self, name, line):
         alphatree_id = self.create_alphatree()
@@ -226,8 +230,8 @@ class AlphaForest(object):
     #     alphatree.getRootProcess(alphatree_id, c_char_p(process_name.encode('utf-8')), cache_id, self.process_cache)
     #     return self._read_str(self.process_cache)
 
-    def get_distinguish(self, sign_name, feature, target, daybefore, sample_size, sample_time, allow_fail_time = 2):
-        return alphatree.getDistinguish(c_char_p(sign_name.encode()), c_char_p(feature.encode()), c_char_p(target.encode()), daybefore, sample_size, sample_time, allow_fail_time)
+    def get_discrimination(self, sign_name, feature, target, daybefore, sample_size, sample_time, support):
+        return alphatree.getDiscrimination(c_char_p(sign_name.encode()), c_char_p(feature.encode()), c_char_p(target.encode()), daybefore, sample_size, sample_time, c_float(support))
 
     # def get_confidence(self, sign_name, feature, target, daybefore, sample_size, sample_time, support, std_scale = 2.0):
     #     return alphatree.getConfidence(c_char_p(sign_name.encode()), c_char_p(feature.encode()), c_char_p(target.encode()), daybefore, sample_size, sample_time, c_float(support), c_float(std_scale))
@@ -235,8 +239,8 @@ class AlphaForest(object):
     def get_correlation(self, sign_name, a, b, daybefore, sample_size, sample_time):
         return alphatree.getCorrelation(c_char_p(sign_name.encode()), c_char_p(a.encode()), c_char_p(b.encode()), daybefore, sample_size, sample_time)
 
-    def optimize_distinguish(self, sign_name, feature, target, daybefore, sample_size, sample_time, allow_fail_time = 2, max_history_days = 75, explote_ratio = 0.1, err_try_time = 64):
-        str_len = alphatree.optimizeDistinguish(c_char_p(sign_name.encode()), c_char_p(feature.encode()), c_char_p(target.encode()), daybefore, sample_size, sample_time, allow_fail_time, self.encode_cache, c_int32(max_history_days), c_float(explote_ratio), c_int32(err_try_time))
+    def optimize_discrimination(self, sign_name, feature, target, daybefore, sample_size, sample_time, support, max_history_days = 75, explote_ratio = 0.1, err_try_time = 64):
+        str_len = alphatree.optimizeDiscrimination(c_char_p(sign_name.encode()), c_char_p(feature.encode()), c_char_p(target.encode()), daybefore, sample_size, sample_time, c_float(support), self.encode_cache, c_int32(max_history_days), c_float(explote_ratio), c_int32(err_try_time))
         str_list = [self.encode_cache[i].decode() for i in range(str_len)]
         return "".join(str_list)
 

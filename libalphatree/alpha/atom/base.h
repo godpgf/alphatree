@@ -327,13 +327,6 @@ void quickSort(const float* src, float* index, int left, int right){
     if(left >= right)
         return;
     int key = (int)index[left];
-//
-//    if(isnan(src[key])){
-//        quickSort(src, index, left + 1, right);
-//        cout<<"err nan "<<key<<endl;
-//        throw "eee";
-//        return;
-//    }
 
     int low = left;
     int high = right;

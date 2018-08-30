@@ -96,57 +96,10 @@ class B{
     A aa[20];
 };
 
-float getDistinguish(const char* signName, const char* feature, const char* target, int daybefore, int sampleSize, int sampleTime){
-    AlphaForest* af = AlphaForest::getAlphaforest();
-    int alphatreeId = af->useAlphaTree();
-    int targetId = af->useAlphaTree();
-
-    cout<<feature<<endl;
-    af->decode(alphatreeId, "t", feature);
-    af->decode(targetId, "t", target);
-    float distinguish = AlphaSignIterator::getDistinguish(af, signName, alphatreeId, targetId, daybefore, sampleSize, sampleTime);
-    cout<<distinguish<<"\n";
-    af->releaseAlphaTree(alphatreeId);
-    af->releaseAlphaTree(targetId);
-    return distinguish;
-}
-
-void test_corr(){
-    AlphaForest::initialize(4);
-    AlphaForest* af = AlphaForest::getAlphaforest();
-    af->getAlphaDataBase()->loadDataBase("pyalphatree/tools/stock/data");
-    cout<<getDistinguish("open_down_valid", "(ts_rank(open, 5) - (stddev(close, 23) - close))","open_down_target", 100, 128, 12)<<endl;
-    int aId = af->useAlphaTree();
-    int bId = af->useAlphaTree();
-    af->decode(aId, "t", "(ts_rank(open, 5) - (stddev(close, 23) - close))");
-    af->decode(bId, "t", "(correlation((((low - low) - low) * high), (high - (high - close)), 21) / (volume - (high * (low * low))))");
-
-    const char* signName = "valid";
-    int sampleTime = 12;
-    int daybefore = 100;
-    int sampleSize = 128;
-
-
-    float corr = 0;
-    for(int i = 0; i < sampleTime; ++i){
-        AlphaSignIterator afeature(af, "t", signName, aId, daybefore + i * sampleSize, sampleSize, 0, af->getAlphaDataBase()->getSignNum(daybefore + i * sampleSize, sampleSize, signName));
-        AlphaSignIterator bfeature(af, "t", signName, bId, daybefore + i * sampleSize, sampleSize, 0, af->getAlphaDataBase()->getSignNum(daybefore + i * sampleSize, sampleSize, signName));
-
-        float curCorr = AlphaSignIterator::getCorrelation(&afeature, &bfeature);
-        //cout<<curCorr<<"/"<<corr<<endl;
-        if(fabsf(curCorr) > fabsf(corr)){
-            corr = curCorr;
-        }
-    }
-
-    af->releaseAlphaTree(aId);
-    af->releaseAlphaTree(bId);
-}
 
 
 int main() {
 
-    test_corr();
 
     cout<<normSDist(0)<<endl;
     cout<<normSDist(1)<<endl;

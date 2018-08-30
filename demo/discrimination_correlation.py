@@ -32,7 +32,7 @@ if __name__ == '__main__':
             af.load_sign(valid_sign_name)
             for i in range(len(feature_list)):
                 print(feature_list[i])
-                print("  distinct:%.4f"%(af.get_distinguish(valid_sign_name, feature_list[i], target_name, 0, 128, 16)))
+                print("  discrimination:%.4f"%(af.get_discrimination(valid_sign_name, feature_list[i], target_name, 0, 128, 16, 0.2)))
                 print("  correlation:")
                 for j in range(i+1, len(feature_list)):
                     corr = af.get_correlation(valid_sign_name, feature_list[i], feature_list[j], 0, 128, 16)
