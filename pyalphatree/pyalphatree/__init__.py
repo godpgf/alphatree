@@ -9,6 +9,7 @@ def cache_base(data_path, titles = ["date","open","high","low","close","volume",
         for title in titles:
             af.csv2binary(data_path, title)
         af.cache_miss()
+        af.cache_rand()
 
 #缓存各种指标
 def cache_indicator(indicator_path, data_path):

@@ -349,6 +349,7 @@ protected:
         for (int i = 0; i < f.size(); ++i) {
             int orderId = isLeft ? i : (f.size() - i - 1);
             int id = index_[orderId];
+//            cout<<cache_[id]<<" ";
             int splitId = (int) (id * sampleTime / (float) f.size());
             int splitLen = (int) (f.size() * (splitId + 1) / (float) (sampleTime)) -
                            (int) (f.size() * splitId / (float) (sampleTime));
@@ -358,6 +359,7 @@ protected:
                     ++orderLabelCnt[splitId];
             }
         }
+//        cout<<endl;
 
         for (int i = 0; i < sampleTime; ++i) {
             outDiscrimination[i] = orderLabelCnt[i] / (float) orderDataCnt[i];
