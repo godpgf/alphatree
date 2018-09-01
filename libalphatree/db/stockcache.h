@@ -858,7 +858,6 @@ public:
         file.open(filepath(featureName, ".ft"), ios::binary | ios::out);
 
         //T lastValue = 0;
-
         for(int i = 0; i < des->stockMetas.getSize(); ++i){
             auto meta = des->stockMetas[i];
             CSVIterator<T> iter(filepath(meta.code,".csv").c_str(), featureName);
