@@ -1,6 +1,6 @@
 ﻿# coding=utf-8
 # author=godpgf
-from .util import AlphaForest, AlphaArray, AlphaGBDT
+from .util import AlphaForest, AlphaArray, AlphaGBDT, AlphaBI
 import re
 
 def cache_base(data_path, titles = ["date","open","high","low","close","volume","vwap","returns","amount","turn","tcap","mcap"]):

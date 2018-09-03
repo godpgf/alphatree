@@ -32,13 +32,11 @@ extern "C"
  */
 void DLLEXPORT initializeAlphaforest(int cacheSize) {
     AlphaForest::initialize(cacheSize);
-    AlphaBI::initialize();
 }
 
 
 void DLLEXPORT releaseAlphaforest() {
     AlphaBI::release();
-    AlphaForest::release();
 }
 
 /*
@@ -271,44 +269,45 @@ int DLLEXPORT getMaxHistoryDays(int alphaTreeId) { return AlphaForest::getAlphaf
 int DLLEXPORT getAllDays(){ return AlphaForest::getAlphaforest()->getAlphaDataBase()->getDays();}
 
 
-//void DLLEXPORT getBag(const char* codes, int stockSize, const char* feature, const char* signName, int dayBefore, int sampleSize, int bagNum, float* bags){
-//    int alphatreeId = AlphaForest::getAlphaforest()->useAlphaTree();
-//    AlphaForest::getAlphaforest()->decode(alphatreeId,"sign",feature);
-//    size_t signNum = AlphaForest::getAlphaforest()->getAlphaDataBase()->getSignNum(dayBefore, sampleSize, signName);
-//    AlphaSignIterator asi(AlphaForest::getAlphaforest(), "sign", signName, alphatreeId, dayBefore, sampleSize, 0, signNum);
-//    getBags(&asi, bags, bagNum);
-//    AlphaForest::getAlphaforest()->releaseAlphaTree(alphatreeId);
-//}
+/*
+ * 给某个连续时间段做bi分析
+ * signName：信号名
+ * randFeature：随机特征
+ * returns：收益特征
+ * daybefore：使用多少天前的数据
+ * sampleSize：计算相关性使用的天数
+ * sampleTime：一共计算多少次（使用贡献度第allowFailTime小的一次作为结果）
+ * support：仅仅分析的两头的数据，去掉中间那部分噪声最大的数据。分析的数据占比
+ * */
+void DLLEXPORT initializeAlphaBI(const char *signName, const char *randFeature, const char *returns, int daybefore, int sampleSize,
+                                 int sampleTime, float support){
+    AlphaBI::initialize(signName, randFeature, returns, daybefore, sampleSize, sampleTime, support);
+}
+
+void DLLEXPORT releaseAlphaBI(){
+    AlphaBI::release();
+}
 
 
 /*
  * 得到某个信号下，a、b两个特征的相关性
- * daybefore：使用多少天前的数据
- * sampleSize：计算相关性使用的天数
- * sampleTime：一共计算多少次（使用相关性最大的一次作为结果）
- * 比如：
- * sampleSize=128，sampleTime=2，表示第一个128天计算一个相关性，往前推128天后再计算第二个128天的相关性，返回最大的那个
  * */
-float DLLEXPORT getCorrelation(const char* signName, const char* a, const char* b, int daybefore, int sampleSize, int sampleTime){
-    return AlphaBI::getAlphaBI()->getCorrelation(signName, a, b, daybefore, sampleSize, sampleTime);
+float DLLEXPORT getCorrelation(const char* a, const char* b){
+    return AlphaBI::getAlphaBI()->getCorrelation(a, b);
 }
 
 /*
  * 计算某个信号下(signName)，某个特征(feature)对于某个分类(target)的区分度
- * daybefore：使用多少天前的数据
- * sampleSize：计算相关性使用的天数
- * sampleTime：一共计算多少次（使用贡献度第allowFailTime小的一次作为结果）
- * allowFailTime：选择第几小的数据作为返回
- * 比如：
- * sampleSize=128，sampleTime=2，表示第一个128天计算一个贡献度，往前推128天后再计算第二个128天的贡献度
  * */
-float DLLEXPORT getDiscrimination(const char* signName, const char* feature, const char* target, int daybefore, int sampleSize, int sampleTime, float support){
-    return AlphaBI::getAlphaBI()->getDiscrimination(signName, feature, target, daybefore, sampleSize, sampleTime, support);
+float DLLEXPORT getDiscrimination(const char *feature, const char *target, float minRandPercent = 0.000006f, float minR2 = 0.16){
+    return AlphaBI::getAlphaBI()->getDiscrimination(feature, target, minRandPercent, minR2);
 }
 
 //优化feature中的参数，使得贡献度最大
-int DLLEXPORT optimizeDiscrimination(const char* signName, const char* feature, const char* target, int daybefore, int sampleSize, int sampleTime, float support,  char* outFeature, int maxHistoryDays = 75, float exploteRatio = 0.1f, int errTryTime = 64){
-    return AlphaBI::getAlphaBI()->optimizeDiscrimination(signName, feature, target, daybefore, sampleSize, sampleTime, support, outFeature, maxHistoryDays, exploteRatio, errTryTime);
+int DLLEXPORT optimizeDiscrimination(const char *feature, const char *target, char *outFeature,
+                                     float minRandPercent = 0.000006f, float minR2 = 0.16, int maxHistoryDays = 75,
+                                     float exploteRatio = 0.1f, int errTryTime = 64){
+    return AlphaBI::getAlphaBI()->optimizeDiscrimination(feature, target, outFeature, minRandPercent = 0.000006f, minR2 = 0.16, maxHistoryDays = 75, exploteRatio = 0.1f, errTryTime = 64);
 }
 
 /*
