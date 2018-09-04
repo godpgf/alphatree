@@ -67,12 +67,12 @@ public:
     }
 
     //返回某个特征的区分度，它的区分能力可能是随机的，设置接受它是随机的概率minRandPercent,以及回归质量好坏指标minR2(《计量经济学（3版）》古扎拉蒂--上册p59)
-    float getDiscrimination(int gId, const char *feature, const char *target, float minRandPercent = 0.6f, float minR2 = 0.36){
+    float getDiscrimination(int gId, const char *feature, float expectReturn = 0.006f, float minRandPercent = 0.6f, float minR2 = 0.36){
 //        cout<<AlphaBI::getAlphaBI()->groupCache_->getCacheMemory(gId).getSignName()<<endl;
         AlphaForest *af = AlphaForest::getAlphaforest();
         int alphatreeId = af->useAlphaTree();
         af->decode(alphatreeId, "t", feature);
-        float disc = getDiscrimination(gId, alphatreeId, target, minRandPercent, minR2);
+        float disc = getDiscrimination(gId, alphatreeId, expectReturn, minRandPercent, minR2);
         af->releaseAlphaTree(alphatreeId);
         return disc;
     }
@@ -91,7 +91,7 @@ public:
         return maxCorr;
     }
 
-    int optimizeDiscrimination(int gId, const char *feature, const char *target, char *outFeature, float minRandPercent = 0.6f, float minR2 = 0.36f, int maxHistoryDays = 75,
+    int optimizeDiscrimination(int gId, const char *feature, char *outFeature, float expectReturn = 0.006f, float minRandPercent = 0.6f, float minR2 = 0.36f, int maxHistoryDays = 75,
                                float exploteRatio = 0.1f, int errTryTime = 64){
         AlphaForest *af = AlphaForest::getAlphaforest();
         int alphatreeId = af->useAlphaTree();
@@ -104,7 +104,7 @@ public:
             bestCoffList[i] = alphatree->getCoff(i);
         }
 
-        float bestRes = getDiscrimination(gId, alphatreeId, target, minRandPercent, minR2);
+        float bestRes = getDiscrimination(gId, alphatreeId, expectReturn, minRandPercent, minR2);
 
         if (alphatree->getCoffSize() > 0) {
             RandomChoose rc = RandomChoose(2 * alphatree->getCoffSize());
@@ -149,7 +149,7 @@ public:
 
                 }
 
-                float res = getDiscrimination(gId, alphatreeId, target, minRandPercent, minR2);
+                float res = getDiscrimination(gId, alphatreeId, expectReturn, minRandPercent, minR2);
 
                 if (res > bestRes) {
                     //cout<<"best res "<<res<<endl;
@@ -189,10 +189,6 @@ protected:
         dataCache_ = DCache<BaseCache, DEFAULT_CACHE_SIZE>::create();
         indexCache_ = DCache<BaseCache, DEFAULT_CACHE_SIZE>::create();
         groupCache_ = DCache<BIGroup, DEFAULT_CACHE_SIZE>::create();
-//        pluginFeature(randFeature, cache_, index_);
-//        sortFeature(cache_, index_);
-//        pluginFeature(returns, cache_, nullptr);
-//        calReturnsRatioAvgAndStd(controlReturnsRatioAvg_, controlReturnsRatioStd_, cache_);
     }
 
     ~AlphaBI() {
@@ -248,7 +244,7 @@ protected:
         return signNum;
     }
 
-    float getDiscrimination(int gId, int alphatreeId, const char *target, float minRandPercent = 0.06f, float minR2 = 0.32){
+    float getDiscrimination(int gId, int alphatreeId, float expectReturn = 0.006f, float minRandPercent = 0.06f, float minR2 = 0.32){
         AlphaForest *af = AlphaForest::getAlphaforest();
         auto& group = groupCache_->getCacheMemory(gId);
 //        cout<<group.getSignName()<<endl;
@@ -322,10 +318,7 @@ protected:
         }
 
         //最后计算区分度，前面两个指标大概率排除了特征是随机的可能（特征有没有可能是假的），现在就有返回特征有没有效果（特征区分度）
-        int targetId = useDataCache(signNum);
-        float* targetData = (float*)dataCache_->getCacheMemory(targetId).cache;
-        pluginFeature(group.getSignName(), target, group.getDaybefore(), group.getSampleSize(), group.getSampleTime(), targetData, nullptr);
-        calDiscriminationSeq_(targetData, indexData, signNum, group.getSampleTime(), group.getSupport(), seqList);
+        calDiscriminationSeq_(returnsData, indexData, signNum, group.getSampleTime(), group.getSupport(), expectReturn, seqList);
         calAutoregressive_(timeList, seqList, group.getSampleTime(), 1, minValue, maxValue);
         cout<<"dist=("<<minValue<<"~"<<maxValue<<")"<<endl;
 
@@ -333,7 +326,6 @@ protected:
         releaseDataCache(fId);
         releaseDataCache(sId);
         releaseDataCache(tId);
-        releaseDataCache(targetId);
         return minValue;
     }
 

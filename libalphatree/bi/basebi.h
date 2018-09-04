@@ -208,7 +208,7 @@ void calAutoregressive_(const float* timeSeq, const float *data, int len, float 
     maxValue = value + stdR * stdScale;
 }
 
-void calDiscriminationSeq_(const float* target, const int* index, size_t len, size_t sampleTime, float support, float* discList){
+void calDiscriminationSeq_(const float* returns, const int* index, size_t len, size_t sampleTime, float support, float expectReturn, float* discList){
     for(size_t splitId = 0; splitId < sampleTime; ++splitId){
         size_t preId = (size_t)(splitId * len / (float)sampleTime);
         size_t nextId = (size_t)((splitId + 1) * len / (float)sampleTime);
@@ -217,9 +217,9 @@ void calDiscriminationSeq_(const float* target, const int* index, size_t len, si
         for(int j = preId; j < supportNextId; ++j){
             int lid = index[j];
             int rid = index[nextId - 1 - (j - preId)];
-            if(target[lid] > 0.5f)
+            if(returns[lid] > expectReturn)
                 ++leftCnt;
-            if(target[rid] > 0.5f)
+            if(returns[rid] > expectReturn)
                 ++rightCnt;
 
         }
