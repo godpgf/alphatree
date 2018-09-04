@@ -26,3 +26,4 @@ alphatree.evalAlphaGBDT.restype = c_float
 alphatree.getDiscrimination.restype = c_float
 alphatree.getCorrelation.restype = c_float
 alphatree.optimizeDiscrimination.restype = c_int32
+alphatree.useBIGroup.restype = c_int32

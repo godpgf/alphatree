@@ -32,10 +32,12 @@ extern "C"
  */
 void DLLEXPORT initializeAlphaforest(int cacheSize) {
     AlphaForest::initialize(cacheSize);
+    AlphaBI::initialize();
 }
 
 
 void DLLEXPORT releaseAlphaforest() {
+    AlphaBI::release();
     AlphaBI::release();
 }
 
@@ -268,46 +270,45 @@ int DLLEXPORT getMaxHistoryDays(int alphaTreeId) { return AlphaForest::getAlphaf
 //得到所有交易日的数量
 int DLLEXPORT getAllDays(){ return AlphaForest::getAlphaforest()->getAlphaDataBase()->getDays();}
 
-
 /*
- * 给某个连续时间段做bi分析
- * signName：信号名
- * randFeature：随机特征
- * returns：收益特征
- * daybefore：使用多少天前的数据
- * sampleSize：计算相关性使用的天数
- * sampleTime：一共计算多少次（使用贡献度第allowFailTime小的一次作为结果）
- * support：仅仅分析的两头的数据，去掉中间那部分噪声最大的数据。分析的数据占比
+ * 创建一个用于BI分析的组：
+ * signName：分析的信号名字
+ * dayBefore：计算多少天前的数据
+ * sampleSize：计算多少天的数据
+ * sampleTime：计算多少次
+ * support：一个时间段内（sampleSize）仅仅分析百分之support的数据，其他数据认为是噪声
  * */
-void DLLEXPORT initializeAlphaBI(const char *signName, const char *randFeature, const char *returns, int daybefore, int sampleSize,
-                                 int sampleTime, float support){
-    AlphaBI::initialize(signName, randFeature, returns, daybefore, sampleSize, sampleTime, support);
+int DLLEXPORT useBIGroup(const char *signName, int daybefore, int sampleSize, int sampleTime, float support){
+    return AlphaBI::getAlphaBI()->useGroup(signName, daybefore, sampleSize, sampleTime, support);
 }
 
-void DLLEXPORT releaseAlphaBI(){
-    AlphaBI::release();
+void DLLEXPORT releaseBIGroup(int gId){
+    AlphaBI::getAlphaBI()->releaseGroup(gId);
 }
 
+void DLLEXPORT pluginControlBIGroup(int gId, const char* feature, const char* returns){
+    AlphaBI::getAlphaBI()->pluginControlGroup(gId, feature, returns);
+}
 
 /*
  * 得到某个信号下，a、b两个特征的相关性
  * */
-float DLLEXPORT getCorrelation(const char* a, const char* b){
-    return AlphaBI::getAlphaBI()->getCorrelation(a, b);
+float DLLEXPORT getCorrelation(int gId, const char* a, const char* b){
+    return AlphaBI::getAlphaBI()->getCorrelation(gId, a, b);
 }
 
 /*
  * 计算某个信号下(signName)，某个特征(feature)对于某个分类(target)的区分度
  * */
-float DLLEXPORT getDiscrimination(const char *feature, const char *target, float minRandPercent = 0.000006f, float minR2 = 0.16){
-    return AlphaBI::getAlphaBI()->getDiscrimination(feature, target, minRandPercent, minR2);
+float DLLEXPORT getDiscrimination(int gId, const char *feature, const char *target, float minRandPercent = 0.06f, float minR2 = 0.16){
+    return AlphaBI::getAlphaBI()->getDiscrimination(gId, feature, target, minRandPercent, minR2);
 }
 
 //优化feature中的参数，使得贡献度最大
-int DLLEXPORT optimizeDiscrimination(const char *feature, const char *target, char *outFeature,
-                                     float minRandPercent = 0.000006f, float minR2 = 0.16, int maxHistoryDays = 75,
+int DLLEXPORT optimizeDiscrimination(int gId, const char *feature, const char *target, char *outFeature,
+                                     float minRandPercent = 0.06f, float minR2 = 0.16, int maxHistoryDays = 75,
                                      float exploteRatio = 0.1f, int errTryTime = 64){
-    return AlphaBI::getAlphaBI()->optimizeDiscrimination(feature, target, outFeature, minRandPercent = 0.000006f, minR2 = 0.16, maxHistoryDays = 75, exploteRatio = 0.1f, errTryTime = 64);
+    return AlphaBI::getAlphaBI()->optimizeDiscrimination(gId, feature, target, outFeature, minRandPercent, minR2, maxHistoryDays, exploteRatio, errTryTime);
 }
 
 /*

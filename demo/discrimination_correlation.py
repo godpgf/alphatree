@@ -3,8 +3,8 @@ from pyalphatree import *
 
 hold_days = 2
 target_returns = 1.006
-target_name = "open_down_target"
-target_line = "((delay(close, -%d) / delay(open, -1)) > %.4f)"
+target_name = "target"
+target_line = "(returns > 0)"
 valid_sign_name = "valid_sign"
 valid_sign_line = '(delay(((volume > 0) & (abs(returns) < 0.09)), -1) & (volume > 0))'
 
@@ -16,7 +16,7 @@ feature_list = [
     "correlation(wma(ts_rank(stddev(volume, 20), 5), 7), ts_rank(volume, 4), 7)"]
 
 if __name__ == '__main__':
-    download_industry(['1399005'], '1399005', 'data')
+    # download_industry(['1399005'], '1399005', 'data')
     cache_base('data')
     with AlphaForest() as af:
         af.load_db('data')
@@ -24,17 +24,18 @@ if __name__ == '__main__':
         codes.sort()
         if len(codes) == 0:
             codes = af.get_market_codes()
-            af.cache_alpha(target_name, target_line % (hold_days, target_returns))
+            af.cache_alpha(target_name, target_line)
             af.cache_codes_sign(valid_sign_name, valid_sign_line, codes)
             af.load_feature('miss')
             af.load_feature('date')
             af.load_feature(target_name)
+            af.load_feature("returns")
             af.load_sign(valid_sign_name)
-            with AlphaBI(valid_sign_name, 'rand', 'returns', 0, 128, 16, 0.6) as bi:
-                for i in range(len(feature_list)):
-                    print(feature_list[i])
-                    print("  discrimination:%.4f"%(bi.get_discrimination(feature_list[i], target_name)))
-                    print("  correlation:")
-                    for j in range(i+1, len(feature_list)):
-                        corr = bi.get_correlation(feature_list[i], feature_list[j])
-                        print("      %.4f:%s"%(corr, feature_list[j]))
+            bi = AlphaBI(valid_sign_name, 0, 128, 16, 0.6, 'rand', "returns")
+            for i in range(len(feature_list)):
+                print(feature_list[i])
+                print("  discrimination:%.4f"%(bi.get_discrimination(feature_list[i], target_name)))
+                print("  correlation:")
+                for j in range(i+1, len(feature_list)):
+                    corr = bi.get_correlation(feature_list[i], feature_list[j])
+                    print("      %.4f:%s"%(corr, feature_list[j]))

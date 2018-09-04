@@ -6,6 +6,7 @@
 
 #include "basealphatree.h"
 #include "../base/threadpool.h"
+#include "../base/cache.h"
 #include "../base/dcache.h"
 #include "../base/randomchoose.h"
 #include <math.h>
@@ -14,42 +15,12 @@
 //在每个节点的内存中附加一部分用来存放一些统计信息
 #define ATTACH_NODE_MEMORY 16
 
-class NodeCache {
-public:
-    NodeCache() {
-        //cache = new char[cacheSize];
-    }
-
-    template <class T>
-    T* initialize(size_t cacheSize){
-        if(cacheSize > this->cacheSize){
-            clean();
-            this->cacheSize = cacheSize;
-            cache = new char[cacheSize];
-        }
-        return (T*)cache;
-    }
-
-    ~NodeCache() {
-        clean();
-    }
-
-    void clean(){
-        if(cache)
-            delete[] cache;
-        cache = nullptr;
-    }
-
-    char *cache = {nullptr};
-    size_t cacheSize = {0};
-};
-
 class AlphaCache {
 public:
     AlphaCache() {
         nodeCacheSize = MAX_NODE_BLOCK;
         nodeRes = new std::shared_future<int>[nodeCacheSize];
-        result = DCache<NodeCache>::create();
+        result = DCache<BaseCache>::create();
         dayCacheSize = MAX_NODE_BLOCK * GET_HISTORY_SIZE(HISTORY_DAYS, SAMPLE_DAYS);
         dayFlag = new CacheFlag[dayCacheSize];
         codeCacheSize = STOCK_SIZE * CODE_LEN;
@@ -58,7 +29,7 @@ public:
 
     ~AlphaCache() {
         delete[]nodeRes;
-        DCache<NodeCache>::release(result);
+        DCache<BaseCache>::release(result);
         delete[]dayFlag;
         delete[]codes;
     }
@@ -102,10 +73,10 @@ public:
         size_t scs = (GET_HISTORY_SIZE(historyDays, outputDays) - futureDays) * stockSize * sizeof(float) + ATTACH_NODE_MEMORY * sizeof(float);
         if(scs > cacheSizePerNode)
             cacheSizePerNode = scs;
-        /*if (scs > NodeCache::cacheSize) {
-            DCache<NodeCache>::release(result);
-            NodeCache::cacheSize = scs;
-            result = DCache<NodeCache>::create();
+        /*if (scs > BaseCache::cacheSize) {
+            DCache<BaseCache>::release(result);
+            BaseCache::cacheSize = scs;
+            result = DCache<BaseCache>::create();
         }*/
 
         size_t dcs = nodeSize * GET_HISTORY_SIZE(historyDays, outputDays) - futureDays;
@@ -178,7 +149,7 @@ protected:
 
 
     //保存中间计算结果
-    DCache<NodeCache> *result = {nullptr};
+    DCache<BaseCache> *result = {nullptr};
     //每个节点可以申请的最大内存大小
     size_t cacheSizePerNode = {GET_HISTORY_SIZE(HISTORY_DAYS, SAMPLE_DAYS) *
                             STOCK_SIZE * sizeof(float) + ATTACH_NODE_MEMORY * sizeof(float)};

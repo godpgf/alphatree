@@ -5,6 +5,33 @@
 #ifndef ALPHATREE_CACHE_H
 #define ALPHATREE_CACHE_H
 
+class BaseCache{
+public:
+    template <class T>
+    T* initialize(size_t cacheSize){
+        if(cacheSize > this->cacheSize){
+            clean();
+            this->cacheSize = cacheSize;
+            cache = new char[cacheSize];
+        }
+        return (T*)cache;
+    }
+
+    ~BaseCache() {
+        clean();
+    }
+
+    void clean(){
+        if(cache)
+            delete[] cache;
+        cache = nullptr;
+    }
+
+    char *cache = {nullptr};
+protected:
+    size_t cacheSize = {0};
+};
+
 template <class T>
 class Cache{
 
