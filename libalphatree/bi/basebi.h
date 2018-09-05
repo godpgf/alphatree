@@ -158,28 +158,30 @@ void calFeatureAvg_(const float* cache, const int* index, size_t len, size_t sam
 }
 
 void calR2Seq_(const float* xCache, const float* xAvg, const float* yCache, const float* yAvg, const int* index, size_t len, size_t sampleTime, float support, float* r2List){
+    cout<<"r2:";
     for(size_t splitId = 0; splitId < sampleTime; ++splitId){
         size_t preId = (size_t)(splitId * len / (float)sampleTime);
         size_t nextId = (size_t)((splitId + 1) * len / (float)sampleTime);
         size_t supportNextId = preId + (nextId - preId) * support * 0.5f;
-        float sumxy = 0;
-        float sumx2 = 0;
-        float sumy2 = 0;
+        float SSR = 0;
+        float varX = 0;
+        float varY = 0;
         for(int j = preId; j < supportNextId; ++j){
             int lid = index[j];
             int rid = index[nextId - 1 - (j - preId)];
             float x = xCache[lid] - xAvg[splitId];
             float y = yCache[lid] - yAvg[splitId];
-            sumxy += x * y;
-            sumx2 += x * x;
-            sumy2 += y * y;
+            SSR += x * y;
+            varX += x * x;
+            varY += y * y;
             x = xCache[rid] - xAvg[splitId];
             y = yCache[rid] - yAvg[splitId];
-            sumxy += x * y;
-            sumx2 += x * x;
-            sumy2 += y * y;
+            SSR += x * y;
+            varX += x * x;
+            varY += y * y;
         }
-        r2List[splitId] = sumxy / sumx2 * sumxy / sumy2;
+        float SST = sqrtf(varX * varY);
+        r2List[splitId] = SSR / SST;
         cout<<r2List[splitId]<<" ";
     }
     cout<<endl;
@@ -209,6 +211,7 @@ void calAutoregressive_(const float* timeSeq, const float *data, int len, float 
 }
 
 void calDiscriminationSeq_(const float* returns, const int* index, size_t len, size_t sampleTime, float support, float expectReturn, float* discList){
+    cout<<expectReturn<<":";
     for(size_t splitId = 0; splitId < sampleTime; ++splitId){
         size_t preId = (size_t)(splitId * len / (float)sampleTime);
         size_t nextId = (size_t)((splitId + 1) * len / (float)sampleTime);
@@ -224,6 +227,8 @@ void calDiscriminationSeq_(const float* returns, const int* index, size_t len, s
 
         }
         discList[splitId] = (leftCnt == 0) ? 1 : rightCnt / (float)leftCnt;
+        cout<<rightCnt<<"/"<<leftCnt<<" ";
     }
+    cout<<endl;
 }
 #endif //ALPHATREE_BASEBI_H

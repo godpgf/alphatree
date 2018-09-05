@@ -282,18 +282,33 @@ protected:
 //        cout<<endl;
 
         //计算特征收益其实是随机参数的概率
+        char tmp[512];
+        char* p = tmp;
+        memset(p, 0, 512 * sizeof(char));
         for(size_t i = 0; i < group.getSampleTime(); ++i){
-            float x = (group.observationAvgList[i] - group.controlAvgList[i]) / group.controlStdList[i];
-//            cout<<x<<":"<<normSDist(x)<<" ";
-            if(1.f - normSDist(x) > minRandPercent){
-//                cout<<endl;
-
+            if(group.observationAvgList[i] < group.controlAvgList[i]){
                 releaseIndexCache(iId);
                 releaseDataCache(fId);
+                if(i > (group.getSampleTime() >> 1))
+                    cout<<":"<<tmp<<endl;
                 return 0;
             }
+
+            float x = (group.observationAvgList[i] - group.controlAvgList[i]) / group.controlStdList[i];
+
+            x = (1.f - normSDist(x));
+            if(x >= minRandPercent){
+                releaseIndexCache(iId);
+                releaseDataCache(fId);
+                if(i > (group.getSampleTime() >> 1))
+                    cout<<":"<<tmp<<endl;
+                return 0;
+            }
+
+            sprintf(p,"%.4f ",x);
+            p += strlen(p);
         }
-//        cout<<endl;
+        cout<<tmp<<endl;
 
         //计算拟合优度
         calFeatureAvg_(featureData, indexData, signNum, group.getSampleTime(), group.getSupport(), group.featureAvgList);
@@ -306,8 +321,11 @@ protected:
         for(size_t i = 0; i < group.getSampleTime(); ++i)
             timeList[i] = i;
         calR2Seq_(featureData, group.featureAvgList, returnsData, group.returnsAvgList, indexData, signNum, group.getSampleTime(), group.getSupport(), seqList);
-        float minValue, maxValue;
-        calAutoregressive_(timeList, seqList, group.getSampleTime(), 1, minValue, maxValue);
+        float minValue = FLT_MAX, maxValue = -FLT_MAX;
+        //calAutoregressive_(timeList, seqList, group.getSampleTime(), 1, minValue, maxValue);
+        for(int i = 0; i < group.getSampleTime(); ++i)
+            if(seqList[i] < minValue)
+                minValue = seqList[i];
         cout<<"r2="<<minValue<<endl;
         if(minValue < minR2){
             releaseIndexCache(iId);
