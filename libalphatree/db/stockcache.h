@@ -684,6 +684,7 @@ public:
         file.close();
     }
 
+
     //将缺失数据描述写入文件，如果当前数据前n天的数据都是完整的，文件中特征就是n，如果缺失了m天，特征就是-m。如果是首个元素就是0
     void miss2file(){
         StockFeature<int64_t> *date = date_ ? date_ : new StockFeature<int64_t>(feature2path_("date").c_str());

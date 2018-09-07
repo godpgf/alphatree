@@ -67,12 +67,12 @@ public:
     }
 
     //返回某个特征的区分度，它的区分能力可能是随机的，设置接受它是随机的概率minRandPercent,以及回归质量好坏指标minR2(《计量经济学（3版）》古扎拉蒂--上册p59)
-    float getDiscrimination(int gId, const char *feature, float expectReturn = 0.006f, float minRandPercent = 0.6f, float minR2 = 0.36){
+    float getDiscrimination(int gId, const char *feature, float expectReturn = 0.006f, float minRandPercent = 0.6f, float minR2 = 0.36, float stdScale = 2){
 //        cout<<AlphaBI::getAlphaBI()->groupCache_->getCacheMemory(gId).getSignName()<<endl;
         AlphaForest *af = AlphaForest::getAlphaforest();
         int alphatreeId = af->useAlphaTree();
         af->decode(alphatreeId, "t", feature);
-        float disc = getDiscrimination(gId, alphatreeId, expectReturn, minRandPercent, minR2);
+        float disc = getDiscrimination(gId, alphatreeId, expectReturn, minRandPercent, minR2, stdScale);
         af->releaseAlphaTree(alphatreeId);
         return disc;
     }
@@ -91,7 +91,7 @@ public:
         return maxCorr;
     }
 
-    int optimizeDiscrimination(int gId, const char *feature, char *outFeature, float expectReturn = 0.006f, float minRandPercent = 0.6f, float minR2 = 0.36f, int maxHistoryDays = 75,
+    int optimizeDiscrimination(int gId, const char *feature, char *outFeature, float expectReturn = 0.006f, float minRandPercent = 0.6f, float minR2 = 0.36f, float stdScale = 2, int maxHistoryDays = 75,
                                float exploteRatio = 0.1f, int errTryTime = 64){
         AlphaForest *af = AlphaForest::getAlphaforest();
         int alphatreeId = af->useAlphaTree();
@@ -104,7 +104,7 @@ public:
             bestCoffList[i] = alphatree->getCoff(i);
         }
 
-        float bestRes = getDiscrimination(gId, alphatreeId, expectReturn, minRandPercent, minR2);
+        float bestRes = getDiscrimination(gId, alphatreeId, expectReturn, minRandPercent, minR2, stdScale);
 
         if (alphatree->getCoffSize() > 0) {
             RandomChoose rc = RandomChoose(2 * alphatree->getCoffSize());
@@ -149,7 +149,7 @@ public:
 
                 }
 
-                float res = getDiscrimination(gId, alphatreeId, expectReturn, minRandPercent, minR2);
+                float res = getDiscrimination(gId, alphatreeId, expectReturn, minRandPercent, minR2, stdScale);
 
                 if (res > bestRes) {
                     //cout<<"best res "<<res<<endl;
@@ -244,7 +244,7 @@ protected:
         return signNum;
     }
 
-    float getDiscrimination(int gId, int alphatreeId, float expectReturn = 0.006f, float minRandPercent = 0.06f, float minR2 = 0.32){
+    float getDiscrimination(int gId, int alphatreeId, float expectReturn = 0.006f, float minRandPercent = 0.06f, float minR2 = 0.32, float stdScale = 2){
         AlphaForest *af = AlphaForest::getAlphaforest();
         auto& group = groupCache_->getCacheMemory(gId);
 //        cout<<group.getSignName()<<endl;
@@ -276,43 +276,11 @@ protected:
         //计算特征影响下的收益比（特征大的那部分股票收益/特征小的那部分股票收益）
         calReturnsRatioAvgAndStd_(returnsData, indexData, signNum, group.getSampleTime(), group.getSupport(), group.observationAvgList, group.observationStdList);
 
+//        cout<<"control avg:\n";
 //        for(int i = 0; i < group.getSampleTime(); ++i){
 //            cout<<group.controlAvgList[i]<<"/"<<group.observationAvgList[i]<<" ";
 //        }
 //        cout<<endl;
-
-        //计算特征收益其实是随机参数的概率
-        char tmp[512];
-        char* p = tmp;
-        memset(p, 0, 512 * sizeof(char));
-        for(size_t i = 0; i < group.getSampleTime(); ++i){
-            if(group.observationAvgList[i] < group.controlAvgList[i]){
-                releaseIndexCache(iId);
-                releaseDataCache(fId);
-                if(i > (group.getSampleTime() >> 1))
-                    cout<<":"<<tmp<<endl;
-                return 0;
-            }
-
-            float x = (group.observationAvgList[i] - group.controlAvgList[i]) / group.controlStdList[i];
-
-            x = (1.f - normSDist(x));
-            if(x >= minRandPercent){
-                releaseIndexCache(iId);
-                releaseDataCache(fId);
-                if(i > (group.getSampleTime() >> 1))
-                    cout<<":"<<tmp<<endl;
-                return 0;
-            }
-
-            sprintf(p,"%.4f ",x);
-            p += strlen(p);
-        }
-        cout<<tmp<<endl;
-
-        //计算拟合优度
-        calFeatureAvg_(featureData, indexData, signNum, group.getSampleTime(), group.getSupport(), group.featureAvgList);
-        calFeatureAvg_(returnsData, indexData, signNum, group.getSampleTime(), group.getSupport(), group.returnsAvgList);
 
         int sId = useDataCache(group.getSampleTime());
         int tId = useDataCache(group.getSampleTime());
@@ -320,12 +288,55 @@ protected:
         float* timeList = (float*)dataCache_->getCacheMemory(tId).cache;
         for(size_t i = 0; i < group.getSampleTime(); ++i)
             timeList[i] = i;
-        calR2Seq_(featureData, group.featureAvgList, returnsData, group.returnsAvgList, indexData, signNum, group.getSampleTime(), group.getSupport(), seqList);
+
+        //计算特征收益其实是随机参数的概率
+//        char tmp[512];
+//        char* p = tmp;
+//        memset(p, 0, 512 * sizeof(char));
+        for(size_t i = 0; i < group.getSampleTime(); ++i){
+            if(group.observationAvgList[i] < group.controlAvgList[i]){
+                releaseIndexCache(iId);
+                releaseDataCache(fId);
+//                if(i > (group.getSampleTime() >> 1))
+//                    cout<<":"<<tmp<<endl;
+                return 0;
+            }
+
+            float x = (group.observationAvgList[i] - group.controlAvgList[i]) / group.controlStdList[i];
+
+            x = (1.f - normSDist(x));
+            seqList[i] = x;
+//            if(x >= minRandPercent){
+//                releaseIndexCache(iId);
+//                releaseDataCache(fId);
+//                if(i > (group.getSampleTime() >> 1))
+//                    cout<<":"<<tmp<<endl;
+//                return 0;
+//            }
+
+//            sprintf(p,"%.4f ",x);
+//            p += strlen(p);
+        }
+//        cout<<tmp<<endl;
         float minValue = FLT_MAX, maxValue = -FLT_MAX;
-        //calAutoregressive_(timeList, seqList, group.getSampleTime(), 1, minValue, maxValue);
-        for(int i = 0; i < group.getSampleTime(); ++i)
-            if(seqList[i] < minValue)
-                minValue = seqList[i];
+        calAutoregressive_(timeList, seqList, group.getSampleTime(), stdScale, minValue, maxValue);
+        if(maxValue >= minRandPercent){
+            releaseIndexCache(iId);
+            releaseDataCache(fId);
+            return 0;
+        }
+
+        //计算拟合优度
+        calFeatureAvg_(featureData, indexData, signNum, group.getSampleTime(), group.getSupport(), group.featureAvgList);
+        calFeatureAvg_(returnsData, indexData, signNum, group.getSampleTime(), group.getSupport(), group.returnsAvgList);
+
+
+        calR2Seq_(featureData, group.featureAvgList, returnsData, group.returnsAvgList, indexData, signNum, group.getSampleTime(), group.getSupport(), seqList);
+
+        calAutoregressive_(timeList, seqList, group.getSampleTime(), stdScale, minValue, maxValue);
+//        for(int i = 0; i < group.getSampleTime(); ++i)
+//            if(seqList[i] < minValue)
+//                minValue = seqList[i];
         cout<<"r2="<<minValue<<endl;
         if(minValue < minR2){
             releaseIndexCache(iId);
@@ -337,7 +348,7 @@ protected:
 
         //最后计算区分度，前面两个指标大概率排除了特征是随机的可能（特征有没有可能是假的），现在就有返回特征有没有效果（特征区分度）
         calDiscriminationSeq_(returnsData, indexData, signNum, group.getSampleTime(), group.getSupport(), expectReturn, seqList);
-        calAutoregressive_(timeList, seqList, group.getSampleTime(), 1, minValue, maxValue);
+        calAutoregressive_(timeList, seqList, group.getSampleTime(), stdScale, minValue, maxValue);
         cout<<"dist=("<<minValue<<"~"<<maxValue<<")"<<endl;
 
         releaseIndexCache(iId);

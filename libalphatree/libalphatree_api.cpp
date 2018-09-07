@@ -301,15 +301,15 @@ float DLLEXPORT getCorrelation(int gId, const char* a, const char* b){
 /*
  * 计算某个信号下(signName)，某个特征(feature)对于某个分类(target)的区分度
  * */
-float DLLEXPORT getDiscrimination(int gId, const char *feature, float expectReturn = 0.006f, float minRandPercent = 0.06f, float minR2 = 0.16){
-    return AlphaBI::getAlphaBI()->getDiscrimination(gId, feature, expectReturn, minRandPercent, minR2);
+float DLLEXPORT getDiscrimination(int gId, const char *feature, float expectReturn = 0.006f, float minRandPercent = 0.06f, float minR2 = 0.16, float stdScale = 2){
+    return AlphaBI::getAlphaBI()->getDiscrimination(gId, feature, expectReturn, minRandPercent, minR2, stdScale);
 }
 
 //优化feature中的参数，使得贡献度最大
 int DLLEXPORT optimizeDiscrimination(int gId, const char *feature, char *outFeature, float expectReturn = 0.006f,
-                                     float minRandPercent = 0.06f, float minR2 = 0.16, int maxHistoryDays = 75,
+                                     float minRandPercent = 0.06f, float minR2 = 0.16, float stdScale = 2, int maxHistoryDays = 75,
                                      float exploteRatio = 0.1f, int errTryTime = 64){
-    return AlphaBI::getAlphaBI()->optimizeDiscrimination(gId, feature, outFeature, expectReturn, minRandPercent, minR2, maxHistoryDays, exploteRatio, errTryTime);
+    return AlphaBI::getAlphaBI()->optimizeDiscrimination(gId, feature, outFeature, expectReturn, minRandPercent, minR2, stdScale, maxHistoryDays, exploteRatio, errTryTime);
 }
 
 /*

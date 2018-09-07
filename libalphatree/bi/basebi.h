@@ -115,8 +115,8 @@ void calReturnsRatioAvgAndStd_(const float* returns, const int* index, size_t le
             int lid = index[j];
             int rid = index[nextId - 1 - (j - preId)];
             float v = (returns[rid] + 1.f) / (returns[lid] + 1.f);
-//                cout<<v<<"="<<(cache[rid] + 1.f)<<"/"<<(cache[lid] + 1.f)<<endl;
-//                v = cache[lid] + cache[rid];
+//                cout<<v<<"="<<(returns[rid] + 1.f)<<"/"<<(returns[lid] + 1.f)<<endl;
+                v = returns[lid] + returns[rid];
             avg[splitId] += v;
             std[splitId] += v * v;
         }
@@ -216,7 +216,7 @@ void calDiscriminationSeq_(const float* returns, const int* index, size_t len, s
         size_t preId = (size_t)(splitId * len / (float)sampleTime);
         size_t nextId = (size_t)((splitId + 1) * len / (float)sampleTime);
         size_t supportNextId = preId + (nextId - preId) * support * 0.5f;
-        int leftCnt = 0, rightCnt = 0;
+        int leftCnt = 1, rightCnt = 1;
         for(int j = preId; j < supportNextId; ++j){
             int lid = index[j];
             int rid = index[nextId - 1 - (j - preId)];
@@ -226,7 +226,7 @@ void calDiscriminationSeq_(const float* returns, const int* index, size_t len, s
                 ++rightCnt;
 
         }
-        discList[splitId] = (leftCnt == 0) ? 1 : rightCnt / (float)leftCnt;
+        discList[splitId] = rightCnt / (float)leftCnt;
         cout<<rightCnt<<"/"<<leftCnt<<" ";
     }
     cout<<endl;
