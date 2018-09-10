@@ -128,13 +128,13 @@ void calReturnsRatioAvgAndStd_(const float* returns, const int* index, size_t le
     }
 }
 
-bool getIsDirectlyPropor(const float* feature, const float* returns, int* index, size_t len){
+bool getIsDirectlyPropor(const float* feature, const float* returns, int* index, size_t len, float support){
     quickSort_(feature, index, 0, len-1);
     float leftReturns = 0, rightReturns = 0;
-    size_t midSize = (len >> 1);
+    size_t midSize = (size_t)(len * 0.5f * support);
     for(int i = 0; i < midSize; ++i){
         leftReturns += returns[index[i]];
-        rightReturns += returns[index[i+midSize]];
+        rightReturns += returns[index[len - i - 1]];
     }
 //        cout<<leftReturns<<" "<<rightReturns<<endl;
     bool isDirectlyPropor = (rightReturns > leftReturns);

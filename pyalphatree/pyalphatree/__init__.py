@@ -3,13 +3,15 @@
 from .util import AlphaForest, AlphaArray, AlphaGBDT, AlphaBI
 import re
 
-def cache_base(data_path, titles = ["date","open","high","low","close","volume","vwap","returns","amount","turn","tcap","mcap"]):
+def cache_base(data_path, titles = ["date","open","high","low","close","volume","turn"]):
     with AlphaForest() as af:
         af.load_db(data_path)
         for title in titles:
             af.csv2binary(data_path, title)
         af.cache_miss()
         af.cache_rand()
+        af.cache_alpha('returns', "((close / delay(close, 1)) - 1.0)")
+        af.cache_alpha('vwap', '(((high + low) + close) / 3.0)')
 
 #缓存各种指标
 def cache_indicator(indicator_path, data_path):

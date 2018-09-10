@@ -67,12 +67,8 @@ def csv_2_binary(af):
     af.csv2binary("data", "low")
     af.csv2binary("data", "close")
     af.csv2binary("data", "volume")
-    af.csv2binary("data", "vwap")
-    af.csv2binary("data", "returns")
-    af.csv2binary("data", "amount")
     af.csv2binary("data", "turn")
-    af.csv2binary("data", "tcap")
-    af.csv2binary("data", "mcap")
+    af.cache_alpha('returns', '((close / delay(close, 1)) - 1.0)')
     print("finish convert")
 
 
@@ -719,10 +715,10 @@ def cache_feature(af, feature_path):
 
 if __name__ == "__main__":
     #下载所有股票数据
-    # download_stock_data()
+    download_stock_data()
     #将下载下来的csv变成二进制特征
-    # with AlphaForest() as af:
-    #    csv_2_binary(af)
+    with AlphaForest() as af:
+       csv_2_binary(af)
 
     with AlphaForest() as af:
         #加载数据描述

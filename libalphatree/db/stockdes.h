@@ -51,13 +51,11 @@ public:
 
         while (getline(inFile, lineStr)){
             stringstream ss(lineStr);
-            string code, market, industry, price, cap, pe, days;
+            string code, market, industry, price, days;
             getline(ss, code, ',');
             getline(ss, market, ',');
             getline(ss, industry, ',');
             getline(ss, price, ',');
-            getline(ss, cap, ',');
-            getline(ss, pe, ',');
             getline(ss, days, ',');
 
             StockMeta sm;

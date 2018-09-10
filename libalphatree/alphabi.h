@@ -260,7 +260,7 @@ protected:
         int* indexData = (int*)indexCache_->getCacheMemory(iId).cache;
         pluginFeature(group.getSignName(), alphatreeId, group.getDaybefore(), group.getSampleSize(), group.getSampleTime(), featureData, indexData);
 
-        bool isDirectlyPropor = getIsDirectlyPropor(featureData, returnsData, indexData, signNum);
+        bool isDirectlyPropor = getIsDirectlyPropor(featureData, returnsData, indexData, signNum, group.getSupport());
 
         if(!isDirectlyPropor){
             //如果特征和收益不成正比，强制转一下
@@ -320,7 +320,8 @@ protected:
 //        cout<<tmp<<endl;
         float minValue = FLT_MAX, maxValue = -FLT_MAX;
         calAutoregressive_(timeList, seqList, group.getSampleTime(), stdScale, minValue, maxValue);
-        if(maxValue >= minRandPercent){
+	cout<<maxValue<<endl;        
+	if(maxValue >= minRandPercent){
             releaseIndexCache(iId);
             releaseDataCache(fId);
             return 0;
