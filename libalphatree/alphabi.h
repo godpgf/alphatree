@@ -334,12 +334,13 @@ protected:
 
         calR2Seq_(featureData, group.featureAvgList, returnsData, group.returnsAvgList, indexData, signNum, group.getSampleTime(), group.getSupport(), seqList);
 
-        calAutoregressive_(timeList, seqList, group.getSampleTime(), stdScale, minValue, maxValue);
-//        for(int i = 0; i < group.getSampleTime(); ++i)
-//            if(seqList[i] < minValue)
-//                minValue = seqList[i];
-        cout<<"r2="<<minValue<<endl;
-        if(minValue < minR2){
+//        calAutoregressive_(timeList, seqList, group.getSampleTime(), stdScale, minValue, maxValue);
+        float avgValue = 0;
+        for(int i = 0; i < group.getSampleTime(); ++i)
+            avgValue += seqList[i];
+        avgValue /= group.getSampleTime();
+        cout<<"r2="<<avgValue<<endl;
+        if(avgValue < minR2){
             releaseIndexCache(iId);
             releaseDataCache(fId);
             releaseDataCache(sId);

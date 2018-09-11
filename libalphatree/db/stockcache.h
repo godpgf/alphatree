@@ -691,7 +691,7 @@ public:
         auto mainStockMeta = des_->stockMetas[des_->mainStock];
         Iterator<int64_t> mainDateIter(date->createIter(mainStockMeta.offset, mainStockMeta.days));
         Iterator<int64_t> allDateIter(date->createIter(0, des_->offset));
-		//cout << *mainDateIter << " " << *allDateIter << endl;
+//		cout << *mainDateIter << " " << *allDateIter << endl;
         ofstream file;
         file.open(feature2path_("miss"), ios::binary | ios::out);
         for(int i = 0; i < des_->stockMetas.getSize(); ++i){
@@ -723,7 +723,7 @@ public:
                     file.write(reinterpret_cast< char* >( &fullDataNum ), sizeof( int ));
                 } else {
                     fullDataNum = 0;
-                    //cout<<*mainDateIter<<" "<<*allDateIter<<endl;
+//                    cout<<*mainDateIter<<" "<<*allDateIter<<endl;
                     int skip = mainDateIter.jumpTo(*allDateIter, mainOffset, mainDateIter.size() - mainOffset);
                     if(skip < 0){
                         cout<<"m "<<des_->stockMetas[i].code<<"保存miss文件错误\n";
