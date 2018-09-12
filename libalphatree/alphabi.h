@@ -28,37 +28,40 @@ public:
     static AlphaBI *getAlphaBI() { return alphaBI_; }
 
     //创建一组对比数据，用来验证有效性的
-    int useGroup(const char *signName, size_t daybefore, size_t sampleSize, size_t sampleTime, float support){
+    int useGroup(const char *signName, size_t daybefore, size_t sampleSize, size_t sampleTime, float support) {
         int gId = groupCache_->useCacheMemory();
         groupCache_->getCacheMemory(gId).initialize(signName, daybefore, sampleSize, sampleTime, support);
         return gId;
     }
 
-    void releaseGroup(int gId){
+    void releaseGroup(int gId) {
         groupCache_->releaseCacheMemory(gId);
     }
 
-    void pluginControlGroup(int gId, const char* feature, const char* returns){
+    void pluginControlGroup(int gId, const char *feature, const char *returns) {
         AlphaForest *af = AlphaForest::getAlphaforest();
-        auto& group = groupCache_->getCacheMemory(gId);
+        auto &group = groupCache_->getCacheMemory(gId);
         int featureId = af->useAlphaTree();
         af->decode(featureId, "t", feature);
         int returnsId = af->useAlphaTree();
-        af->decode(returnsId,"t",returns);
+        af->decode(returnsId, "t", returns);
 
         size_t sampleDays = group.getSampleSize() * group.getSampleTime();
         size_t signNum = af->getAlphaDataBase()->getSignNum(group.getDaybefore(), sampleDays, group.getSignName());
 
         int fId = useDataCache(signNum);
         int iId = useIndexCache(signNum);
-        float* featureData = (float*)dataCache_->getCacheMemory(fId).cache;
-        float* returnsData = group.initializeReturns(signNum);
-        int* indexData = (int*)indexCache_->getCacheMemory(iId).cache;
+        float *featureData = (float *) dataCache_->getCacheMemory(fId).cache;
+        float *returnsData = group.initializeReturns(signNum);
+        int *indexData = (int *) indexCache_->getCacheMemory(iId).cache;
 
-        pluginFeature(group.getSignName(), featureId, group.getDaybefore(), group.getSampleSize(), group.getSampleTime(), featureData, indexData);
-        pluginFeature(group.getSignName(), returnsId, group.getDaybefore(), group.getSampleSize(), group.getSampleTime(), returnsData, nullptr);
+        pluginFeature(group.getSignName(), featureId, group.getDaybefore(), group.getSampleSize(),
+                      group.getSampleTime(), featureData, indexData);
+        pluginFeature(group.getSignName(), returnsId, group.getDaybefore(), group.getSampleSize(),
+                      group.getSampleTime(), returnsData, nullptr);
         sortFeature_(featureData, indexData, signNum, group.getSampleTime());
-        calReturnsRatioAvgAndStd_(returnsData, indexData, signNum, group.getSampleTime(), group.getSupport(), group.controlAvgList, group.controlStdList);
+        calReturnsRatioAvgAndStd_(returnsData, indexData, signNum, group.getSampleTime(), group.getSupport(),
+                                  group.controlAvgList, group.controlStdList);
 
         releaseDataCache(fId);
         releaseIndexCache(iId);
@@ -67,7 +70,8 @@ public:
     }
 
     //返回某个特征的区分度，它的区分能力可能是随机的，设置接受它是随机的概率minRandPercent,以及回归质量好坏指标minR2(《计量经济学（3版）》古扎拉蒂--上册p59)
-    float getDiscrimination(int gId, const char *feature, float expectReturn = 0.006f, float minRandPercent = 0.6f, float minR2 = 0.36, float stdScale = 2){
+    float getDiscrimination(int gId, const char *feature, float expectReturn = 0.006f, float minRandPercent = 0.6f,
+                            float minR2 = 0.36, float stdScale = 2) {
 //        cout<<AlphaBI::getAlphaBI()->groupCache_->getCacheMemory(gId).getSignName()<<endl;
         AlphaForest *af = AlphaForest::getAlphaforest();
         int alphatreeId = af->useAlphaTree();
@@ -78,28 +82,30 @@ public:
     }
 
     float getCorrelation(int gId, const char *a, const char *b) {
-        auto& group = groupCache_->getCacheMemory(gId);
+        auto &group = groupCache_->getCacheMemory(gId);
         int sId = useDataCache(group.getSampleTime());
-        float* seqList = (float*)dataCache_->getCacheMemory(sId).cache;
+        float *seqList = (float *) dataCache_->getCacheMemory(sId).cache;
         getCorrelationList(gId, a, b, seqList);
         float maxCorr = 0;
-        for(int i = 0; i < group.getSampleTime(); ++i){
-            if(fabsf(seqList[i]) > fabsf(maxCorr))
+        for (int i = 0; i < group.getSampleTime(); ++i) {
+            if (fabsf(seqList[i]) > fabsf(maxCorr))
                 maxCorr = seqList[i];
         }
         releaseDataCache(sId);
         return maxCorr;
     }
 
-    int optimizeDiscrimination(int gId, const char *feature, char *outFeature, float expectReturn = 0.006f, float minRandPercent = 0.6f, float minR2 = 0.36f, float stdScale = 2, int maxHistoryDays = 75,
-                               float exploteRatio = 0.1f, int errTryTime = 64){
+    int optimizeDiscrimination(int gId, const char *feature, char *outFeature, float expectReturn = 0.006f,
+                               float minRandPercent = 0.6f, float minR2 = 0.36f, float stdScale = 2,
+                               int maxHistoryDays = 75,
+                               float exploteRatio = 0.1f, int errTryTime = 64) {
         AlphaForest *af = AlphaForest::getAlphaforest();
         int alphatreeId = af->useAlphaTree();
         auto *alphatree = af->getAlphaTree(alphatreeId);
         af->decode(alphatreeId, "t", feature);
 
         int coffId = useDataCache(alphatree->getCoffSize());
-        float *bestCoffList = (float*)dataCache_->getCacheMemory(coffId).cache;
+        float *bestCoffList = (float *) dataCache_->getCacheMemory(coffId).cache;
         for (int i = 0; i < alphatree->getCoffSize(); ++i) {
             bestCoffList[i] = alphatree->getCoff(i);
         }
@@ -185,7 +191,7 @@ public:
     }
 
 protected:
-    AlphaBI(){
+    AlphaBI() {
         dataCache_ = DCache<BaseCache, DEFAULT_CACHE_SIZE>::create();
         indexCache_ = DCache<BaseCache, DEFAULT_CACHE_SIZE>::create();
         groupCache_ = DCache<BIGroup, DEFAULT_CACHE_SIZE>::create();
@@ -197,27 +203,29 @@ protected:
         DCache<BIGroup, DEFAULT_CACHE_SIZE>::release(groupCache_);
     }
 
-    int useDataCache(size_t size){
+    int useDataCache(size_t size) {
         int cId = dataCache_->useCacheMemory();
         dataCache_->getCacheMemory(cId).initialize<float>(size * sizeof(float));
         return cId;
     }
 
-    void releaseDataCache(int cId){
+    void releaseDataCache(int cId) {
         dataCache_->releaseCacheMemory(cId);
     }
 
-    int useIndexCache(size_t size){
+    int useIndexCache(size_t size) {
         int iId = indexCache_->useCacheMemory();
         indexCache_->getCacheMemory(iId).initialize<int>(size * sizeof(float));
         return iId;
     }
 
-    void releaseIndexCache(int iId){
+    void releaseIndexCache(int iId) {
         indexCache_->releaseCacheMemory(iId);
     }
 
-    static int pluginFeature(const char* signName, const char* feature, size_t daybefore, size_t sampleSize, size_t sampleTime, float* cache, int* index){
+    static int
+    pluginFeature(const char *signName, const char *feature, size_t daybefore, size_t sampleSize, size_t sampleTime,
+                  float *cache, int *index) {
 //        cout<<signName<<" "<<feature<<" "<<daybefore<<" "<<sampleSize<<" "<<sampleTime<<endl;
         AlphaForest *af = AlphaForest::getAlphaforest();
         int alphatreeId = af->useAlphaTree();
@@ -227,16 +235,18 @@ protected:
         return signNum;
     }
 
-    static int pluginFeature(const char* signName, int alphatreeId, size_t daybefore, size_t sampleSize, size_t sampleTime, float* cache, int* index){
+    static int
+    pluginFeature(const char *signName, int alphatreeId, size_t daybefore, size_t sampleSize, size_t sampleTime,
+                  float *cache, int *index) {
         AlphaForest *af = AlphaForest::getAlphaforest();
         int sampleDays = sampleSize * sampleTime;
         int signNum = af->getAlphaDataBase()->getSignNum(daybefore, sampleDays, signName);
 
         AlphaSignIterator f(af, "t", signName, alphatreeId, daybefore, sampleDays, 0, signNum);
 
-        for(int i = 0; i < signNum; ++i){
+        for (int i = 0; i < signNum; ++i) {
             cache[i] = f.getValue();
-            if(index != nullptr)
+            if (index != nullptr)
                 index[i] = i;
             f.skip(1);
         }
@@ -244,9 +254,10 @@ protected:
         return signNum;
     }
 
-    float getDiscrimination(int gId, int alphatreeId, float expectReturn = 0.006f, float minRandPercent = 0.06f, float minR2 = 0.32, float stdScale = 2){
+    float getDiscrimination(int gId, int alphatreeId, float expectReturn = 0.006f, float minRandPercent = 0.06f,
+                            float minR2 = 0.32, float stdScale = 2) {
         AlphaForest *af = AlphaForest::getAlphaforest();
-        auto& group = groupCache_->getCacheMemory(gId);
+        auto &group = groupCache_->getCacheMemory(gId);
 //        cout<<group.getSignName()<<endl;
         size_t sampleDays = group.getSampleSize() * group.getSampleTime();
 //        cout<<group.getSignName()<<" "<<sampleDays<<" "<<group.getDaybefore()<<" "<<group.getSampleTime()<<endl;
@@ -255,26 +266,28 @@ protected:
         //先计算特征是越大越好还是越小越好
         int fId = useDataCache(signNum);
         int iId = useIndexCache(signNum);
-        float* featureData = (float*)dataCache_->getCacheMemory(fId).cache;
-        float* returnsData = group.returnsList;
-        int* indexData = (int*)indexCache_->getCacheMemory(iId).cache;
-        pluginFeature(group.getSignName(), alphatreeId, group.getDaybefore(), group.getSampleSize(), group.getSampleTime(), featureData, indexData);
+        float *featureData = (float *) dataCache_->getCacheMemory(fId).cache;
+        float *returnsData = group.returnsList;
+        int *indexData = (int *) indexCache_->getCacheMemory(iId).cache;
+        pluginFeature(group.getSignName(), alphatreeId, group.getDaybefore(), group.getSampleSize(),
+                      group.getSampleTime(), featureData, indexData);
 
         bool isDirectlyPropor = getIsDirectlyPropor(featureData, returnsData, indexData, signNum, group.getSupport());
 
-        if(!isDirectlyPropor){
+        if (!isDirectlyPropor) {
             //如果特征和收益不成正比，强制转一下
-            for(int i = 0; i < signNum; ++i)
+            for (int i = 0; i < signNum; ++i)
                 featureData[i] = -featureData[i];
         }
         //恢复排序过的index
-        for(size_t i = 0; i < signNum; ++i)
+        for (size_t i = 0; i < signNum; ++i)
             indexData[i] = i;
         //给每个时间段的特征排序
         sortFeature_(featureData, indexData, signNum, group.getSampleTime());
 
         //计算特征影响下的收益比（特征大的那部分股票收益/特征小的那部分股票收益）
-        calReturnsRatioAvgAndStd_(returnsData, indexData, signNum, group.getSampleTime(), group.getSupport(), group.observationAvgList, group.observationStdList);
+        calReturnsRatioAvgAndStd_(returnsData, indexData, signNum, group.getSampleTime(), group.getSupport(),
+                                  group.observationAvgList, group.observationStdList);
 
 //        cout<<"control avg:\n";
 //        for(int i = 0; i < group.getSampleTime(); ++i){
@@ -284,17 +297,17 @@ protected:
 
         int sId = useDataCache(group.getSampleTime());
         int tId = useDataCache(group.getSampleTime());
-        float* seqList = (float*)dataCache_->getCacheMemory(sId).cache;
-        float* timeList = (float*)dataCache_->getCacheMemory(tId).cache;
-        for(size_t i = 0; i < group.getSampleTime(); ++i)
+        float *seqList = (float *) dataCache_->getCacheMemory(sId).cache;
+        float *timeList = (float *) dataCache_->getCacheMemory(tId).cache;
+        for (size_t i = 0; i < group.getSampleTime(); ++i)
             timeList[i] = i;
 
         //计算特征收益其实是随机参数的概率
 //        char tmp[512];
 //        char* p = tmp;
 //        memset(p, 0, 512 * sizeof(char));
-        for(size_t i = 0; i < group.getSampleTime(); ++i){
-            if(group.observationAvgList[i] < group.controlAvgList[i]){
+        for (size_t i = 0; i < group.getSampleTime(); ++i) {
+            if (group.observationAvgList[i] < group.controlAvgList[i]) {
                 releaseIndexCache(iId);
                 releaseDataCache(fId);
 //                if(i > (group.getSampleTime() >> 1))
@@ -320,27 +333,30 @@ protected:
 //        cout<<tmp<<endl;
         float minValue = FLT_MAX, maxValue = -FLT_MAX;
         calAutoregressive_(timeList, seqList, group.getSampleTime(), stdScale, minValue, maxValue);
-	cout<<maxValue<<endl;        
-	if(maxValue >= minRandPercent){
+        cout << maxValue << endl;
+        if (maxValue >= minRandPercent) {
             releaseIndexCache(iId);
             releaseDataCache(fId);
             return 0;
         }
 
         //计算拟合优度
-        calFeatureAvg_(featureData, indexData, signNum, group.getSampleTime(), group.getSupport(), group.featureAvgList);
-        calFeatureAvg_(returnsData, indexData, signNum, group.getSampleTime(), group.getSupport(), group.returnsAvgList);
+        calFeatureAvg_(featureData, indexData, signNum, group.getSampleTime(), group.getSupport(),
+                       group.featureAvgList);
+        calFeatureAvg_(returnsData, indexData, signNum, group.getSampleTime(), group.getSupport(),
+                       group.returnsAvgList);
 
 
-        calR2Seq_(featureData, group.featureAvgList, returnsData, group.returnsAvgList, indexData, signNum, group.getSampleTime(), group.getSupport(), seqList);
+        calR2Seq_(featureData, group.featureAvgList, returnsData, group.returnsAvgList, indexData, signNum,
+                  group.getSampleTime(), group.getSupport(), seqList);
 
 //        calAutoregressive_(timeList, seqList, group.getSampleTime(), stdScale, minValue, maxValue);
         float avgValue = 0;
-        for(int i = 0; i < group.getSampleTime(); ++i)
+        for (int i = 0; i < group.getSampleTime(); ++i)
             avgValue += seqList[i];
         avgValue /= group.getSampleTime();
-        cout<<"r2="<<avgValue<<endl;
-        if(avgValue < minR2){
+        cout << "r2=" << avgValue << endl;
+        if (avgValue < minR2) {
             releaseIndexCache(iId);
             releaseDataCache(fId);
             releaseDataCache(sId);
@@ -349,9 +365,10 @@ protected:
         }
 
         //最后计算区分度，前面两个指标大概率排除了特征是随机的可能（特征有没有可能是假的），现在就有返回特征有没有效果（特征区分度）
-        calDiscriminationSeq_(returnsData, indexData, signNum, group.getSampleTime(), group.getSupport(), expectReturn, seqList);
+        calDiscriminationSeq_(returnsData, indexData, signNum, group.getSampleTime(), group.getSupport(), expectReturn,
+                              seqList);
         calAutoregressive_(timeList, seqList, group.getSampleTime(), stdScale, minValue, maxValue);
-        cout<<"dist=("<<minValue<<"~"<<maxValue<<")"<<endl;
+        cout << "dist=(" << minValue << "~" << maxValue << ")" << endl;
 
         releaseIndexCache(iId);
         releaseDataCache(fId);
@@ -362,7 +379,7 @@ protected:
 
     void getCorrelationList(int gId, const char *a, const char *b, float *outCorrelation) {
         AlphaForest *af = AlphaForest::getAlphaforest();
-        auto& group = groupCache_->getCacheMemory(gId);
+        auto &group = groupCache_->getCacheMemory(gId);
         size_t sampleDays = group.getSampleSize() * group.getSampleTime();
         size_t signNum = af->getAlphaDataBase()->getSignNum(group.getDaybefore(), sampleDays, group.getSignName());
 
@@ -375,7 +392,7 @@ protected:
         AlphaSignIterator bfeature(af, "t", group.getSignName(), bId, group.getDaybefore(), sampleDays, 0, signNum);
 
         int cId = useDataCache(signNum * 2);
-        float* cache = (float*)dataCache_->getCacheMemory(cId).cache;
+        float *cache = (float *) dataCache_->getCacheMemory(cId).cache;
         float *a_ = cache;
         float *b_ = cache + signNum;
 
@@ -389,7 +406,8 @@ protected:
         for (size_t i = 0; i < group.getSampleTime(); ++i) {
             size_t startIndex = (size_t) (i * signNum / (float) group.getSampleTime());
             size_t splitLen =
-                    (size_t) (signNum * (i + 1) / (float) (group.getSampleTime())) - (size_t)(signNum * i / (float) (group.getSampleTime()));
+                    (size_t) (signNum * (i + 1) / (float) (group.getSampleTime())) -
+                    (size_t) (signNum * i / (float) (group.getSampleTime()));
             outCorrelation[i] = correlation_(a_ + startIndex, b_ + startIndex, splitLen);
         }
 
@@ -399,9 +417,9 @@ protected:
     }
 
 public:
-    DCache<BaseCache, DEFAULT_CACHE_SIZE>* dataCache_;
-    DCache<BaseCache, DEFAULT_CACHE_SIZE>* indexCache_;
-    DCache<BIGroup, DEFAULT_CACHE_SIZE>* groupCache_;
+    DCache<BaseCache, DEFAULT_CACHE_SIZE> *dataCache_;
+    DCache<BaseCache, DEFAULT_CACHE_SIZE> *indexCache_;
+    DCache<BIGroup, DEFAULT_CACHE_SIZE> *groupCache_;
 
     static AlphaBI *alphaBI_;
 };
