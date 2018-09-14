@@ -7,14 +7,14 @@ valid_sign_name = "valid_sign"
 valid_sign_line = '(volume > 0)'
 
 feature_list = [
-    "correlation(ts_rank(stddev((sum((close + close), 39) / 2), 20), 8), (ts_rank(close, 7) - ts_rank(sum(volume, 13), 3)), 5)",
-    "((close / high) - stddev(ma(returns, 7), 3))",
-    "correlation((lerp(open, open, 0.49) - delay(close, 20)), stddev(close, 5), 9)",
-    "(ts_rank(open, 4) - correlation(ts_min(sum(low, 20), 5), ts_min(sum(high, 20), 3), 6))",
-    "correlation(wma(ts_rank(stddev(volume, 20), 5), 7), ts_rank(volume, 4), 7)"]
+    "(ts_rank(returns, 12.06470013) / (ma(high, 20) - ma(close, 20)))",
+    "(ts_rank(close, 5) - sign(wma(delta(correlation(close, close, 5.11456013), 50), 11.82590008)))",
+    "((close / (open + ts_min(open, 3))) - wma(delay(stddev(ma(returns, 18), 9), 2), 20.04509926))",
+    "((close - high) - delta(ma(stddev(close, 10), 19), 7))",
+    "(correlation((open / 2), open, 20) - (ts_min(ma((close - high), 19), 2.14593005) / ts_min(close, 11.57830048)))"]
 
 if __name__ == '__main__':
-    download_industry(['1399005'], '1399005', 'data')
+    download_industry(['sz399005'], 'sz399005', 'data')
     cache_base('data')
     with AlphaForest() as af:
         af.load_db('data')
@@ -27,7 +27,7 @@ if __name__ == '__main__':
             af.load_feature('date')
             af.load_feature("returns")
             af.load_sign(valid_sign_name)
-            bi = AlphaBI(valid_sign_name, 0, 128, 16, 0.6, 'rand', "returns")
+            bi = AlphaBI(valid_sign_name, 0, 250, 6, 0.32, 'rand', "returns")
             for i in range(len(feature_list)):
                 print(feature_list[i])
                 print("  discrimination:%.4f"%(bi.get_discrimination(feature_list[i], target_returns)))

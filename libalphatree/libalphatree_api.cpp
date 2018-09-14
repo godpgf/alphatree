@@ -301,17 +301,26 @@ float DLLEXPORT getCorrelation(int gId, const char* a, const char* b){
 /*
  * 计算某个信号下(signName)，某个特征(feature)对于某个分类(target)的区分度
  * */
-float DLLEXPORT getDiscrimination(int gId, const char *feature, float expectReturn = 0.006f, float minRandPercent = 0.06f, float minR2 = 0.16, float stdScale = 2){
-    return AlphaBI::getAlphaBI()->getDiscrimination(gId, feature, expectReturn, minRandPercent, minR2, stdScale);
+float DLLEXPORT getDiscrimination(int gId, const char *feature, float expectReturn = 0.006f, float minRandPercent = 0.06f,  float stdScale = 2){
+    return AlphaBI::getAlphaBI()->getDiscrimination(gId, feature, expectReturn, minRandPercent, stdScale);
 }
 
 //优化feature中的参数，使得贡献度最大
 int DLLEXPORT optimizeDiscrimination(int gId, const char *feature, char *outFeature, float expectReturn = 0.006f,
-                                     float minRandPercent = 0.06f, float minR2 = 0.16, float stdScale = 2, int maxHistoryDays = 75,
+                                     float minRandPercent = 0.06f, float stdScale = 2, int maxHistoryDays = 75,
                                      float exploteRatio = 0.1f, int errTryTime = 64){
-    return AlphaBI::getAlphaBI()->optimizeDiscrimination(gId, feature, outFeature, expectReturn, minRandPercent, minR2, stdScale, maxHistoryDays, exploteRatio, errTryTime);
+    return AlphaBI::getAlphaBI()->optimizeDiscrimination(gId, feature, outFeature, expectReturn, minRandPercent, stdScale, maxHistoryDays, exploteRatio, errTryTime);
 }
 
+float DLLEXPORT getDiscriminationInc(int gId, const char *incFeature, const char* feature, float expectReturn = 0.006f, float minRandPercent = 0.06f, float stdScale = 2){
+    return AlphaBI::getAlphaBI()->getDiscriminationInc(gId, incFeature, feature, expectReturn, minRandPercent, stdScale);
+}
+
+int DLLEXPORT optimizeDiscriminationInc(int gId, const char *incFeature, const char *feature, char *outFeature, float expectReturn = 0.006f,
+                                  float minRandPercent = 0.6f, float stdScale = 2, int maxHistoryDays = 75,
+                                  float exploteRatio = 0.1f, int errTryTime = 64){
+    return AlphaBI::getAlphaBI()->optimizeDiscriminationInc(gId, incFeature, feature, outFeature, expectReturn, minRandPercent, stdScale, maxHistoryDays, exploteRatio, errTryTime);
+}
 /*
 float DLLEXPORT getConfidence(const char* signName, const char* feature, const char* target, int daybefore, int sampleSize, int sampleTime, float support, float stdScale){
     AlphaForest* af = AlphaForest::getAlphaforest();

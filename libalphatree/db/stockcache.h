@@ -862,7 +862,7 @@ public:
         for(int i = 0; i < des->stockMetas.getSize(); ++i){
             auto meta = des->stockMetas[i];
             CSVIterator<T> iter(filepath(meta.code,".csv").c_str(), featureName);
-
+            //cout<<featureName<<" "<<filepath(meta.code,".csv")<<endl;
             //file.seekp(meta.offset * sizeof(T), ios::beg);
 
             int dayNum = 0;

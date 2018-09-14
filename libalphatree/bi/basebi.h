@@ -104,6 +104,25 @@ void sortFeature_(const float* cache, int* index, size_t len, size_t sampleTime)
     }
 }
 
+//将数据排序后将头尾最有代表性的focusPercent这么多的数据再经过第二个特征的排序
+void mulSortFeature_(const float* firstFeature, const float* secondFeature, int* index, size_t len, size_t sampleTime, float focusPercent){
+    for(int splitId = 0; splitId < sampleTime; ++splitId){
+        int preId = (int)(splitId * len / (float)sampleTime);
+        int nextId = (int)((splitId + 1) * len / (float)sampleTime);
+        int segmentSize = nextId - preId;
+        quickSort_(firstFeature, index, preId, nextId-1);
+
+        int focusSize = segmentSize * focusPercent * 0.5;
+        int* indexData = index + preId;
+        for(int i = 0; i < focusSize; ++i){
+            indexData[focusSize + i] = indexData[segmentSize - focusSize + i];
+        }
+        quickSort_(secondFeature, index, preId, preId + focusSize - 1);
+        quickSort_(secondFeature, index, preId + focusSize, preId + 2 * focusSize - 1);
+    }
+}
+
+
 void calReturnsRatioAvgAndStd_(const float* returns, const int* index, size_t len, size_t sampleTime, float support, float* avg, float* std){
     memset(avg, 0, sampleTime * sizeof(float));
     memset(std, 0, sampleTime * sizeof(float));
@@ -154,6 +173,70 @@ void calFeatureAvg_(const float* cache, const int* index, size_t len, size_t sam
             featureAvg[splitId] += cache[rid];
         }
         featureAvg[splitId] /= 2 * (supportNextId - preId);
+    }
+}
+
+//传染排序后的特征，计算光看这个特征的auc值
+void calAUCSeq_(const float* cache, const int* index, const float* target, float targetThreshold, size_t len, size_t sampleTime, float support, float* aucList){
+
+    cout<<"auc:";
+    for(size_t splitId = 0; splitId < sampleTime; ++splitId){
+        size_t preId = (size_t)(splitId * len / (float)sampleTime);
+        size_t nextId = (size_t)((splitId + 1) * len / (float)sampleTime);
+        size_t supportSize =(nextId - preId) * support * 0.5f;
+
+        //计算所有正类样本数
+        int pcnt = 0;
+        int rankSum = 0;
+        int id = 0;
+        for(int j = preId; j < nextId; ++j){
+            //仅仅观察头尾两块的数据
+            if(j < preId + supportSize || j >= nextId - supportSize){
+                ++id;
+                if(target[index[j]] > targetThreshold){
+                    ++pcnt;
+                    rankSum += id;
+                }
+            }
+        }
+
+        aucList[splitId] = (rankSum - pcnt * (1 + pcnt) * 0.5f) / (pcnt * (2 * supportSize - pcnt));
+
+        cout<<aucList[splitId]<<" ";
+    }
+    cout<<endl;
+}
+
+//数据先经过助手特征排序后再经过主要特征排序
+void calAUCIncSeq_(const float* returns, const int* index, size_t len, size_t sampleTime, float focusPercent, float expectReturn, float* discList){
+    for(size_t splitId = 0; splitId < sampleTime; ++splitId){
+        size_t preId = (size_t)(splitId * len / (float)sampleTime);
+        size_t nextId = (size_t)((splitId + 1) * len / (float)sampleTime);
+        int segmentSize = nextId - preId;
+        int focusSize = segmentSize * focusPercent * 0.5;
+        int midId = preId + focusSize / 2;
+
+        //计算所有正类样本数
+        int pcntL = 0, pcntR = 0;
+        int rankSumL = 0, rankSumR = 0;
+
+        for(int j = preId; j < midId; ++j){
+            int lid = index[j];
+            int rid = index[focusSize + j];
+            if(returns[lid] > expectReturn){
+                ++pcntL;
+                rankSumL += j - preId + 1;
+            }
+
+            if(returns[rid] > expectReturn){
+                ++pcntR;
+                rankSumR += j - preId + 1;
+            }
+
+        }
+        float preDist = (rankSumL - pcntL * (1 + pcntL) * 0.5f) / (pcntL * (2 * focusSize - pcntL));
+        float lastDist = (rankSumR - pcntR * (1 + pcntR) * 0.5f) / (pcntR * (2 * focusSize - pcntR));
+        discList[splitId] = lastDist - preDist;
     }
 }
 
@@ -210,6 +293,7 @@ void calAutoregressive_(const float* timeSeq, const float *data, int len, float 
     maxValue = value + stdR * stdScale;
 }
 
+/*
 void calDiscriminationSeq_(const float* returns, const int* index, size_t len, size_t sampleTime, float support, float expectReturn, float* discList){
     cout<<expectReturn<<":";
     for(size_t splitId = 0; splitId < sampleTime; ++splitId){
@@ -231,4 +315,5 @@ void calDiscriminationSeq_(const float* returns, const int* index, size_t len, s
     }
     cout<<endl;
 }
+ */
 #endif //ALPHATREE_BASEBI_H

@@ -62,7 +62,7 @@ public:
             strcpy(sm.code, code.c_str());
             sm.days = atoi(days.c_str());
 			//godpgf
-			//cout << code << " " << sm.days << endl;
+//			cout << code << " " << sm.days << endl;
             //offset += sm.days;
             //cout<<market<<" "<<market.length()<<" "<<industry<<" "<<industry.length()<<endl;
             if(market.length() != 0 && industry.length() == 0){
