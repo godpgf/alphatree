@@ -7,7 +7,6 @@
 #define ALPHATREE_BIGROUP_H
 
 #include <string.h>
-#include <glob.h>
 #include <iostream>
 using namespace std;
 

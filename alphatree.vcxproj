@@ -121,6 +121,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="libalphatree\alphabi.h" />
     <ClInclude Include="libalphatree\alphaforest.h" />
     <ClInclude Include="libalphatree\alphagbdt.h" />
     <ClInclude Include="libalphatree\alpha\alphaatom.h" />
@@ -144,6 +145,8 @@
     <ClInclude Include="libalphatree\base\randomchoose.h" />
     <ClInclude Include="libalphatree\base\threadpool.h" />
     <ClInclude Include="libalphatree\base\vector.h" />
+    <ClInclude Include="libalphatree\bi\basebi.h" />
+    <ClInclude Include="libalphatree\bi\bigroup.h" />
     <ClInclude Include="libalphatree\cart\act.h" />
     <ClInclude Include="libalphatree\cart\bar.h" />
     <ClInclude Include="libalphatree\cart\gbdt.h" />

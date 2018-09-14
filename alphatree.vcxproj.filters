@@ -28,6 +28,9 @@
     <Filter Include="头文件\cart">
       <UniqueIdentifier>{e0c989dc-a387-4072-b1c4-c0ea81bcc0c4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="头文件\bi">
+      <UniqueIdentifier>{73137972-edf6-4ee5-b37d-9cea24c135c4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="libalphatree\alphaforest.h">
@@ -128,6 +131,15 @@
     </ClInclude>
     <ClInclude Include="libalphatree\cart\split.h">
       <Filter>头文件\cart</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\bi\basebi.h">
+      <Filter>头文件\bi</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\bi\bigroup.h">
+      <Filter>头文件\bi</Filter>
+    </ClInclude>
+    <ClInclude Include="libalphatree\alphabi.h">
+      <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
