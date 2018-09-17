@@ -293,6 +293,31 @@ void calAutoregressive_(const float* timeSeq, const float *data, int len, float 
     maxValue = value + stdR * stdScale;
 }
 
+void calWaveRange_(const float *data, int len, float stdScale, float &minValue, float &maxValue) {
+    float avg = 0;
+    for(int i = 0; i < len; ++i){
+        avg += data[i];
+    }
+    avg /= len;
+
+    float stdL = 0, stdR = 0;
+    int cntL = 0, cntR = 0;
+    for (int i = 0; i < len; ++i) {
+        float err = data[i] - avg;
+        if(err >= 0){
+            stdR += err * err;
+            ++cntR;
+        }else{
+            stdL += err * err;
+            ++cntL;
+        }
+    }
+    stdL = sqrtf(stdL / cntL);
+    stdR = sqrtf(stdR / cntR);
+    minValue = avg - stdL * stdScale;
+    maxValue = avg + stdR * stdScale;
+}
+
 /*
 void calDiscriminationSeq_(const float* returns, const int* index, size_t len, size_t sampleTime, float support, float expectReturn, float* discList){
     cout<<expectReturn<<":";

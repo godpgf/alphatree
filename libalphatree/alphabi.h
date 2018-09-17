@@ -63,6 +63,10 @@ public:
         calReturnsRatioAvgAndStd_(returnsData, indexData, signNum, group.getSampleTime(), group.getSupport(),
                                   group.controlAvgList, group.controlStdList);
 
+//        for(int i = 0; i < signNum; ++i)
+//            cout<<returnsData[i]<<" ";
+//        cout<<endl;
+
         releaseDataCache(fId);
         releaseIndexCache(iId);
         af->releaseAlphaTree(featureId);
@@ -405,11 +409,11 @@ protected:
 //        cout<<endl;
 
         int sId = useDataCache(group.getSampleTime());
-        int tId = useDataCache(group.getSampleTime());
+//        int tId = useDataCache(group.getSampleTime());
         float *seqList = (float *) dataCache_->getCacheMemory(sId).cache;
-        float *timeList = (float *) dataCache_->getCacheMemory(tId).cache;
-        for (size_t i = 0; i < group.getSampleTime(); ++i)
-            timeList[i] = i;
+//        float *timeList = (float *) dataCache_->getCacheMemory(tId).cache;
+//        for (size_t i = 0; i < group.getSampleTime(); ++i)
+//            timeList[i] = i;
 
         //计算特征收益其实是随机参数的概率
 //        char tmp[512];
@@ -420,7 +424,7 @@ protected:
                 releaseIndexCache(iId);
                 releaseDataCache(fId);
                 releaseDataCache(sId);
-                releaseDataCache(tId);
+//                releaseDataCache(tId);
 //                if(i > (group.getSampleTime() >> 1))
 //                    cout<<":"<<tmp<<endl;
                 return 0;
@@ -443,13 +447,14 @@ protected:
         }
 //        cout<<tmp<<endl;
         float minValue = FLT_MAX, maxValue = -FLT_MAX;
-        calAutoregressive_(timeList, seqList, group.getSampleTime(), stdScale, minValue, maxValue);
-        cout << maxValue << endl;
+//        calAutoregressive_(timeList, seqList, group.getSampleTime(), stdScale, minValue, maxValue);
+        calWaveRange_(seqList, group.getSampleTime(), stdScale, minValue, maxValue);
+//        cout << maxValue << endl;
         if (maxValue >= minRandPercent) {
             releaseIndexCache(iId);
             releaseDataCache(fId);
             releaseDataCache(sId);
-            releaseDataCache(tId);
+//            releaseDataCache(tId);
             return 0;
         }
 
@@ -464,13 +469,13 @@ protected:
 //                  group.getSampleTime(), group.getSupport(), seqList);
         calAUCSeq_(featureData, indexData, returnsData, expectReturn, signNum, group.getSampleTime(), group.getSupport(), seqList);
 
-        calAutoregressive_(timeList, seqList, group.getSampleTime(), stdScale, minValue, maxValue);
+        calWaveRange_(seqList, group.getSampleTime(), stdScale, minValue, maxValue);
         cout << "dist=(" << minValue << "~" << maxValue << ")" << endl;
 
         releaseIndexCache(iId);
         releaseDataCache(fId);
         releaseDataCache(sId);
-        releaseDataCache(tId);
+//        releaseDataCache(tId);
         return minValue;
     }
 
