@@ -123,7 +123,7 @@ void mulSortFeature_(const float* firstFeature, const float* secondFeature, int*
 }
 
 
-void calReturnsRatioAvgAndStd_(const float* returns, const int* index, size_t len, size_t sampleTime, float support, float* avg, float* std){
+void calReturnsRatioAvgAndStd_(const float* returns, const int* index, size_t len, size_t sampleTime, float support, float expectReturn, float* avg, float* std){
     memset(avg, 0, sampleTime * sizeof(float));
     memset(std, 0, sampleTime * sizeof(float));
     for(size_t splitId = 0; splitId < sampleTime; ++splitId){
@@ -133,9 +133,9 @@ void calReturnsRatioAvgAndStd_(const float* returns, const int* index, size_t le
         for(int j = preId; j < supportNextId; ++j){
             int lid = index[j];
             int rid = index[nextId - 1 - (j - preId)];
-            float v = (returns[rid] + 1.f) / (returns[lid] + 1.f);
+            float v = (returns[rid] > expectReturn ? 1.f : 0.f) - (returns[lid] > expectReturn ? 1.f : 0.f);
 //                cout<<v<<"="<<(returns[rid] + 1.f)<<"/"<<(returns[lid] + 1.f)<<endl;
-                v = returns[lid] + returns[rid];
+                //v = returns[lid] + returns[rid];
             avg[splitId] += v;
             std[splitId] += v * v;
         }
@@ -147,13 +147,13 @@ void calReturnsRatioAvgAndStd_(const float* returns, const int* index, size_t le
     }
 }
 
-bool getIsDirectlyPropor(const float* feature, const float* returns, int* index, size_t len, float support){
+bool getIsDirectlyPropor(const float* feature, const float* returns, int* index, size_t len, float support, float expectReturn){
     quickSort_(feature, index, 0, len-1);
     float leftReturns = 0, rightReturns = 0;
     size_t midSize = (size_t)(len * 0.5f * support);
     for(int i = 0; i < midSize; ++i){
-        leftReturns += returns[index[i]];
-        rightReturns += returns[index[len - i - 1]];
+        leftReturns += ((returns[index[i]] > expectReturn) ? 1 : 0);
+        rightReturns += ((returns[index[len - i - 1]] > expectReturn) ? 1 : 0);
     }
 //        cout<<leftReturns<<" "<<rightReturns<<endl;
     bool isDirectlyPropor = (rightReturns > leftReturns);

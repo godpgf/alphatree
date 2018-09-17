@@ -28,9 +28,9 @@ public:
     static AlphaBI *getAlphaBI() { return alphaBI_; }
 
     //创建一组对比数据，用来验证有效性的
-    int useGroup(const char *signName, size_t daybefore, size_t sampleSize, size_t sampleTime, float support) {
+    int useGroup(const char *signName, size_t daybefore, size_t sampleSize, size_t sampleTime, float support, float expectReturn) {
         int gId = groupCache_->useCacheMemory();
-        groupCache_->getCacheMemory(gId).initialize(signName, daybefore, sampleSize, sampleTime, support);
+        groupCache_->getCacheMemory(gId).initialize(signName, daybefore, sampleSize, sampleTime, support, expectReturn);
         return gId;
     }
 
@@ -60,7 +60,7 @@ public:
         pluginFeature(group.getSignName(), returnsId, group.getDaybefore(), group.getSampleSize(),
                       group.getSampleTime(), returnsData, nullptr);
         sortFeature_(featureData, indexData, signNum, group.getSampleTime());
-        calReturnsRatioAvgAndStd_(returnsData, indexData, signNum, group.getSampleTime(), group.getSupport(),
+        calReturnsRatioAvgAndStd_(returnsData, indexData, signNum, group.getSampleTime(), group.getSupport(), group.getExpectReturn(),
                                   group.controlAvgList, group.controlStdList);
 
 //        for(int i = 0; i < signNum; ++i)
@@ -73,25 +73,25 @@ public:
         af->releaseAlphaTree(returnsId);
     }
 
-    //返回某个特征的区分度，它的区分能力可能是随机的，设置接受它是随机的概率minRandPercent,以及分类质量好坏指标minAUC(《计量经济学（3版）》古扎拉蒂--上册p59)
-    float getDiscrimination(int gId, const char *feature, float expectReturn = 0.006f, float minRandPercent = 0.6f,
+    //返回某个特征的区分度，它的区分能力可能是随机的，设置接受它是随机的概率minRandPercent,以及分类质量好坏指标minAUC
+    float getDiscrimination(int gId, const char *feature, float minRandPercent = 0.6f,
                             float minAUC = 0.36, float stdScale = 2) {
 //        cout<<AlphaBI::getAlphaBI()->groupCache_->getCacheMemory(gId).getSignName()<<endl;
         AlphaForest *af = AlphaForest::getAlphaforest();
         int alphatreeId = af->useAlphaTree();
         af->decode(alphatreeId, "t", feature);
-        float disc = getDiscrimination(gId, alphatreeId, expectReturn, minRandPercent, stdScale);
+        float disc = getDiscrimination(gId, alphatreeId, minRandPercent, stdScale);
         af->releaseAlphaTree(alphatreeId);
         return disc;
     }
 
-    float getDiscriminationInc(int gId, const char *incFeature, const char* feature, float expectReturn = 0.006f, float minRandPercent = 0.06f, float stdScale = 2){
+    float getDiscriminationInc(int gId, const char *incFeature, const char* feature, float minRandPercent = 0.06f, float stdScale = 2){
         AlphaForest *af = AlphaForest::getAlphaforest();
         int alphatreeId = af->useAlphaTree();
         int incAlphaTreeId = af->useAlphaTree();
         af->decode(alphatreeId, "t", feature);
         af->decode(incAlphaTreeId, "t", incFeature);
-        float discInc = getDiscriminationInc(gId, incAlphaTreeId, alphatreeId, expectReturn, minRandPercent, stdScale);
+        float discInc = getDiscriminationInc(gId, incAlphaTreeId, alphatreeId, minRandPercent, stdScale);
         af->releaseAlphaTree(alphatreeId);
         af->releaseAlphaTree(incAlphaTreeId);
         return discInc;
@@ -111,7 +111,7 @@ public:
         return maxCorr;
     }
 
-    int optimizeDiscrimination(int gId, const char *feature, char *outFeature, float expectReturn = 0.006f,
+    int optimizeDiscrimination(int gId, const char *feature, char *outFeature,
                                float minRandPercent = 0.6f, float stdScale = 2, int maxHistoryDays = 75,
                                float exploteRatio = 0.1f, int errTryTime = 64) {
         AlphaForest *af = AlphaForest::getAlphaforest();
@@ -125,7 +125,7 @@ public:
             bestCoffList[i] = alphatree->getCoff(i);
         }
 
-        float bestRes = getDiscrimination(gId, alphatreeId, expectReturn, minRandPercent, stdScale);
+        float bestRes = getDiscrimination(gId, alphatreeId, minRandPercent, stdScale);
 
         if (alphatree->getCoffSize() > 0) {
             RandomChoose rc = RandomChoose(2 * alphatree->getCoffSize());
@@ -170,7 +170,7 @@ public:
 
                 }
 
-                float res = getDiscrimination(gId, alphatreeId, expectReturn, minRandPercent, stdScale);
+                float res = getDiscrimination(gId, alphatreeId, minRandPercent, stdScale);
 
                 if (res > bestRes) {
                     //cout<<"best res "<<res<<endl;
@@ -205,7 +205,7 @@ public:
         return strlen(outFeature);
     }
 
-    int optimizeDiscriminationInc(int gId, const char *incFeature, const char *feature, char *outFeature, float expectReturn = 0.006f,
+    int optimizeDiscriminationInc(int gId, const char *incFeature, const char *feature, char *outFeature,
                                float minRandPercent = 0.6f, float stdScale = 2, int maxHistoryDays = 75,
                                float exploteRatio = 0.1f, int errTryTime = 64) {
         AlphaForest *af = AlphaForest::getAlphaforest();
@@ -223,7 +223,7 @@ public:
             bestCoffList[i] = incalphatree->getCoff(i);
         }
 
-        float bestRes = getDiscriminationInc(gId, incAlphatreeId, alphatreeId, expectReturn, minRandPercent, stdScale);
+        float bestRes = getDiscriminationInc(gId, incAlphatreeId, alphatreeId, minRandPercent, stdScale);
 
         if (incalphatree->getCoffSize() > 0) {
             RandomChoose rc = RandomChoose(2 * incalphatree->getCoffSize());
@@ -268,7 +268,7 @@ public:
 
                 }
 
-                float res = getDiscriminationInc(gId, incAlphatreeId, alphatreeId, expectReturn, minRandPercent, stdScale);
+                float res = getDiscriminationInc(gId, incAlphatreeId, alphatreeId, minRandPercent, stdScale);
 
                 if (res > bestRes) {
                     //cout<<"best res "<<res<<endl;
@@ -368,7 +368,7 @@ protected:
         return signNum;
     }
 
-    float getDiscrimination(int gId, int alphatreeId, float expectReturn = 0.006f, float minRandPercent = 0.06f, float stdScale = 2) {
+    float getDiscrimination(int gId, int alphatreeId, float minRandPercent = 0.06f, float stdScale = 2) {
         AlphaForest *af = AlphaForest::getAlphaforest();
         auto &group = groupCache_->getCacheMemory(gId);
 //        cout<<group.getSignName()<<endl;
@@ -385,7 +385,7 @@ protected:
         pluginFeature(group.getSignName(), alphatreeId, group.getDaybefore(), group.getSampleSize(),
                       group.getSampleTime(), featureData, indexData);
 
-        bool isDirectlyPropor = getIsDirectlyPropor(featureData, returnsData, indexData, signNum, group.getSupport());
+        bool isDirectlyPropor = getIsDirectlyPropor(featureData, returnsData, indexData, signNum, group.getSupport(), group.getExpectReturn());
 
         if (!isDirectlyPropor) {
             //如果特征和收益不成正比，强制转一下
@@ -399,7 +399,7 @@ protected:
         sortFeature_(featureData, indexData, signNum, group.getSampleTime());
 
         //计算特征影响下的收益比（特征大的那部分股票收益/特征小的那部分股票收益）
-        calReturnsRatioAvgAndStd_(returnsData, indexData, signNum, group.getSampleTime(), group.getSupport(),
+        calReturnsRatioAvgAndStd_(returnsData, indexData, signNum, group.getSampleTime(), group.getSupport(), group.getExpectReturn(),
                                   group.observationAvgList, group.observationStdList);
 
 //        cout<<"control avg:\n";
@@ -467,7 +467,7 @@ protected:
 
 //        calR2Seq_(featureData, group.featureAvgList, returnsData, group.returnsAvgList, indexData, signNum,
 //                  group.getSampleTime(), group.getSupport(), seqList);
-        calAUCSeq_(featureData, indexData, returnsData, expectReturn, signNum, group.getSampleTime(), group.getSupport(), seqList);
+        calAUCSeq_(featureData, indexData, returnsData, group.getExpectReturn(), signNum, group.getSampleTime(), group.getSupport(), seqList);
 
         calWaveRange_(seqList, group.getSampleTime(), stdScale, minValue, maxValue);
         cout << "dist=(" << minValue << "~" << maxValue << ")" << endl;
@@ -479,7 +479,7 @@ protected:
         return minValue;
     }
 
-    float getDiscriminationInc(int gId, int alphatreeId, int incAlphatreeId, float expectReturn = 0.006f, float minRandPercent = 0.06f, float stdScale = 2.f){
+    float getDiscriminationInc(int gId, int alphatreeId, int incAlphatreeId, float minRandPercent = 0.06f, float stdScale = 2.f){
         AlphaForest *af = AlphaForest::getAlphaforest();
         auto &group = groupCache_->getCacheMemory(gId);
         size_t sampleDays = group.getSampleSize() * group.getSampleTime();
@@ -502,7 +502,7 @@ protected:
                       group.getSampleTime(), featureData, nullptr);
 
         //先计算特征是越大越好还是越小越好
-        bool isDirectlyPropor = getIsDirectlyPropor(featureData, returnsData, indexData, signNum, group.getSupport());
+        bool isDirectlyPropor = getIsDirectlyPropor(featureData, returnsData, indexData, signNum, group.getSupport(), group.getExpectReturn());
 
         if (!isDirectlyPropor) {
             //如果特征和收益不成正比，强制转一下
@@ -515,7 +515,7 @@ protected:
 
 
         mulSortFeature_(incData, featureData, indexData, signNum, group.getSampleTime(), minRandPercent);
-        calAUCIncSeq_(returnsData, indexData, signNum, group.getSampleTime(), minRandPercent, expectReturn, seqList);
+        calAUCIncSeq_(returnsData, indexData, signNum, group.getSampleTime(), minRandPercent, group.getExpectReturn(), seqList);
 
         float avg = 0;
         for(int i = 0; i < group.getSampleTime(); ++i){
@@ -528,7 +528,8 @@ protected:
         }
 
         float minValue = FLT_MAX, maxValue = -FLT_MAX;
-        calAutoregressive_(seqList, seqList, group.getSampleTime(), stdScale, minValue, maxValue);
+        calWaveRange_(seqList, group.getSampleTime(), stdScale, minValue, maxValue);
+//        calAutoregressive_(seqList, seqList, group.getSampleTime(), stdScale, minValue, maxValue);
         cout << "dist=(" << minValue << "~" << maxValue << ")" << endl;
 
         releaseIndexCache(iId);
