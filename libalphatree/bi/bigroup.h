@@ -24,7 +24,7 @@ public:
         CLEAN_POINT(returnsList);
     }
 
-    void initialize(const char* signName, size_t daybefore, size_t sampleSize, size_t  sampleTime, float support){
+    void initialize(const char* signName, size_t daybefore, size_t sampleSize, size_t  sampleTime, float support, float expectReturn){
         if(signName_)
             CLEAN_POINT(signName_);
         signName_ = new char[strlen(signName) + 1];
@@ -40,6 +40,7 @@ public:
         sampleSize_ = sampleSize;
         sampleTime_ = sampleTime;
         support_ = support;
+        expectReturn_ = expectReturn;
     }
 
     float* initializeReturns(size_t len){
@@ -55,6 +56,7 @@ public:
     size_t getSampleSize(){ return sampleSize_;}
     size_t getSampleTime(){ return sampleTime_;}
     float getSupport(){ return support_;}
+    float getExpectReturn(){ return expectReturn_;}
     const char* getSignName(){return signName_;}
 
     float* controlAvgList = {nullptr};
@@ -94,6 +96,7 @@ protected:
     size_t sampleSize_ = {0};
     size_t sampleTime_ = {0};
     float support_ = {0};
+    float expectReturn_ = {0};
 
 };
 
