@@ -6,43 +6,29 @@ import math
 
 conf_path = 'conf'
 data_path = "data"
-out_feature_path = "formula"
+from_feature_path = "formula"
 in_feature_path = "output"
 
-
-def check_dir(dir):
-    path_list = dir.split('/')
-    for i in range(len(path_list)):
-        path = '/'.join(path_list[:i+1])
-        if not os.path.exists(path):
-            os.mkdir(path)
-
-delta_return_name = "open_down_returns"
-# delta_return_line = "((delay(close, -%d) / delay(open, -1)) - 1.0)"
-delta_return_line = "(((delay(close, -%d) / delay(open, -1)) - 1) - (1 - (delay(ts_min(low, %d), -%d) / delay(open, -1))))"
+target_returns_name = "open_down_returns"
 valid_sign_name = "valid_sign"
 valid_sign_line = '(delay(((volume > 0) & (abs(returns) < 0.09)), -1) & (volume > 0))'
 
 
 def pred(config, industry):
-    print("%s:"%industry)
-    market = config.get('info','market')
-    download_industry(config.get('info','code').split(','), market, data_path + "/" + industry)
-    cache_base(data_path + "/" + industry)
-
+    daybefore = int(config.get('feature', 'daybefore'))
+    # daybefore = 0
+    base_feature_path = "%s/base_%s_feature.txt"%(from_feature_path, industry)
+    inc_feature_path = in_feature_path + "/" + config.get('feature', 'in_feature')
+    to_feature_path = "%s/inc_%s_feature.txt"%(from_feature_path, industry)
+    feature_sample_size = int(config.get('feature', 'sample_size'))
+    feature_sample_time = int(config.get('feature', 'sample_time'))
+    feature_support = float(config.get('feature','support'))
+    feature_inc_auc = float(config.get('feature', 'inc_auc'))
+    feature_rand_percent = float(config.get('feature', 'rand_percent'))
+    sample_group = int(config.get('feature', 'sample_group'))
     hold_days = int(config.get('feature', 'hold_day'))
     delta_return = float(config.get('feature', 'delta_return'))
     max_corr = float(config.get('feature', 'corr'))
-    sample_group = int(config.get('feature', 'sample_group'))
-    feature_sample_size = int(config.get('feature', 'sample_size'))
-    feature_sample_time = int(config.get('feature', 'sample_time'))
-    feature_auc = float(config.get('feature', 'auc'))
-    feature_support = float(config.get('feature','support'))
-    feature_rand_percent = float(config.get('feature','rand_percent'))
-    daybefore = int(config.get('feature', 'daybefore'))
-    feature_path = out_feature_path + "/mid_%s_feature.txt"%industry
-    from_feature_path = in_feature_path + "/" + config.get('feature', 'in_feature')
-    check_dir(out_feature_path)
 
     def update_features(bi, line, cur_dist, features):
         # 如果有相关性很强的数据，就不再添加。如果此数据得分很高，就
@@ -67,54 +53,69 @@ def pred(config, industry):
             return True
         return False
 
-    def read_features(bi):
+    def read_features(bi, feature_list):
         features = {}
         try:
-            with open(feature_path, 'r') as f:
+            with open(to_feature_path, 'r') as f:
                 line = f.readline()
                 while line:
                     line = line[:-1]
-                    cur_dist = bi.get_discrimination(line, min_rand_percent=feature_rand_percent)
+                    max_inc = bi.get_discrimination_inc(line, feature_list)
                     # print("cur_dist1:%.4f"%cur_dist1)
-                    if cur_dist < feature_auc:
+                    if max_inc < feature_inc_auc:
                         line = f.readline()
                         continue
-                    update_features(bi, line, cur_dist, features)
+                    update_features(bi, line, max_inc, features)
                     line = f.readline()
         except:
             pass
         return features
 
-    def insert_line(bi_list, line, features):
+    def insert_line(bi_list, line, features, feature_list):
         if sample_group > 1:
             for i in range(sample_group):
-                dist = bi_list[i].get_discrimination(line, min_rand_percent=feature_rand_percent)
+                dist = bi_list[i].get_discrimination_inc(line, feature_list)
                 # print("data num:%d sub dist:%.4f"%(af.get_sign_num(hold_days, feature_sample_time * feature_sample_size, "%s_%d"%(valid_sign_name, i)), dist))
-                if dist < feature_auc:
+                if dist < feature_inc_auc:
                     return
 
-        dist1 = bi_list[-1].get_discrimination(line, min_rand_percent=feature_rand_percent)
-        if dist1 > feature_auc and not math.isinf(dist1) and not math.isnan(dist1):
-            line = bi_list[-1].optimize_discrimination(line, min_rand_percent=feature_rand_percent)
-            dist = bi_list[-1].get_discrimination(line, min_rand_percent=feature_rand_percent)
-            assert dist > feature_auc
+        dist1 = bi_list[-1].get_discrimination_inc(line, feature_list)
+        if dist1 > feature_inc_auc * 0.5:
+            print(dist1)
+        if dist1 > feature_inc_auc and not math.isinf(dist1) and not math.isnan(dist1):
+            line = bi_list[-1].optimize_discrimination_inc(line, feature_list)
+            dist = bi_list[-1].get_discrimination_inc(line, feature_list)
+            assert dist > feature_inc_auc
 
             if line not in features:
                 # features[line] = dist
                 if update_features(bi_list[-1], line, dist, features):
                     print("dist %.4f" % (dist))
-                    with open(feature_path, 'w') as f:
+                    with open(to_feature_path, 'w') as f:
                         for line, d in features.items():
                             f.write("%s\n" % line)
 
     with AlphaForest() as af:
         af.load_db(data_path + "/" + industry)
+        af.load_feature('miss')
+        af.load_feature('date')
+        af.load_feature(target_returns_name)
+        af.load_sign(valid_sign_name)
         codes = af.get_stock_codes()
         codes.sort()
         if len(codes) == 0:
             codes = af.get_market_codes()
-        af.cache_alpha(delta_return_name, delta_return_line % (hold_days,hold_days-1,hold_days))
-        af.cache_codes_sign(valid_sign_name, valid_sign_line, codes)
+
+        feature_list = []
+        with open(base_feature_path, 'r') as f:
+            line = f.readline()
+            index = 0
+            while line:
+                feature_list.append("t%d"%index)
+                af.cache_alpha(feature_list[-1], line[:-1])
+                af.load_feature(feature_list[-1])
+                index += 1
+                line = f.readline()
 
         bi_list = []
         if sample_group > 1:
@@ -124,21 +125,16 @@ def pred(config, industry):
                 tmp = "((rand > %.4f) & (rand < %.4f))"%(min_value, max_value)
                 af.cache_codes_sign("%s_%d"%(valid_sign_name, i),"(%s & %s)"%(valid_sign_line, tmp), codes)
                 af.load_sign("%s_%d"%(valid_sign_name, i))
-                bi_list.append(AlphaBI("%s_%d"%(valid_sign_name, i), daybefore + hold_days, feature_sample_size, feature_sample_time, feature_support, delta_return, "rand", delta_return_name))
-        af.load_feature('miss')
-        af.load_feature('rand')
-        af.load_feature('date')
-        af.load_feature(delta_return_name)
-        af.load_sign(valid_sign_name)
+                bi_list.append(AlphaBI("%s_%d"%(valid_sign_name, i), daybefore + hold_days, feature_sample_size, feature_sample_time, feature_support, delta_return, "rand", target_returns_name))
         bi_list.append(AlphaBI(valid_sign_name, daybefore + hold_days, feature_sample_size, feature_sample_time,
-                               feature_support, delta_return, "rand", delta_return_name))
-        features = read_features(bi_list[-1])
+                               feature_support, delta_return, "rand", target_returns_name))
+        features = read_features(bi_list[-1], feature_list)
 
         def pred_fun(line):
             if af.get_max_history_days(line) <= 75 and line not in features:
-                insert_line(bi_list, line, features)
+                insert_line(bi_list, line, features, feature_list)
 
-        process_file_name = data_path + "/" + industry + "/process.txt"
+        process_file_name = data_path + "/" + industry + "/inc_process.txt"
         try:
             pf = open(process_file_name, 'r')
             line_num = int(pf.read())
@@ -147,7 +143,7 @@ def pred(config, industry):
             line_num = 0
 
         cur_line_num = 0
-        with open(from_feature_path, 'r') as f:
+        with open(inc_feature_path, 'r') as f:
             line = f.readline()
             while line:
                 if cur_line_num >= line_num:

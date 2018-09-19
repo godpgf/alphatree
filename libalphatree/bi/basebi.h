@@ -119,6 +119,12 @@ void mulSortFeature_(const float* firstFeature, const float* secondFeature, int*
         }
         quickSort_(secondFeature, index, preId, preId + focusSize - 1);
         quickSort_(secondFeature, index, preId + focusSize, preId + 2 * focusSize - 1);
+
+//        cout<<segmentSize<<" "<<focusPercent<<endl;
+//        for(int i = 0; i < focusSize * 2; ++i){
+//            cout<<secondFeature[(int)(indexData[i])]<<" ";
+//        }
+//        cout<<endl;
     }
 }
 
@@ -208,12 +214,12 @@ void calAUCSeq_(const float* cache, const int* index, const float* target, float
 }
 
 //数据先经过助手特征排序后再经过主要特征排序
-void calAUCIncSeq_(const float* returns, const int* index, size_t len, size_t sampleTime, float focusPercent, float expectReturn, float* discList){
+void calAUCIncSeq_(const float* returns, const int* index, size_t len, size_t sampleTime, float expectReturn, float* discList){
     for(size_t splitId = 0; splitId < sampleTime; ++splitId){
         size_t preId = (size_t)(splitId * len / (float)sampleTime);
         size_t nextId = (size_t)((splitId + 1) * len / (float)sampleTime);
         int segmentSize = nextId - preId;
-        int focusSize = segmentSize * focusPercent * 0.5;
+        int focusSize = segmentSize * 0.5;
         int midId = preId + focusSize / 2;
 
         //计算所有正类样本数
@@ -225,18 +231,20 @@ void calAUCIncSeq_(const float* returns, const int* index, size_t len, size_t sa
             int rid = index[focusSize + j];
             if(returns[lid] > expectReturn){
                 ++pcntL;
-                rankSumL += j - preId + 1;
+                rankSumL += (j - preId + 1);
             }
 
             if(returns[rid] > expectReturn){
                 ++pcntR;
-                rankSumR += j - preId + 1;
+                rankSumR += (j - preId + 1);
             }
 
         }
-        float preDist = (rankSumL - pcntL * (1 + pcntL) * 0.5f) / (pcntL * (2 * focusSize - pcntL));
-        float lastDist = (rankSumR - pcntR * (1 + pcntR) * 0.5f) / (pcntR * (2 * focusSize - pcntR));
-        discList[splitId] = lastDist - preDist;
+
+        float preDist = (pcntL == 0) ? 0.5f : (rankSumL - pcntL * (1 + pcntL) * 0.5f) / (pcntL * (0.5f * focusSize - pcntL));
+        float lastDist = (pcntR == 0) ? 0.5f : (rankSumR - pcntR * (1 + pcntR) * 0.5f) / (pcntR * (0.5f * focusSize - pcntR));
+//        cout<<focusSize<<" "<<pcntL<<" "<<pcntR<<" "<<preDist<<" "<<lastDist<<endl;
+        discList[splitId] = max(lastDist, 0.5f) - max(preDist, 0.5f);
     }
 }
 

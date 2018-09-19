@@ -85,13 +85,14 @@ public:
         return disc;
     }
 
-    float getDiscriminationInc(int gId, const char *incFeature, const char* feature, float minRandPercent = 0.06f, float stdScale = 2){
+    float getDiscriminationInc(int gId, const char *incFeature, const char* feature,  float stdScale = 2){
         AlphaForest *af = AlphaForest::getAlphaforest();
         int alphatreeId = af->useAlphaTree();
         int incAlphaTreeId = af->useAlphaTree();
         af->decode(alphatreeId, "t", feature);
         af->decode(incAlphaTreeId, "t", incFeature);
-        float discInc = getDiscriminationInc(gId, incAlphaTreeId, alphatreeId, minRandPercent, stdScale);
+//        cout<<feature<<" "<<incFeature<<endl;
+        float discInc = getDiscriminationInc(gId, incAlphaTreeId, alphatreeId, stdScale);
         af->releaseAlphaTree(alphatreeId);
         af->releaseAlphaTree(incAlphaTreeId);
         return discInc;
@@ -206,7 +207,7 @@ public:
     }
 
     int optimizeDiscriminationInc(int gId, const char *incFeature, const char *feature, char *outFeature,
-                               float minRandPercent = 0.6f, float stdScale = 2, int maxHistoryDays = 75,
+                               float stdScale = 2, int maxHistoryDays = 75,
                                float exploteRatio = 0.1f, int errTryTime = 64) {
         AlphaForest *af = AlphaForest::getAlphaforest();
         int alphatreeId = af->useAlphaTree();
@@ -223,7 +224,7 @@ public:
             bestCoffList[i] = incalphatree->getCoff(i);
         }
 
-        float bestRes = getDiscriminationInc(gId, incAlphatreeId, alphatreeId, minRandPercent, stdScale);
+        float bestRes = getDiscriminationInc(gId, incAlphatreeId, alphatreeId, stdScale);
 
         if (incalphatree->getCoffSize() > 0) {
             RandomChoose rc = RandomChoose(2 * incalphatree->getCoffSize());
@@ -268,7 +269,7 @@ public:
 
                 }
 
-                float res = getDiscriminationInc(gId, incAlphatreeId, alphatreeId, minRandPercent, stdScale);
+                float res = getDiscriminationInc(gId, incAlphatreeId, alphatreeId, stdScale);
 
                 if (res > bestRes) {
                     //cout<<"best res "<<res<<endl;
@@ -479,7 +480,7 @@ protected:
         return minValue;
     }
 
-    float getDiscriminationInc(int gId, int alphatreeId, int incAlphatreeId, float minRandPercent = 0.06f, float stdScale = 2.f){
+    float getDiscriminationInc(int gId, int alphatreeId, int incAlphatreeId, float stdScale = 2.f){
         AlphaForest *af = AlphaForest::getAlphaforest();
         auto &group = groupCache_->getCacheMemory(gId);
         size_t sampleDays = group.getSampleSize() * group.getSampleTime();
@@ -498,7 +499,7 @@ protected:
 
         pluginFeature(group.getSignName(), incAlphatreeId, group.getDaybefore(), group.getSampleSize(),
                       group.getSampleTime(), incData, indexData);
-        pluginFeature(group.getSignName(), fId, group.getDaybefore(), group.getSampleSize(),
+        pluginFeature(group.getSignName(), alphatreeId, group.getDaybefore(), group.getSampleSize(),
                       group.getSampleTime(), featureData, nullptr);
 
         //先计算特征是越大越好还是越小越好
@@ -509,13 +510,18 @@ protected:
             for (int i = 0; i < signNum; ++i)
                 featureData[i] = -featureData[i];
         }
+
+//        for(int i = 0; i < signNum; ++i)
+//            cout<<featureData[i]<<"~"<<incData[i]<<" ";
+//        cout<<endl;
+
         //恢复排序过的index
         for (size_t i = 0; i < signNum; ++i)
             indexData[i] = i;
 
 
-        mulSortFeature_(incData, featureData, indexData, signNum, group.getSampleTime(), minRandPercent);
-        calAUCIncSeq_(returnsData, indexData, signNum, group.getSampleTime(), minRandPercent, group.getExpectReturn(), seqList);
+        mulSortFeature_(incData, featureData, indexData, signNum, group.getSampleTime(), group.getSupport());
+        calAUCIncSeq_(returnsData, indexData, signNum, group.getSampleTime(), group.getExpectReturn(), seqList);
 
         float avg = 0;
         for(int i = 0; i < group.getSampleTime(); ++i){
@@ -530,7 +536,7 @@ protected:
         float minValue = FLT_MAX, maxValue = -FLT_MAX;
         calWaveRange_(seqList, group.getSampleTime(), stdScale, minValue, maxValue);
 //        calAutoregressive_(seqList, seqList, group.getSampleTime(), stdScale, minValue, maxValue);
-        cout << "dist=(" << minValue << "~" << maxValue << ")" << endl;
+//        cout << "dist inc=(" << minValue << "~" << maxValue << ")" << endl;
 
         releaseIndexCache(iId);
         releaseDataCache(fId);

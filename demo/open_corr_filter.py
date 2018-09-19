@@ -5,7 +5,6 @@ from pyalphatree import *
 conf_path = 'conf'
 data_path = "data"
 from_feature_path = "formula"
-out_feature_path = "conf"
 
 target_returns_name = "open_down_returns"
 valid_sign_name = "valid_sign"
@@ -18,11 +17,12 @@ def filter(config, industry):
     max_corr = float(config.get('feature', 'corr'))
     out_feature_num = int(config.get('feature', 'out_num'))
     mid_feature_path = "%s/mid_%s_feature.txt"%(from_feature_path, industry)
-    feature_path = "%s/%s_feature.txt"%(out_feature_path, industry)
+    feature_path = "%s/base_%s_feature.txt"%(from_feature_path, industry)
     feature_sample_size = int(config.get('feature', 'sample_size'))
     feature_sample_time = int(config.get('feature', 'sample_time'))
     feature_support = float(config.get('feature','support'))
     feature_rand_percent = float(config.get('feature','rand_percent'))
+    feature_auc = float(config.get('feature', 'auc'))
     with AlphaForest() as af:
         af.load_db(data_path + "/" + industry)
         af.load_feature('miss')
@@ -40,13 +40,14 @@ def filter(config, industry):
                 line = line[:-1]
                 if line not in line_set:
                     dist = bi.get_discrimination(line, min_rand_percent=feature_rand_percent)
-                    if dist > 1:
+                    if dist > feature_auc:
                         alphatree_score_list.append((line, dist))
                     print(line, dist)
                     line_set.add(line)
                 line = f.readline()
             alphatree_score_list = sorted(alphatree_score_list, key=lambda elm :elm[1], reverse=True)
         filter_list = [None] * out_feature_num
+
         def corr_fun(a, b):
             corr = abs(bi.get_correlation(a, b))
             return corr
@@ -57,6 +58,7 @@ def filter(config, industry):
                     # print(filter_list[i][1])
                     print(bi.get_discrimination(filter_list[i][0], min_rand_percent=feature_rand_percent))
                     f.write(filter_list[i][0] + '\n')
+
 
 if __name__ == '__main__':
     files = os.listdir(conf_path)

@@ -38,12 +38,20 @@ class AlphaBI(object):
         str_list = [self.encode_cache[i].decode() for i in range(str_len)]
         return "".join(str_list)
 
-    def get_discrimination_inc(self, inc_feature, feature, min_rand_percent = 0.32, std_scale = 2.0):
-        return alphatree.getDiscriminationInc(c_int32(self.id), c_char_p(inc_feature), c_char_p(feature.encode('utf-8')),
-                                           c_float(min_rand_percent), c_float(std_scale))
+    def get_discrimination_inc(self, inc_feature, base_features, std_scale = 2.0):
+        inc = 0
+        for feature in base_features:
+            inc = max(inc, alphatree.getDiscriminationInc(c_int32(self.id), c_char_p(inc_feature.encode('utf-8')), c_char_p(feature.encode('utf-8')),
+                                           c_float(std_scale)))
+        return inc
 
-    def optimize_discrimination_inc(self, inc_feature, feature, min_rand_percent = 0.05, std_scale = 2.0, max_history_days = 75,
+    def optimize_discrimination_inc(self, inc_feature, base_features, std_scale = 2.0, max_history_days = 75,
                                 explote_ratio = 0.1, err_try_time = 64):
-        str_len = alphatree.optimizeDiscriminationInc(c_int32(self.id), c_char_p(inc_feature), c_char_p(feature.encode()), self.encode_cache, c_float(min_rand_percent), c_float(std_scale), c_int32(max_history_days), c_float(explote_ratio), c_int32(err_try_time))
-        str_list = [self.encode_cache[i].decode() for i in range(str_len)]
-        return "".join(str_list)
+        inc = 0
+        for feature in base_features:
+            str_len = alphatree.optimizeDiscriminationInc(c_int32(self.id), c_char_p(inc_feature.encode('utf-8')), c_char_p(feature.encode()), self.encode_cache, c_float(std_scale), c_int32(max_history_days), c_float(explote_ratio), c_int32(err_try_time))
+            line = "".join([self.encode_cache[i].decode() for i in range(str_len)])
+            cur_inc = self.get_discrimination_inc(line, [feature], std_scale)
+            if cur_inc > inc:
+                res = line
+        return res
