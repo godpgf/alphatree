@@ -23,6 +23,7 @@ alphatree.getAllDays.restype = c_int32
 alphatree.getSignNum.restype = c_int32
 alphatree.trainAndEvalAlphaGBDT.restype = c_float
 alphatree.evalAlphaGBDT.restype = c_float
+alphatree.getRandomPercent.restype = c_float
 alphatree.getDiscrimination.restype = c_float
 alphatree.getDiscriminationInc.restype = c_float
 alphatree.getCorrelation.restype = c_float

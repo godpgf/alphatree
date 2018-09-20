@@ -28,13 +28,16 @@ class AlphaBI(object):
     def get_correlation(self, a, b):
         return alphatree.getCorrelation(c_int32(self.id), c_char_p(a.encode('utf-8')), c_char_p(b.encode('utf-8')))
 
-    def get_discrimination(self, feature, min_rand_percent = 0.32, std_scale = 2.0):
-        return alphatree.getDiscrimination(c_int32(self.id), c_char_p(feature.encode('utf-8')),
-                                           c_float(min_rand_percent), c_float(std_scale))
+    def get_random_percent(self, feature, std_scale = 2.0):
+        return alphatree.getRandomPercent(c_int32(self.id), c_char_p(feature.encode()),c_float(std_scale))
 
-    def optimize_discrimination(self, feature, min_rand_percent = 0.32, std_scale = 2.0, max_history_days = 75,
+    def get_discrimination(self, feature, std_scale = 2.0):
+        return alphatree.getDiscrimination(c_int32(self.id), c_char_p(feature.encode('utf-8')),
+                                           c_float(std_scale))
+
+    def optimize_discrimination(self, feature, std_scale = 2.0, max_history_days = 75,
                                 explote_ratio = 0.1, err_try_time = 64):
-        str_len = alphatree.optimizeDiscrimination(c_int32(self.id), c_char_p(feature.encode()), self.encode_cache, c_float(min_rand_percent), c_float(std_scale), c_int32(max_history_days), c_float(explote_ratio), c_int32(err_try_time))
+        str_len = alphatree.optimizeDiscrimination(c_int32(self.id), c_char_p(feature.encode()), self.encode_cache, c_float(std_scale), c_int32(max_history_days), c_float(explote_ratio), c_int32(err_try_time))
         str_list = [self.encode_cache[i].decode() for i in range(str_len)]
         return "".join(str_list)
 

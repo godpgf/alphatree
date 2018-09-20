@@ -16,6 +16,7 @@ enum class CoffUnit{
     COFF_VAR = 2,
     COFF_CONST = 3,
     COFF_INDCLASS = 4,
+    COFF_FORBIT_INDCLASS = 5,
 };
 
 //计算的天数范围
@@ -125,7 +126,7 @@ AlphaAtom AlphaAtom::alphaAtomList[] = {
         AlphaAtom("down", down, 2, 1, CoffUnit::COFF_DAY, DateRange::ALL_DAY),
         AlphaAtom("power_mid", powerMid, 2),
 
-        AlphaAtom("rank", ranking, 2),
+        AlphaAtom("rank", ranking, 2, 0, CoffUnit::COFF_FORBIT_INDCLASS),
         //AlphaAtom("rank_scale", rankScale, 1),
         //AlphaAtom("rank_sort", rankSort, 1, CoffUnit::COFF_NONE, DateRange::CUR_DAY, 1),
 

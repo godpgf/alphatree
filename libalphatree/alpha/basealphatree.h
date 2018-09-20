@@ -332,6 +332,9 @@ protected:
                     strcpy(curDataClass, optCache);
                     dataClass = curDataClass;
                     break;
+                case CoffUnit::COFF_FORBIT_INDCLASS:
+                    dataClass = nullptr;
+                    break;
                 default:
                     cout<<"coff error\n";
                     throw "coff error!";

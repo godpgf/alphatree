@@ -185,7 +185,7 @@ void calFeatureAvg_(const float* cache, const int* index, size_t len, size_t sam
 //传染排序后的特征，计算光看这个特征的auc值
 void calAUCSeq_(const float* cache, const int* index, const float* target, float targetThreshold, size_t len, size_t sampleTime, float support, float* aucList){
 
-    cout<<"auc:";
+//    cout<<"auc:";
     for(size_t splitId = 0; splitId < sampleTime; ++splitId){
         size_t preId = (size_t)(splitId * len / (float)sampleTime);
         size_t nextId = (size_t)((splitId + 1) * len / (float)sampleTime);
@@ -208,9 +208,9 @@ void calAUCSeq_(const float* cache, const int* index, const float* target, float
 
         aucList[splitId] = (rankSum - pcnt * (1 + pcnt) * 0.5f) / (pcnt * (2 * supportSize - pcnt));
 
-        cout<<aucList[splitId]<<" ";
+//        cout<<aucList[splitId]<<" ";
     }
-    cout<<endl;
+//    cout<<endl;
 }
 
 //数据先经过助手特征排序后再经过主要特征排序

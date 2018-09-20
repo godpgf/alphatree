@@ -27,7 +27,7 @@ valid_sign_line = '(delay(((volume > 0) & (abs(returns) < 0.09)), -1) & (volume 
 def pred(config, industry):
     print("%s:"%industry)
     market = config.get('info','market')
-    download_industry(config.get('info','code').split(','), market, data_path + "/" + industry)
+    # download_industry(config.get('info','code').split(','), market, data_path + "/" + industry)
     cache_base(data_path + "/" + industry)
 
     hold_days = int(config.get('feature', 'hold_day'))
@@ -67,36 +67,62 @@ def pred(config, industry):
             return True
         return False
 
-    def read_features(bi):
+
+    def read_features(bi_list):
         features = {}
         try:
             with open(feature_path, 'r') as f:
                 line = f.readline()
                 while line:
                     line = line[:-1]
-                    cur_dist = bi.get_discrimination(line, min_rand_percent=feature_rand_percent)
+                    for id, bi in enumerate(bi_list):
+                        rp = bi.get_random_percent(line)
+                        if id < len(bi_list) - 1:
+                            if rp >= 0.99:
+                                break
+                            cur_dist = bi.get_discrimination(line)
+                            if cur_dist < 0.36:
+                                break
+                        else:
+                            if rp < feature_rand_percent:
+                                cur_dist = bi.get_discrimination(line)
+                            else:
+                                cur_dist = 0
+
                     # print("cur_dist1:%.4f"%cur_dist1)
                     if cur_dist < feature_auc:
                         line = f.readline()
                         continue
                     update_features(bi, line, cur_dist, features)
                     line = f.readline()
+
+            with open(feature_path, 'w') as f:
+                for line, d in features.items():
+                    f.write("%s\n" % line)
         except:
             pass
         return features
 
     def insert_line(bi_list, line, features):
         if sample_group > 1:
-            for i in range(sample_group):
-                dist = bi_list[i].get_discrimination(line, min_rand_percent=feature_rand_percent)
-                # print("data num:%d sub dist:%.4f"%(af.get_sign_num(hold_days, feature_sample_time * feature_sample_size, "%s_%d"%(valid_sign_name, i)), dist))
-                if dist < feature_auc:
-                    return
+            for id, bi in enumerate(bi_list):
+                rp = bi.get_random_percent(line)
+                if id < len(bi_list) - 1:
+                    if rp >= 0.99:
+                        cur_dist = 0
+                        break
+                    cur_dist = bi.get_discrimination(line)
+                    if cur_dist < 0.36:
+                        break
+                else:
+                    if rp < feature_rand_percent:
+                        cur_dist = bi.get_discrimination(line)
+                    else:
+                        cur_dist = 0
 
-        dist1 = bi_list[-1].get_discrimination(line, min_rand_percent=feature_rand_percent)
-        if dist1 > feature_auc and not math.isinf(dist1) and not math.isnan(dist1):
-            line = bi_list[-1].optimize_discrimination(line, min_rand_percent=feature_rand_percent)
-            dist = bi_list[-1].get_discrimination(line, min_rand_percent=feature_rand_percent)
+        if cur_dist > feature_auc and not math.isinf(cur_dist) and not math.isnan(cur_dist):
+            line = bi_list[-1].optimize_discrimination(line)
+            dist = bi_list[-1].get_discrimination(line)
             assert dist > feature_auc
 
             if line not in features:
@@ -124,7 +150,7 @@ def pred(config, industry):
                 tmp = "((rand > %.4f) & (rand < %.4f))"%(min_value, max_value)
                 af.cache_codes_sign("%s_%d"%(valid_sign_name, i),"(%s & %s)"%(valid_sign_line, tmp), codes)
                 af.load_sign("%s_%d"%(valid_sign_name, i))
-                bi_list.append(AlphaBI("%s_%d"%(valid_sign_name, i), daybefore + hold_days, feature_sample_size, feature_sample_time, feature_support, delta_return, "rand", delta_return_name))
+                bi_list.append(AlphaBI("%s_%d"%(valid_sign_name, i), daybefore + hold_days, feature_sample_size, feature_sample_time, feature_support * sample_group, delta_return, "rand", delta_return_name))
         af.load_feature('miss')
         af.load_feature('rand')
         af.load_feature('date')
@@ -132,7 +158,7 @@ def pred(config, industry):
         af.load_sign(valid_sign_name)
         bi_list.append(AlphaBI(valid_sign_name, daybefore + hold_days, feature_sample_size, feature_sample_time,
                                feature_support, delta_return, "rand", delta_return_name))
-        features = read_features(bi_list[-1])
+        features = read_features(bi_list)
 
         def pred_fun(line):
             if af.get_max_history_days(line) <= 75 and line not in features:
@@ -155,6 +181,8 @@ def pred(config, industry):
                 cur_line_num += 1
                 line = f.readline()
                 if cur_line_num % 100 == 0:
+                    if cur_line_num % 1000 == 0:
+                        print(cur_line_num)
                     with open(process_file_name, 'w') as pf:
                         pf.write("%d"%cur_line_num)
 
