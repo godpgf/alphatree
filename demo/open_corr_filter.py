@@ -21,7 +21,6 @@ def filter(config, industry):
     feature_sample_size = int(config.get('feature', 'sample_size'))
     feature_sample_time = int(config.get('feature', 'sample_time'))
     feature_support = float(config.get('feature','support'))
-    feature_rand_percent = float(config.get('feature','rand_percent'))
     feature_auc = float(config.get('feature', 'auc'))
     with AlphaForest() as af:
         af.load_db(data_path + "/" + industry)
@@ -39,7 +38,7 @@ def filter(config, industry):
             while line:
                 line = line[:-1]
                 if line not in line_set:
-                    dist = bi.get_discrimination(line, min_rand_percent=feature_rand_percent)
+                    dist = bi.get_discrimination(line)
                     if dist > feature_auc:
                         alphatree_score_list.append((line, dist))
                     print(line, dist)
@@ -56,7 +55,7 @@ def filter(config, industry):
             with open(feature_path, 'w') as f:
                 for i in range(len(filter_list)):
                     # print(filter_list[i][1])
-                    print(bi.get_discrimination(filter_list[i][0], min_rand_percent=feature_rand_percent))
+                    print(bi.get_discrimination(filter_list[i][0]))
                     f.write(filter_list[i][0] + '\n')
 
 

@@ -67,6 +67,10 @@ def pred(config, industry):
                         continue
                     update_features(bi, line, max_inc, features)
                     line = f.readline()
+
+            with open(to_feature_path, 'w') as f:
+                for line, d in features.items():
+                    f.write("%s\n" % line)
         except:
             pass
         return features
@@ -151,6 +155,8 @@ def pred(config, industry):
                 cur_line_num += 1
                 line = f.readline()
                 if cur_line_num % 100 == 0:
+                    if cur_line_num % 10000 == 0:
+                        print(cur_line_num)
                     with open(process_file_name, 'w') as pf:
                         pf.write("%d"%cur_line_num)
 

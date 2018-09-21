@@ -104,21 +104,21 @@ def pred(config, industry):
         return features
 
     def insert_line(bi_list, line, features):
-        if sample_group > 1:
-            for id, bi in enumerate(bi_list):
-                rp = bi.get_random_percent(line)
-                if id < len(bi_list) - 1:
-                    if rp >= 0.99:
-                        cur_dist = 0
-                        break
+        cur_dist = 0
+        for id, bi in enumerate(bi_list):
+            rp = bi.get_random_percent(line)
+            if id < len(bi_list) - 1:
+                if rp >= 0.99:
+                    cur_dist = 0
+                    break
+                cur_dist = bi.get_discrimination(line)
+                if cur_dist < 0.36:
+                    break
+            else:
+                if rp < feature_rand_percent:
                     cur_dist = bi.get_discrimination(line)
-                    if cur_dist < 0.36:
-                        break
                 else:
-                    if rp < feature_rand_percent:
-                        cur_dist = bi.get_discrimination(line)
-                    else:
-                        cur_dist = 0
+                    cur_dist = 0
 
         if cur_dist > feature_auc and not math.isinf(cur_dist) and not math.isnan(cur_dist):
             line = bi_list[-1].optimize_discrimination(line)
@@ -181,7 +181,7 @@ def pred(config, industry):
                 cur_line_num += 1
                 line = f.readline()
                 if cur_line_num % 100 == 0:
-                    if cur_line_num % 1000 == 0:
+                    if cur_line_num % 10000 == 0:
                         print(cur_line_num)
                     with open(process_file_name, 'w') as pf:
                         pf.write("%d"%cur_line_num)
