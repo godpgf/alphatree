@@ -17,9 +17,10 @@ def check_dir(dir):
         if not os.path.exists(path):
             os.mkdir(path)
 
+#用收益-风险作为目标值
 delta_return_name = "open_down_returns"
-# delta_return_line = "((delay(close, -%d) / delay(open, -1)) - 1.0)"
 delta_return_line = "(((delay(close, -%d) / delay(open, -1)) - 1) - (1 - (delay(ts_min(low, %d), -%d) / delay(open, -1))))"
+
 valid_sign_name = "valid_sign"
 valid_sign_line = '(delay(((volume > 0) & (abs(returns) < 0.09)), -1) & (volume > 0))'
 
