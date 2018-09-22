@@ -17,7 +17,7 @@ valid_sign_line = '(delay(((volume > 0) & (abs(returns) < 0.09)), -1) & (volume 
 
 def pred(config, industry):
     market = config.get('info','market')
-    # download_industry(config.get('info','code').split(','), market, data_path + "/" + industry)
+    download_industry(config.get('info','code').split(','), market, data_path + "/" + industry)
     cache_base(data_path + "/" + industry)
     daybefore = int(config.get('feature', 'daybefore'))
     # daybefore = 0
@@ -28,7 +28,6 @@ def pred(config, industry):
     feature_sample_time = int(config.get('feature', 'sample_time'))
     feature_support = float(config.get('feature','support'))
     feature_inc_auc = float(config.get('feature', 'inc_auc'))
-    sample_group = int(config.get('feature', 'sample_group'))
     hold_days = int(config.get('feature', 'hold_day'))
     delta_return = float(config.get('feature', 'delta_return'))
     max_corr = float(config.get('feature', 'corr'))
@@ -67,7 +66,7 @@ def pred(config, industry):
                     for id, bi in enumerate(bi_list):
                         max_inc = bi.get_discrimination_inc(line, feature_list)
                         if id < len(bi_list) - 1:
-                            if max_inc < 0.0:
+                            if max_inc <= 0.0:
                                 break
 
                     # print("cur_dist1:%.4f"%cur_dist1)
@@ -89,7 +88,7 @@ def pred(config, industry):
         for id, bi in enumerate(bi_list):
             if id < len(bi_list) - 1:
                 dist1 = bi.get_discrimination_inc(line, feature_list)
-                if dist1 < 0.0:
+                if dist1 <= 0.0:
                     break
             else:
                 dist1 = bi.get_discrimination_inc(line, feature_list)
@@ -144,6 +143,8 @@ def pred(config, industry):
                 feature_list.append("t%d"%index)
                 af.cache_alpha(feature_list[-1], line[:-1])
                 af.load_feature(feature_list[-1])
+                # a = AlphaArray(valid_sign_name + "_0",["t=%s"%feature_list[-1]],"t", 10, 10, 1)[:]
+                # print(a)
                 index += 1
                 line = f.readline()
             features = read_features(bi_list, feature_list)

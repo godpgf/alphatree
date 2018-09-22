@@ -100,7 +100,7 @@ public:
         af->decode(alphatreeId, "t", feature);
         af->decode(incAlphaTreeId, "t", incFeature);
 //        cout<<feature<<" "<<incFeature<<endl;
-        float discInc = getDiscriminationInc(gId, incAlphaTreeId, alphatreeId, stdScale);
+        float discInc = getDiscriminationInc(gId, alphatreeId, incAlphaTreeId, stdScale);
         af->releaseAlphaTree(alphatreeId);
         af->releaseAlphaTree(incAlphaTreeId);
         return discInc;
@@ -232,7 +232,7 @@ public:
             bestCoffList[i] = incalphatree->getCoff(i);
         }
 
-        float bestRes = getDiscriminationInc(gId, incAlphatreeId, alphatreeId, stdScale);
+        float bestRes = getDiscriminationInc(gId, alphatreeId, incAlphatreeId, stdScale);
 
         if (incalphatree->getCoffSize() > 0) {
             RandomChoose rc = RandomChoose(2 * incalphatree->getCoffSize());
@@ -277,7 +277,7 @@ public:
 
                 }
 
-                float res = getDiscriminationInc(gId, incAlphatreeId, alphatreeId, stdScale);
+                float res = getDiscriminationInc(gId, alphatreeId, incAlphatreeId, stdScale);
 
                 if (res > bestRes) {
                     //cout<<"best res "<<res<<endl;
@@ -367,8 +367,10 @@ protected:
 
         for (int i = 0; i < signNum; ++i) {
             cache[i] = f.getValue();
-            if (index != nullptr)
+            if (index != nullptr){
                 index[i] = i;
+//                cout<<cache[i]<<endl;
+            }
             f.skip(1);
         }
         f.skip(0, false);
@@ -547,8 +549,9 @@ protected:
 
         if (!isDirectlyPropor) {
             //如果特征和收益不成正比，强制转一下
-            for (int i = 0; i < signNum; ++i)
+            for (int i = 0; i < signNum; ++i) {
                 featureData[i] = -featureData[i];
+            }
         }
 
 //        for(int i = 0; i < signNum; ++i)
