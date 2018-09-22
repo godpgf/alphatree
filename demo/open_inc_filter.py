@@ -9,12 +9,16 @@ data_path = "data"
 from_feature_path = "formula"
 in_feature_path = "output"
 
-target_returns_name = "open_down_returns"
+delta_return_name = "open_down_returns"
+delta_return_line = "(((delay(close, -%d) / delay(open, -1)) - 1) - (1 - (delay(ts_min(low, %d), -%d) / delay(open, -1))))"
 valid_sign_name = "valid_sign"
 valid_sign_line = '(delay(((volume > 0) & (abs(returns) < 0.09)), -1) & (volume > 0))'
 
 
 def pred(config, industry):
+    market = config.get('info','market')
+    # download_industry(config.get('info','code').split(','), market, data_path + "/" + industry)
+    cache_base(data_path + "/" + industry)
     daybefore = int(config.get('feature', 'daybefore'))
     # daybefore = 0
     base_feature_path = "%s/base_%s_feature.txt"%(from_feature_path, industry)
@@ -24,11 +28,11 @@ def pred(config, industry):
     feature_sample_time = int(config.get('feature', 'sample_time'))
     feature_support = float(config.get('feature','support'))
     feature_inc_auc = float(config.get('feature', 'inc_auc'))
-    feature_rand_percent = float(config.get('feature', 'rand_percent'))
     sample_group = int(config.get('feature', 'sample_group'))
     hold_days = int(config.get('feature', 'hold_day'))
     delta_return = float(config.get('feature', 'delta_return'))
     max_corr = float(config.get('feature', 'corr'))
+    sample_group = int(config.get('feature', 'sample_group'))
 
     def update_features(bi, line, cur_dist, features):
         # 如果有相关性很强的数据，就不再添加。如果此数据得分很高，就
@@ -53,14 +57,19 @@ def pred(config, industry):
             return True
         return False
 
-    def read_features(bi, feature_list):
+    def read_features(bi_list, feature_list):
         features = {}
         try:
             with open(to_feature_path, 'r') as f:
                 line = f.readline()
                 while line:
                     line = line[:-1]
-                    max_inc = bi.get_discrimination_inc(line, feature_list)
+                    for id, bi in enumerate(bi_list):
+                        max_inc = bi.get_discrimination_inc(line, feature_list)
+                        if id < len(bi_list) - 1:
+                            if max_inc < 0.0:
+                                break
+
                     # print("cur_dist1:%.4f"%cur_dist1)
                     if max_inc < feature_inc_auc:
                         line = f.readline()
@@ -76,14 +85,15 @@ def pred(config, industry):
         return features
 
     def insert_line(bi_list, line, features, feature_list):
-        if sample_group > 1:
-            for i in range(sample_group):
-                dist = bi_list[i].get_discrimination_inc(line, feature_list)
-                # print("data num:%d sub dist:%.4f"%(af.get_sign_num(hold_days, feature_sample_time * feature_sample_size, "%s_%d"%(valid_sign_name, i)), dist))
-                if dist < feature_inc_auc:
-                    return
+        dist1 = 0
+        for id, bi in enumerate(bi_list):
+            if id < len(bi_list) - 1:
+                dist1 = bi.get_discrimination_inc(line, feature_list)
+                if dist1 < 0.0:
+                    break
+            else:
+                dist1 = bi.get_discrimination_inc(line, feature_list)
 
-        dist1 = bi_list[-1].get_discrimination_inc(line, feature_list)
         if dist1 > feature_inc_auc * 0.5:
             print(dist1)
         if dist1 > feature_inc_auc and not math.isinf(dist1) and not math.isnan(dist1):
@@ -101,14 +111,30 @@ def pred(config, industry):
 
     with AlphaForest() as af:
         af.load_db(data_path + "/" + industry)
-        af.load_feature('miss')
-        af.load_feature('date')
-        af.load_feature(target_returns_name)
-        af.load_sign(valid_sign_name)
         codes = af.get_stock_codes()
         codes.sort()
         if len(codes) == 0:
             codes = af.get_market_codes()
+        af.cache_alpha(delta_return_name, delta_return_line % (hold_days,hold_days-1,hold_days))
+        af.cache_codes_sign(valid_sign_name, valid_sign_line, codes)
+
+        bi_list = []
+        if sample_group > 1:
+            for i in range(sample_group):
+                min_value = i / float(sample_group);
+                max_value = (i + 1) / float(sample_group);
+                tmp = "((rand > %.4f) & (rand < %.4f))"%(min_value, max_value)
+                af.cache_codes_sign("%s_%d"%(valid_sign_name, i),"(%s & %s)"%(valid_sign_line, tmp), codes)
+                af.load_sign("%s_%d"%(valid_sign_name, i))
+                bi_list.append(AlphaBI("%s_%d"%(valid_sign_name, i), daybefore + hold_days, feature_sample_size, feature_sample_time, feature_support * sample_group, delta_return, "rand", delta_return_name))
+        af.load_feature('miss')
+        af.load_feature('rand')
+        af.load_feature('date')
+        af.load_feature(delta_return_name)
+        af.load_sign(valid_sign_name)
+        bi_list.append(AlphaBI(valid_sign_name, daybefore + hold_days, feature_sample_size, feature_sample_time,
+                               feature_support, delta_return, "rand", delta_return_name))
+
 
         feature_list = []
         with open(base_feature_path, 'r') as f:
@@ -120,19 +146,7 @@ def pred(config, industry):
                 af.load_feature(feature_list[-1])
                 index += 1
                 line = f.readline()
-
-        bi_list = []
-        if sample_group > 1:
-            for i in range(sample_group):
-                min_value = i / float(sample_group);
-                max_value = (i + 1) / float(sample_group);
-                tmp = "((rand > %.4f) & (rand < %.4f))"%(min_value, max_value)
-                af.cache_codes_sign("%s_%d"%(valid_sign_name, i),"(%s & %s)"%(valid_sign_line, tmp), codes)
-                af.load_sign("%s_%d"%(valid_sign_name, i))
-                bi_list.append(AlphaBI("%s_%d"%(valid_sign_name, i), daybefore + hold_days, feature_sample_size, feature_sample_time, feature_support, delta_return, "rand", target_returns_name))
-        bi_list.append(AlphaBI(valid_sign_name, daybefore + hold_days, feature_sample_size, feature_sample_time,
-                               feature_support, delta_return, "rand", target_returns_name))
-        features = read_features(bi_list[-1], feature_list)
+            features = read_features(bi_list, feature_list)
 
         def pred_fun(line):
             if af.get_max_history_days(line) <= 75 and line not in features:

@@ -21,8 +21,7 @@ def select(config, industry):
     feature_path = "%s/base_%s_feature.txt"%(from_feature_path, industry)
     feature_sample_size = int(config.get('feature', 'sample_size'))
     feature_sample_time = int(config.get('feature', 'sample_time'))
-    feature_train_size = int(config.get('feature', 'train_size'))
-    sample_size = feature_sample_time * feature_sample_size + feature_train_size - 1
+    sample_size = feature_sample_time * feature_sample_size
     feature_support = float(config.get('feature','support'))
     feature_auc = float(config.get('feature', 'auc'))
     with AlphaForest() as af:
@@ -50,29 +49,46 @@ def select(config, industry):
         mid_feature_list.append("(delay(open, -1) / close)")
 
         #得到候选特征的取值，并保存在x
-        feature_list = ["%d=%s" for id, line in enumerate(mid_feature_list)]
-        feature_name = ["%d" for id in range(len(mid_feature_list))]
+        feature_list = ["%d=%s"%(id,line) for id, line in enumerate(mid_feature_list)]
+        feature_name = ["%d"%id for id in range(len(mid_feature_list))]
         x = AlphaArray(valid_sign_name, feature_list, feature_name, daybefore, sample_size, 1)[:]
-        y = AlphaArray(valid_sign_name, ["t=(%s > %.4f)" % (target_returns_name, delta_returns)], daybefore, sample_size, 1)[:]
+        y = AlphaArray(valid_sign_name, ["t=(%s > %.4f)" % (target_returns_name, delta_returns)], "t", daybefore, sample_size, 1)[:]
         # 归一化
         scaler = StandardScaler()
         x = scaler.fit_transform(x)
 
-        #计算这个特征在每一天的被选中次数
-        feature_score = np.zeros((len(mid_feature_list), feature_sample_time * feature_sample_size))
-        for index in range(feature_sample_size * feature_sample_time):
-            cur_x = x[index:index + feature_train_size]
-            cur_y = y[index:index + feature_train_size]
-            lasso = Lasso(alpha=.3)
-            lasso.fit(cur_x, cur_y)
-            #不考虑最后一个必选特征
-            for fid in range(len(mid_feature_list) - 1):
-                feature_score[fid][index] = lasso.coef_[fid]
+        left_alpha = .0
+        right_alpha = 1.0
 
-        feature_score_sum = np.array([np.sum(feature_score[fid]) for fid in range(len(mid_feature_list))])
-        selection = np.argsort(feature_score_sum)[-out_feature_num:]
+        while left_alpha + 0.0001 < right_alpha:
+            cur_alpha = (left_alpha + right_alpha) * 0.5
+            lasso = Lasso(alpha=cur_alpha)
+            lasso.fit(x, y)
+            coff_cnt = 0
+            for id in range(len(mid_feature_list) - 1):
+                if abs(lasso.coef_[id]) > 0.001:
+                    coff_cnt += 1
+            if coff_cnt > out_feature_num:
+                left_alpha = cur_alpha
+            elif coff_cnt < out_feature_num:
+                right_alpha = cur_alpha
+            else:
+                break
 
+        selection = []
+        for id in range(len(mid_feature_list) - 1):
+            if abs(lasso.coef_[id]) > 0.001:
+                selection.append(id)
         with open(feature_path, 'w') as f:
             for sel in selection:
                 print(bi.get_discrimination(mid_feature_list[sel]))
                 f.write(mid_feature_list[sel] + '\n')
+
+
+if __name__ == '__main__':
+    files = os.listdir(conf_path)
+    for file in files:
+        if not os.path.isdir(file) and file.endswith(".ini"):
+            config = configparser.ConfigParser()
+            config.read(conf_path + "/" + file)
+            select(config, file[:-4])

@@ -28,7 +28,7 @@ valid_sign_line = '(delay(((volume > 0) & (abs(returns) < 0.09)), -1) & (volume 
 def pred(config, industry):
     print("%s:"%industry)
     market = config.get('info','market')
-    # download_industry(config.get('info','code').split(','), market, data_path + "/" + industry)
+    download_industry(config.get('info','code').split(','), market, data_path + "/" + industry)
     cache_base(data_path + "/" + industry)
 
     hold_days = int(config.get('feature', 'hold_day'))
