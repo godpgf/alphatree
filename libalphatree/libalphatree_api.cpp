@@ -320,14 +320,14 @@ int DLLEXPORT optimizeDiscrimination(int gId, const char *feature, char *outFeat
     return AlphaBI::getAlphaBI()->optimizeDiscrimination(gId, feature, outFeature, stdScale, maxHistoryDays, exploteRatio, errTryTime);
 }
 
-float DLLEXPORT getDiscriminationInc(int gId, const char *incFeature, const char* feature, float stdScale = 2){
-    return AlphaBI::getAlphaBI()->getDiscriminationInc(gId, incFeature, feature, stdScale);
+float DLLEXPORT getDiscriminationInc(int gId, const char *incFeature, const char* features, int featureNum, float stdScale = 2){
+    return AlphaBI::getAlphaBI()->getDiscriminationInc(gId, incFeature, features, featureNum, stdScale);
 }
 
-int DLLEXPORT optimizeDiscriminationInc(int gId, const char *incFeature, const char *feature, char *outFeature,
+int DLLEXPORT optimizeDiscriminationInc(int gId, const char *incFeature, const char *features, int featureNum, char *outFeature,
                                   float stdScale = 2, int maxHistoryDays = 75,
                                   float exploteRatio = 0.1f, int errTryTime = 64){
-    return AlphaBI::getAlphaBI()->optimizeDiscriminationInc(gId, incFeature, feature, outFeature, stdScale, maxHistoryDays, exploteRatio, errTryTime);
+    return AlphaBI::getAlphaBI()->optimizeDiscriminationInc(gId, incFeature, features, featureNum, outFeature, stdScale, maxHistoryDays, exploteRatio, errTryTime);
 }
 /*
 float DLLEXPORT getConfidence(const char* signName, const char* feature, const char* target, int daybefore, int sampleSize, int sampleTime, float support, float stdScale){

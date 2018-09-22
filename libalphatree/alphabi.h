@@ -93,15 +93,22 @@ public:
         return disc;
     }
 
-    float getDiscriminationInc(int gId, const char *incFeature, const char* feature,  float stdScale = 2){
+    float getDiscriminationInc(int gId, const char *incFeature, const char* features, int featureNum, float stdScale = 2){
         AlphaForest *af = AlphaForest::getAlphaforest();
-        int alphatreeId = af->useAlphaTree();
+        Vector<int> alphatreeIds(featureNum);
+        for(int i = 0; i < featureNum; ++i){
+            alphatreeIds[i] = af->useAlphaTree();
+            af->decode(alphatreeIds[i], "t", features);
+            features += (strlen(features) + 1);
+        }
+
         int incAlphaTreeId = af->useAlphaTree();
-        af->decode(alphatreeId, "t", feature);
         af->decode(incAlphaTreeId, "t", incFeature);
 //        cout<<feature<<" "<<incFeature<<endl;
-        float discInc = getDiscriminationInc(gId, alphatreeId, incAlphaTreeId, stdScale);
-        af->releaseAlphaTree(alphatreeId);
+        float discInc = getDiscriminationInc(gId, alphatreeIds, incAlphaTreeId, stdScale);
+        for(int i = 0; i < featureNum; ++i){
+            af->releaseAlphaTree(alphatreeIds[i]);
+        }
         af->releaseAlphaTree(incAlphaTreeId);
         return discInc;
     }
@@ -214,13 +221,16 @@ public:
         return strlen(outFeature);
     }
 
-    int optimizeDiscriminationInc(int gId, const char *incFeature, const char *feature, char *outFeature,
+    int optimizeDiscriminationInc(int gId, const char *incFeature, const char *features, int featureNum, char *outFeature,
                                float stdScale = 2, int maxHistoryDays = 75,
                                float exploteRatio = 0.1f, int errTryTime = 64) {
         AlphaForest *af = AlphaForest::getAlphaforest();
-        int alphatreeId = af->useAlphaTree();
-        //auto *alphatree = af->getAlphaTree(alphatreeId);
-        af->decode(alphatreeId, "t", feature);
+        Vector<int> alphatreeIds(featureNum);
+        for(int i = 0; i < featureNum; ++i){
+            alphatreeIds[i] = af->useAlphaTree();
+            af->decode(alphatreeIds[i], "t", features);
+            features += (strlen(features) + 1);
+        }
 
         int incAlphatreeId = af->useAlphaTree();
         auto* incalphatree = af->getAlphaTree(incAlphatreeId);
@@ -232,7 +242,7 @@ public:
             bestCoffList[i] = incalphatree->getCoff(i);
         }
 
-        float bestRes = getDiscriminationInc(gId, alphatreeId, incAlphatreeId, stdScale);
+        float bestRes = getDiscriminationInc(gId, alphatreeIds, incAlphatreeId, stdScale);
 
         if (incalphatree->getCoffSize() > 0) {
             RandomChoose rc = RandomChoose(2 * incalphatree->getCoffSize());
@@ -277,7 +287,7 @@ public:
 
                 }
 
-                float res = getDiscriminationInc(gId, alphatreeId, incAlphatreeId, stdScale);
+                float res = getDiscriminationInc(gId, alphatreeIds, incAlphatreeId, stdScale);
 
                 if (res > bestRes) {
                     //cout<<"best res "<<res<<endl;
@@ -308,7 +318,9 @@ public:
         incalphatree->encode("t", outFeature);
 
         releaseDataCache(coffId);
-        af->releaseAlphaTree(alphatreeId);
+        for(int i = 0; i < featureNum; ++i){
+            af->releaseAlphaTree(alphatreeIds[i]);
+        }
         af->releaseAlphaTree(incAlphatreeId);
         return strlen(outFeature);
     }
@@ -522,7 +534,7 @@ protected:
         return minValue;
     }
 
-    float getDiscriminationInc(int gId, int alphatreeId, int incAlphatreeId, float stdScale = 2.f){
+    float getDiscriminationInc(int gId, Vector<int>& alphatreeIds, int incAlphatreeId, float stdScale = 2.f){
         AlphaForest *af = AlphaForest::getAlphaforest();
         auto &group = groupCache_->getCacheMemory(gId);
         size_t sampleDays = group.getSampleSize() * group.getSampleTime();
@@ -541,43 +553,55 @@ protected:
 
         pluginFeature(group.getSignName(), incAlphatreeId, group.getDaybefore(), group.getSampleSize(),
                       group.getSampleTime(), incData, indexData);
-        pluginFeature(group.getSignName(), alphatreeId, group.getDaybefore(), group.getSampleSize(),
-                      group.getSampleTime(), featureData, nullptr);
 
-        //先计算特征是越大越好还是越小越好
-        bool isDirectlyPropor = getIsDirectlyPropor(featureData, returnsData, indexData, signNum, group.getSupport(), group.getExpectReturn());
+        float res = 0;
+        for(int id = 0; id < alphatreeIds.getSize(); ++id){
+            int alphatreeId = alphatreeIds[id];
 
-        if (!isDirectlyPropor) {
-            //如果特征和收益不成正比，强制转一下
-            for (int i = 0; i < signNum; ++i) {
-                featureData[i] = -featureData[i];
+            pluginFeature(group.getSignName(), alphatreeId, group.getDaybefore(), group.getSampleSize(),
+                          group.getSampleTime(), featureData, nullptr);
+
+            //先计算特征是越大越好还是越小越好
+            bool isDirectlyPropor = getIsDirectlyPropor(featureData, returnsData, indexData, signNum, group.getSupport(), group.getExpectReturn());
+
+            if (!isDirectlyPropor) {
+                //如果特征和收益不成正比，强制转一下
+                for (int i = 0; i < signNum; ++i) {
+                    featureData[i] = -featureData[i];
+                }
             }
+
+            //恢复排序过的index
+            for (size_t i = 0; i < signNum; ++i)
+                indexData[i] = i;
+
+            mulSortFeature_(incData, featureData, indexData, signNum, group.getSampleTime(), group.getSupport());
+            calAUCIncSeq_(returnsData, indexData, signNum, group.getSampleTime(), group.getExpectReturn(), seqList);
+
+            float avg = 0;
+            for(int i = 0; i < group.getSampleTime(); ++i){
+                avg += seqList[i];
+            }
+            avg /= group.getSampleTime();
+            if(avg < 0){
+                for(int i = 0; i < group.getSampleTime(); ++i)
+                    seqList[i] = -seqList[i];
+            }
+
+            float minValue = FLT_MAX, maxValue = -FLT_MAX;
+            calWaveRange_(seqList, group.getSampleTime(), stdScale, minValue, maxValue);
+            res = fmaxf(res, minValue);
         }
+
 
 //        for(int i = 0; i < signNum; ++i)
 //            cout<<featureData[i]<<"~"<<incData[i]<<" ";
 //        cout<<endl;
 
-        //恢复排序过的index
-        for (size_t i = 0; i < signNum; ++i)
-            indexData[i] = i;
 
 
-        mulSortFeature_(incData, featureData, indexData, signNum, group.getSampleTime(), group.getSupport());
-        calAUCIncSeq_(returnsData, indexData, signNum, group.getSampleTime(), group.getExpectReturn(), seqList);
 
-        float avg = 0;
-        for(int i = 0; i < group.getSampleTime(); ++i){
-            avg += seqList[i];
-        }
-        avg /= group.getSampleTime();
-        if(avg < 0){
-            for(int i = 0; i < group.getSampleTime(); ++i)
-                seqList[i] = -seqList[i];
-        }
 
-        float minValue = FLT_MAX, maxValue = -FLT_MAX;
-        calWaveRange_(seqList, group.getSampleTime(), stdScale, minValue, maxValue);
 //        calAutoregressive_(seqList, seqList, group.getSampleTime(), stdScale, minValue, maxValue);
 //        cout << "dist inc=(" << minValue << "~" << maxValue << ")" << endl;
 
@@ -585,7 +609,7 @@ protected:
         releaseDataCache(fId);
         releaseDataCache(sId);
         releaseDataCache(incId);
-        return minValue;
+        return res;
     }
 
     void getCorrelationList(int gId, const char *a, const char *b, float *outCorrelation) {
