@@ -118,6 +118,7 @@ class AlphaAtom: public IAlphaElement{
 
 AlphaAtom AlphaAtom::alphaAtomList[] = {
         AlphaAtom("ma", mean, 1, 0, CoffUnit::COFF_DAY, DateRange::ALL_DAY),
+        AlphaAtom("ema", ema, 1, 0, CoffUnit::COFF_CONST),
         AlphaAtom("lerp", lerp, 2, 0, CoffUnit::COFF_VAR),
         AlphaAtom("mean_rise", meanRise, 1, 0, CoffUnit::COFF_DAY, DateRange::CUR_AND_BEFORE_DAY),
         AlphaAtom("mean_ratio", meanRatio, 2, 0, CoffUnit::COFF_DAY, DateRange::ALL_DAY),

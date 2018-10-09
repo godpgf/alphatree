@@ -56,18 +56,6 @@ class AlphaDB{
             cache_->rand2file();
         }
 
-        /*
-        void boolhmm2binary(const char* featureName, int hideStateNum, size_t seqLength, const char* codes, int codesNum, int epochNum = 8){
-            bool* stockFlag = nullptr;
-            if(codes != nullptr){
-                stockFlag = new bool[des_->stockMetas.getSize()];
-                getCodesFlag(stockFlag, codes, codesNum);
-            }
-            cache_->boolhmm2binary(featureName, hideStateNum, seqLength, stockFlag, epochNum);
-            if(stockFlag != nullptr)
-                delete []stockFlag;
-        }*/
-
         size_t getAllCodes(char* codes){
             char* curCode = codes;
             for(int i = 0; i < des_->stockMetas.getSize(); ++i){
@@ -196,35 +184,6 @@ class AlphaDB{
             return cache_->getSignNum(dayBefore, sampleSize, signName);
         }
 
-
-//        //将满足要求的特征写入内存或文件，可以分段写入
-//        void fillFeature(size_t dayBefore, size_t historyNum, size_t sampleNum, size_t stockNum, const char* name, const char* leafDataClass,
-//                         const float* sign, Iterator<float>& featureOut, const char* codes){
-//            const char* curCode = codes;
-//            size_t dayNum = GET_HISTORY_SIZE(historyNum, sampleNum);
-//            //size_t needDay = dayBefore + dayNum;
-//
-//            for(size_t i = 0; i < stockNum; ++i){
-//                const char* code = getCode(curCode, leafDataClass);
-//                cache_->fill(featureOut, sign, dayBefore, dayNum, code, name, i, stockNum);
-//                curCode = curCode + strlen(curCode) + 1;
-//            }
-//        }
-//
-//        void fillFeature(size_t historyNum, size_t sampleNum, size_t stockNum, const float* sign,
-//                         Iterator<float>& featureOut, size_t sampleSize, float* feature){
-//            size_t dayNum = GET_HISTORY_SIZE(historyNum, sampleNum);
-//            for(size_t i = 0; i < stockNum; ++i){
-//                for(size_t j = 0; j < dayNum; ++j){
-//                    size_t index = j * stockNum + i;
-//                    if(sign[index] > 0){
-//                        *featureOut = feature[index];
-//                        ++featureOut;
-//                    }
-//                }
-//            }
-//        }
-
         ofstream* createCacheFile(const char* featureName){
             return cache_->createCacheFile(featureName);
         }
@@ -271,14 +230,6 @@ class AlphaDB{
         void releaseAllSign(){
             cache_->releaseSigns();
         }
-
-//        IBaseIterator<float>* createSignFeatureIter(const char* signName, const char* featureName, size_t dayBefore, size_t sampleDays, int offset){
-//            return cache_->createSignFeatureIter(signName, featureName, dayBefore, sampleDays, offset);
-//        }
-//
-//        IBaseIterator<float*>* createFeatureIter(const char* featureName, size_t dayBefore, size_t sampleDays, size_t stockNum, const char* codes, bool isCache){
-//            return new FeatureIterator(featureName, dayBefore, sampleDays, stockNum, codes, isCache, cache_);
-//        }
 
         size_t getStockNum(){ return des_->stockMetas.getSize();}
         size_t getDays(){
